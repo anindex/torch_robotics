@@ -13,8 +13,11 @@ class DifferentiableKUKAiiwa(DifferentiableTree):
 
 
 class DifferentiableFrankaPanda(DifferentiableTree):
-    def __init__(self, link_list: Optional[str] = None, device='cpu'):
-        robot_file = get_robot_path() / 'franka_description' / 'robots' / 'panda_arm_hand.urdf'
+    def __init__(self, link_list: Optional[str] = None, gripper=True, device='cpu'):
+        if gripper:
+            robot_file = get_robot_path() / 'franka_description' / 'robots' / 'panda_arm_hand.urdf'
+        else:
+            robot_file = get_robot_path() / 'franka_description' / 'robots' / 'panda_no_gripper.urdf'
         self.model_path = robot_file.as_posix()
         self.learnable_rigid_body_config = None
         self.name = "differentiable_franka_panda"
