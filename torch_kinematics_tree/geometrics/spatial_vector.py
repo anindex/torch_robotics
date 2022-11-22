@@ -52,13 +52,10 @@ class MotionVec(object):
         self,
         lin_motion: Optional[torch.Tensor] = None,
         ang_motion: Optional[torch.Tensor] = None,
-        device=None,
+        device='cpu',
     ):
         if lin_motion is None or ang_motion is None:
-            assert (
-                device is not None
-            ), "Cannot initialize with default values without specifying device."
-            device = torch.device(device)
+            device = device
         self.lin = (
             lin_motion if lin_motion is not None else torch.zeros((1, 3), device=device)
         )

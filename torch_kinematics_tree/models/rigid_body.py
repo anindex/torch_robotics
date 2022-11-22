@@ -40,7 +40,7 @@ class DifferentiableRigidBody(torch.nn.Module):
     _parents: Optional["DifferentiableRigidBody"]
     _children: List["DifferentiableRigidBody"]
 
-    def __init__(self, rigid_body_params, device="cpu"):
+    def __init__(self, rigid_body_params, device='cpu'):
 
         super().__init__()
 
@@ -48,14 +48,14 @@ class DifferentiableRigidBody(torch.nn.Module):
         self._parents = None
         self._children = []
 
-        self._device = torch.device(device)
+        self._device = device
         self.joint_id = rigid_body_params["joint_id"]
         self.name = rigid_body_params["link_name"]
 
-        self.joint_damping = lambda: rigid_body_params["joint_damping"]
-        self.trans = lambda: rigid_body_params["trans"].reshape(1, 3)
-        self.rot_angles = lambda: rigid_body_params["rot_angles"].reshape(1, 3)
-        rot_angles_vals = self.rot_angles()
+        self.joint_damping = rigid_body_params["joint_damping"]
+        self.trans = rigid_body_params["trans"].reshape(1, 3)
+        self.rot_angles = rigid_body_params["rot_angles"].reshape(1, 3)
+        rot_angles_vals = self.rot_angles
         roll = rot_angles_vals[0, 0]
         pitch = rot_angles_vals[0, 1]
         yaw = rot_angles_vals[0, 2]
@@ -67,7 +67,7 @@ class DifferentiableRigidBody(torch.nn.Module):
         self.joint_limits = rigid_body_params["joint_limits"]
 
         self.joint_pose = Frame(device=self._device)
-        self.joint_pose.set_translation(torch.reshape(self.trans(), (1, 3)))
+        self.joint_pose.set_translation(torch.reshape(self.trans, (1, 3)))
 
         # local velocities and accelerations (w.r.t. joint coordinate frame):
         self.joint_vel = MotionVec(device=self._device)
@@ -123,7 +123,7 @@ class DifferentiableRigidBody(torch.nn.Module):
 
                 joint_pose = Frame(
                     rot=self.fixed_rotation.repeat(batch_size, 1, 1) @ rot,
-                    trans=self.trans().repeat(batch_size, 1),
+                    trans=self.trans.repeat(batch_size, 1),
                     device=self._device,
                 )
             elif self.joint_type == 'prismatic':
@@ -131,7 +131,7 @@ class DifferentiableRigidBody(torch.nn.Module):
 
                 joint_pose = Frame(
                     rot=self.fixed_rotation.repeat(batch_size, 1, 1),
-                    trans=self.trans() + trans,
+                    trans=self.trans + trans,
                     device=self._device,
                 )
             else:
@@ -139,7 +139,7 @@ class DifferentiableRigidBody(torch.nn.Module):
         else:
             joint_pose = Frame(
                 rot=self.fixed_rotation.repeat(batch_size, 1, 1),
-                trans=self.trans().repeat(batch_size, 1),
+                trans=self.trans.repeat(batch_size, 1),
                 device=self._device,
             )
             if self.is_root:
@@ -186,18 +186,18 @@ class DifferentiableRigidBody(torch.nn.Module):
                 rot = z_rot(torch.sign(self.joint_axis[0, 2]) * q_clamped)
 
             self.joint_pose.set_translation(
-                self.trans().repeat(batch_size, 1)
+                self.trans.repeat(batch_size, 1)
             )
             self.joint_pose.set_rotation(self.fixed_rotation.repeat(batch_size, 1, 1) @ rot)
         elif self.joint_type == 'prismatic':
             trans = self.joint_axis * q_clamped
             self.joint_pose.set_translation(
-                self.trans() + trans
+                self.trans + trans
             )
             self.joint_pose.set_rotation(self.fixed_rotation.repeat(batch_size, 1, 1))
         elif self.joint_type == 'fixed':
             self.joint_pose.set_translation(
-                self.trans().repeat(batch_size, 1)
+                self.trans.repeat(batch_size, 1)
             )
             self.joint_pose.set_rotation(self.fixed_rotation.repeat(batch_size, 1, 1))
         else:
@@ -220,4 +220,4 @@ class DifferentiableRigidBody(torch.nn.Module):
         return self.joint_limits
 
     def get_joint_damping_const(self):
-        return self.joint_damping()
+        return self.joint_damping

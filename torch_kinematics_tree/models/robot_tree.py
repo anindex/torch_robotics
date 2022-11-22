@@ -19,11 +19,6 @@ def tensor_check(function):
 
     def preprocess(arg, obj, batch_info):
         if type(arg) is torch.Tensor:
-            # Check device
-            assert (
-                arg.device.type == obj._device.type
-            ), f"Input argument of different device as module: {arg}"
-
             # Check dimensions & convert to 2-dim tensors
             assert arg.ndim in [1, 2], f"Input tensors must have ndim of 1 or 2."
 
@@ -71,16 +66,14 @@ def tensor_check(function):
 
 class DifferentiableTree(torch.nn.Module):
 
-    def __init__(self, model_path: str, name="", link_list=None, device=None):
+    def __init__(self, model_path: str, name="", link_list=None, device='cpu'):
 
         super().__init__()
 
         self.name = name
         self.link_list = link_list
 
-        self._device = (
-            torch.device(device) if device is not None else torch.device("cpu")
-        )
+        self._device = device
         self.model_type = model_path.split('.')[-1]
         if self.model_type == 'urdf':
             self._model = URDFRobotModel(model_path=model_path, device=self._device)

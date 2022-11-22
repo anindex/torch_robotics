@@ -2,6 +2,7 @@ import torch
 from networkx.readwrite import json_graph
 from urdf_parser_py.urdf import URDF
 
+torch.set_default_dtype(torch.float32)
 
 JOINT_NAME_MAP = {
     'hinge': 'revolute',
