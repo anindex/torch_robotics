@@ -1,6 +1,6 @@
-# torch_kinematics_tree
+# torch_robotics
 
-This library implements Stochastic Gaussian Process Motion Planning algorithm in PyTorch. In Imitation Learning, we use this planner to sample trajectories from the learned Energy-Based Models encoding expert trajectories.
+This library implements differentiable robot tree from URDF or MCJF robot format, and the differentiable planning objects such as obstacle avoidance, self-collision avoidance and via point.
 
 ## Installation
 
@@ -12,10 +12,16 @@ pip install -e .
 
 ## Examples
 
-This script do benchmark on computation time for all available robot kinematics
+For benchmarking on computation time of all available robot kinematics
 
 ```azure
 python examples/forward_kinematics.py
+```
+
+For benchmarking on computation time of distance fields
+
+```azure
+python examples/collision_distance.py
 ```
 
 ## Acknowledgements
