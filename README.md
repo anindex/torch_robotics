@@ -12,10 +12,16 @@ pip install -e .
 
 ## Examples
 
-This script do benchmark on computation time for all available robot kinematics
+For benchmarking on computation time of all available robot kinematics
 
 ```azure
 python examples/forward_kinematics.py
+```
+
+For benchmarking on computation time of distance fields
+
+```azure
+python examples/collision_distance.py
 ```
 
 ## Acknowledgements
