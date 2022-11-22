@@ -196,13 +196,26 @@ def SE3_distance(H_batch, H_target, vel_batch=None, vel_target=None, w_pos=1., w
     return D
 
 
-def R3S3_distance(x_batch, x_target, w_pos=1., w_rot=1.):
-    if x_target.ndim == 1:
-        x_target = x_target.unsqueeze(0)
+def minus_SO3(R1, R2, eps=1.0e-14):
+    R12 = torch.matmul(R1, R2.transpose(-2, -1))
+    return log_SO3(R12, eps=eps)
 
-    R_distance = quaternion_relative_angle(x_batch[..., 3:], x_target[..., 3:])
-    T_distance = torch.linalg.norm(x_batch[..., :3] - x_target[..., :3], dim=-1)
-    return w_pos * R_distance + w_rot * T_distance
+
+def log_SO3(R, eps=1.0e-14):
+    # assert (
+    #     torch.abs(torch.abs(torch.det(R)) - 1.0) < 1e-3
+    # ), "det(R) = %f" % torch.det(R)
+    trR = (torch.trace(R) - 1.0) / 2.0
+    if trR < -R.new_ones(1):
+        print("Warning: trR/2-1 = %f < -1.0" % trR)
+        trR = -R.new_ones(1)
+    if trR > 1.0:
+        print("Warning: trR/2-1 = %f > 1.0" % trR)
+        trR = R.new_ones(1)
+
+    theta = torch.acos(trR)
+    omegahat = (R - R.T) / ((2.0 * torch.sin(theta)) + eps)
+    return theta * omegahat
 
 
 def quaternion_relative_angle(q1, q2, cos_bound=1e-4):
@@ -308,15 +321,15 @@ def torch_square(x):
     return x * x
 
 
-def exp_map_so3(omega, epsilon=1.0e-14):
+def exp_map_so3(omega, eps=1.0e-14):
     omegahat = vector3_to_skew_symm_matrix(omega).squeeze()
 
     norm_omega = torch.norm(omega, p=2)
     exp_omegahat = (
         torch.eye(3)
-        + ((torch.sin(norm_omega) / (norm_omega + epsilon)) * omegahat)
+        + ((torch.sin(norm_omega) / (norm_omega + eps)) * omegahat)
         + (
-            ((1.0 - torch.cos(norm_omega)) / (torch_square(norm_omega + epsilon)))
+            ((1.0 - torch.cos(norm_omega)) / (torch_square(norm_omega + eps)))
             * (omegahat @ omegahat)
         )
     )
