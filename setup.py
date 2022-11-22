@@ -12,10 +12,10 @@ with open(path.join(here, 'requirements.txt'), encoding='utf-8') as f:
         requires_list.append(str(line))
 
 
-setup(name='torch_kinematics_tree',
+setup(name='torch_robotics',
       description='Full Differentiable Kinematics Tree Implementation constructed from URDF or MJCF',
       author='An Thai Le',
       author_email='an@robot-learning.de',
-      packages=['torch_kinematics_tree'],
+      packages=['torch_kinematics_tree', 'torch_planning_objectives'],
       install_requires=requires_list,
       )
