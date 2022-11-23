@@ -50,6 +50,17 @@ def vector3_to_skew_symm_matrix(vec3):
     return skew_symm_mat
 
 
+def skew_symm_matrix_to_vec(R):
+    if R.ndim < 3:
+        R = R.unsqueeze(0)
+    batch_dim = R.shape[:-2]
+    vec = torch.zeros(batch_dim + (3,))
+    vec[..., 0] = R[..., 2, 1]
+    vec[..., 1] = R[..., 0, 2]
+    vec[..., 2] = R[..., 1, 0]
+    return vec
+
+
 def quaternion_to_matrix(quaternions):
     """
     Convert rotations given as quaternions to rotation matrices.
@@ -196,16 +207,20 @@ def SE3_distance(H_batch, H_target, vel_batch=None, vel_target=None, w_pos=1., w
     return D
 
 
-def minus_SO3(R1, R2, eps=1.0e-14):
+def minus_SO3(R1, R2, eps=1.0e-14, add_dim=True):
     R12 = torch.matmul(R1, R2.transpose(-2, -1))
-    return log_SO3(R12, eps=eps)
+    skew_mat = log_SO3(R12, eps=eps)
+    vec = skew_symm_matrix_to_vec(skew_mat)
+    if add_dim:
+        vec = vec.unsqueeze(0)
+    return vec
 
 
 def log_SO3(R, eps=1.0e-14):
     # assert (
     #     torch.abs(torch.abs(torch.det(R)) - 1.0) < 1e-3
     # ), "det(R) = %f" % torch.det(R)
-    trR = (torch.trace(R) - 1.0) / 2.0
+    trR = (torch.einsum('...ii->...', R) - 1.0) / 2.0
     if trR < -R.new_ones(1):
         print("Warning: trR/2-1 = %f < -1.0" % trR)
         trR = -R.new_ones(1)
@@ -214,7 +229,7 @@ def log_SO3(R, eps=1.0e-14):
         trR = R.new_ones(1)
 
     theta = torch.acos(trR)
-    omegahat = (R - R.T) / ((2.0 * torch.sin(theta)) + eps)
+    omegahat = (R - R.mT) / ((2.0 * torch.sin(theta)) + eps)
     return theta * omegahat
 
 
@@ -238,12 +253,12 @@ def q_convert_wxyz(q):
     return torch.stack([w, x, y, z], dim=-1)
 
 
-def so3_relative_angle(R1, R2, eps=1e-4, cos_angle=False, cos_bound=1e-4):
+def so3_relative_angle(R1, R2, cos_angle=False, eps=1e-4):
     R12 = torch.matmul(R1, R2.transpose(-2, -1))
-    return so3_rotation_angle(R12, eps=eps, cos_angle=cos_angle, cos_bound=cos_bound)
+    return so3_rotation_angle(R12, cos_angle=cos_angle, eps=eps)
 
 
-def so3_rotation_angle(R, eps=1e-4, cos_angle=False, cos_bound=1e-4):
+def so3_rotation_angle(R, cos_angle=False, eps=1e-4):
     dim1, dim2 = R.shape[-2:]
     if dim1 != 3 or dim2 != 3:
         raise ValueError("Input has to be a batch of 3x3 Tensors.")
@@ -255,8 +270,8 @@ def so3_rotation_angle(R, eps=1e-4, cos_angle=False, cos_bound=1e-4):
     if cos_angle:
         return phi_cos
     else:
-        if cos_bound > 0.0:
-            bound = 1.0 - cos_bound
+        if eps > 0.0:
+            bound = 1.0 - eps
             return acos_linear_extrapolation(phi_cos, (-bound, bound))
         else:
             return torch.acos(phi_cos)
