@@ -221,14 +221,16 @@ def log_SO3(R, eps=1.0e-14):
     #     torch.abs(torch.abs(torch.det(R)) - 1.0) < 1e-3
     # ), "det(R) = %f" % torch.det(R)
     trR = (torch.einsum('...ii->...', R) - 1.0) / 2.0
-    if trR < -R.new_ones(1):
+    cond = trR < -1
+    if cond.any():
         print("Warning: trR/2-1 = %f < -1.0" % trR)
-        trR = -R.new_ones(1)
-    if trR > 1.0:
+        trR[cond] = -1.
+    cond = trR > 1
+    if cond.any():
         print("Warning: trR/2-1 = %f > 1.0" % trR)
-        trR = R.new_ones(1)
+        trR[cond] = 1.
 
-    theta = torch.acos(trR)
+    theta = torch.acos(trR).view(R.shape[:-2] + (1, 1))
     omegahat = (R - R.mT) / ((2.0 * torch.sin(theta)) + eps)
     return theta * omegahat
 
