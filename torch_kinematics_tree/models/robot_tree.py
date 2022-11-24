@@ -64,6 +64,10 @@ def tensor_check(function):
     return wrapper
 
 
+def convert_link_dict_to_tensor(link_dict, link_list):
+    return torch.stack([link_dict[name].get_transform_matrix() for name in link_list], dim=1)
+
+
 class DifferentiableTree(torch.nn.Module):
 
     def __init__(self, model_path: str, name="", link_list=None, device='cpu'):
@@ -200,12 +204,7 @@ class DifferentiableTree(torch.nn.Module):
         # Call forward kinematics on root node
         pose_dict = self._bodies[0].forward_kinematics(q_dict, batch_size)
         if not return_dict:
-            poses = []
-            for i, link_name in enumerate(self.get_link_names()):
-                H_link = pose_dict[link_name].get_transform_matrix()
-                poses.append(H_link)  # add link dimensions
-            poses = torch.stack(poses, dim=1)
-            return poses
+            return convert_link_dict_to_tensor(pose_dict, self.get_link_names())
         else:
             return pose_dict
 
@@ -233,16 +232,11 @@ class DifferentiableTree(torch.nn.Module):
 
         # Call forward kinematics on root node
         pose_dict = self._bodies[0].forward_kinematics(q_dict, batch_size)
-        
+
         if link_list is None:  # link list is None again, output whole body
             link_list = self.get_link_names()
         if not return_dict:
-            poses = []
-            for i, link_name in enumerate(link_list):
-                H_link = pose_dict[link_name].get_transform_matrix()
-                poses.append(H_link)
-            poses = torch.stack(poses, dim=1)
-            return poses
+            return convert_link_dict_to_tensor(pose_dict, link_list)
         else:
             link_dict = {k: v for k, v in pose_dict.items() if k in link_list}
             return link_dict
