@@ -1,7 +1,7 @@
 import torch
 import time
 
-from torch_kinematics_tree.models.robots import DifferentiableFrankaPanda, DifferentiableAllegroHand, DifferentiableKUKAiiwa, DifferentiableShadowHand, DifferentiableTiagoDualHolo, DifferentiableUR10
+from torch_kinematics_tree.models.robots import DifferentiableFrankaPanda, DifferentiableAllegroHand, DifferentiableShadowHand, DifferentiableTiagoDualHoloMove, DifferentiableUR10
 
 
 if __name__ == "__main__":
@@ -41,7 +41,7 @@ if __name__ == "__main__":
     print("Computational Time {}".format(time_end - time_start))
 
     print("===========================Tiago Model===============================")
-    tiago_kin = DifferentiableTiagoDualHolo(device=device)
+    tiago_kin = DifferentiableTiagoDualHoloMove(device=device)
     tiago_kin.print_link_names()
     print(tiago_kin.get_joint_limits())
     print(tiago_kin._n_dofs)

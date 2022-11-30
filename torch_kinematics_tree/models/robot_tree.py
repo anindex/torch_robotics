@@ -2,6 +2,7 @@ from typing import List, Tuple, Dict, Optional
 from dataclasses import dataclass
 
 import torch
+import numpy as np
 from torch_kinematics_tree.models.rigid_body import DifferentiableRigidBody
 from torch_kinematics_tree.models.utils import URDFRobotModel, MJCFRobotModel
 from torch_kinematics_tree.geometrics.spatial_vector import MotionVec
@@ -320,6 +321,24 @@ class DifferentiableTree(torch.nn.Module):
         for idx in self._controlled_joints:
             limits.append(self._bodies[idx].get_joint_limits())
         return limits
+
+    def get_joint_limit_array(self) -> Tuple[np.ndarray]:
+        """
+
+        Returns: list of joint limit dict, containing joint position, velocity and effort limits
+
+        """
+        lowers = []
+        uppers = []
+        vel_lowers = []
+        vel_uppers = []
+        for idx in self._controlled_joints:
+            data = self._bodies[idx].get_joint_limits()
+            lowers.append(data['lower'])
+            uppers.append(data['upper'])
+            vel_lowers.append(-data['velocity'])
+            vel_uppers.append(data['velocity'])
+        return np.array(lowers), np.array(uppers), np.array(vel_lowers), np.array(vel_uppers)
 
     def get_link_names(self) -> List[str]:
         """
