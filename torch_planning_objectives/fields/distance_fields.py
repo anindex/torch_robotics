@@ -154,19 +154,19 @@ class LinkDistanceField(DistanceField):
     def __init__(self, device='cpu'):
         self.device = device
 
-    def compute_distance(self, link_tensor, obstacle_spheres=None):
+    def compute_distance(self, link_tensor, obstacle_spheres=None, **kwargs):
         if obstacle_spheres is None:
             return 1e10
-        link_tensor = link_tensor.unsqueeze(-2)
+        link_tensor = link_tensor[..., :3, -1].unsqueeze(-2)
         obstacle_spheres = obstacle_spheres.unsqueeze(0)
-        return torch.linalg.norm(link_tensor[..., :3] - obstacle_spheres[..., :3], dim=-1).sum((-1, -2))
+        return torch.linalg.norm(link_tensor - obstacle_spheres[..., :3], dim=-1).sum((-1, -2))
 
-    def compute_cost(self, link_tensor, obstacle_spheres):
+    def compute_cost(self, link_tensor, obstacle_spheres=None, **kwargs):
         if obstacle_spheres is None:
             return 0
-        link_tensor = link_tensor.unsqueeze(-2)
+        link_tensor = link_tensor[..., :3, -1].unsqueeze(-2)
         obstacle_spheres = obstacle_spheres.unsqueeze(0)
-        return torch.exp(-0.5 * tr.square(link_tensor[..., :3] - obstacle_spheres[..., :3]).sum(-1) / tr.square(obstacle_spheres[..., 3])).sum((-1, -2))
+        return torch.exp(-0.5 * torch.square(link_tensor - obstacle_spheres[..., :3]).sum(-1) / torch.square(obstacle_spheres[..., 3])).sum((-1, -2))
 
     def zero_grad(self):
         pass
@@ -179,16 +179,15 @@ class LinkSelfDistanceField(DistanceField):
         self.device = device
 
     def compute_distance(self, link_tensor):  # position tensor
-        # link_tensor = link_tensor[..., :3]
-        return torch.linalg.norm(link_tensor - link_tensor.unsqueeze(-3), dim=-1).sum((-1, -2))
+        link_tensor = link_tensor[..., :3, -1]
+        return torch.linalg.norm(link_tensor.unsqueeze(-2) - link_tensor.unsqueeze(-3), dim=-1).sum((-1, -2))
 
-    def compute_cost(self, link_tensor):   # position tensor
-        # link_tensor = link_tensor[..., :3]
-        return torch.exp(-0.5 * tr.square(link_tensor - link_tensor.unsqueeze(-3)).sum(-1) / self.margin**2).sum((-1, -2))
+    def compute_cost(self, link_tensor, **kwargs):   # position tensor
+        link_tensor = link_tensor[..., :3, -1]
+        return torch.exp(-0.5 * torch.square(link_tensor.unsqueeze(-2) - link_tensor.unsqueeze(-3)).sum(-1) / self.margin**2).sum((-1, -2))
 
     def zero_grad(self):
         pass
-
 
 
 class FloorDistanceField(DistanceField):
@@ -198,10 +197,30 @@ class FloorDistanceField(DistanceField):
         self.device = device
 
     def compute_distance(self, link_tensor):  # position tensor
-        return link_tensor[..., 2].mean(1)
+        return link_tensor[..., 2, -1].mean(-1)   # z axis
 
-    def compute_cost(self, link_tensor):  # position tensor
-        return torch.exp(-0.5 * tr.square(link_tensor[..., 2].mean(1)) / self.margin**2)
+    def compute_cost(self, link_tensor, **kwargs):  # position tensor
+        return torch.exp(-0.5 * torch.square(link_tensor[..., 2, -1].mean(-1)) / self.margin**2)
+
+    def zero_grad(self):
+        pass
+
+
+class EESE3DistanceField(DistanceField):
+
+    def __init__(self, target_H, device='cpu'):
+        self.target_H = target_H
+        self.device = device
+    
+    def update_target(self, target_H):
+        self.target_H = target_H
+
+    def compute_distance(self, link_tensor):  # position tensor
+        return SE3_distance(link_tensor[..., -1, :, :], self.target_H)   # get EE as last link
+
+    def compute_cost(self, link_tensor, **kwargs):  # position tensor
+        dist = self.compute_distance(link_tensor).squeeze()
+        return torch.square(dist)
 
     def zero_grad(self):
         pass
