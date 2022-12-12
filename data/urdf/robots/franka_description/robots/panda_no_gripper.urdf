@@ -16,7 +16,7 @@
     </visual>
     <collision>
       <geometry>
-        <mesh filename="meshes/collision/link0.dae"/>
+        <mesh filename="meshes/collision/link0.stl"/>
       </geometry>
     </collision>
   </link>
@@ -28,7 +28,7 @@
     </visual>
     <collision>
       <geometry>
-        <mesh filename="meshes/collision/link1.dae"/>
+        <mesh filename="meshes/collision/link1.stl"/>
       </geometry>
     </collision>
   </link>
@@ -50,7 +50,7 @@
     </visual>
     <collision>
       <geometry>
-        <mesh filename="meshes/collision/link2.dae"/>
+        <mesh filename="meshes/collision/link2.stl"/>
       </geometry>
     </collision>
   </link>
@@ -71,7 +71,7 @@
     </visual>
     <collision>
       <geometry>
-        <mesh filename="meshes/collision/link3.dae"/>
+        <mesh filename="meshes/collision/link3.stl"/>
       </geometry>
     </collision>
   </link>
@@ -92,7 +92,7 @@
     </visual>
     <collision>
       <geometry>
-        <mesh filename="meshes/collision/link4.dae"/>
+        <mesh filename="meshes/collision/link4.stl"/>
       </geometry>
     </collision>
   </link>
@@ -116,7 +116,7 @@
     </visual>
     <collision>
       <geometry>
-        <mesh filename="meshes/collision/link5.dae"/>
+        <mesh filename="meshes/collision/link5.stl"/>
       </geometry>
     </collision>
   </link>
@@ -137,7 +137,7 @@
     </visual>
     <collision>
       <geometry>
-        <mesh filename="meshes/collision/link6.dae"/>
+        <mesh filename="meshes/collision/link6.stl"/>
       </geometry>
     </collision>
   </link>
@@ -160,7 +160,7 @@
     </visual>
     <collision>
       <geometry>
-        <mesh filename="meshes/collision/link7.dae"/>
+        <mesh filename="meshes/collision/link7.stl"/>
       </geometry>
     </collision>
   </link>
@@ -204,14 +204,13 @@
       <origin rpy="0.0 0.0 0.0" xyz="0 0 0.0"/>
       <geometry>
         <!--box size="0.01 0.01 0.01"/-->
-        <mesh filename="meshes/visual/hand_gripper.dae"/>
+        <mesh filename="meshes/visual/hand.dae"/>
       </geometry>
     </visual>
     <collision>
       <geometry>
         <!--box size="0.01 0.01 0.01"/-->
-        <mesh filename="meshes/visual/hand_gripper.dae"/>
-        <!--mesh filename="meshes/collision/hand_gripper.dae"/-->
+        <mesh filename="meshes/collision/hand.stl"/>
       </geometry>
     </collision>
   </link>

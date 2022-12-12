@@ -103,6 +103,7 @@ class Panda(BodyCore):
         setattr(self, "target_joint_positions", target_joint_positions)
         setattr(self, "target_torques", target_torques)
         setattr(self, "pandaEndEffectorIndex", 7)
+        self.ee_id = p.getNumJoints(self.id) - 1
         return self.id
 
     def resetController(self):
@@ -139,7 +140,7 @@ class Panda(BodyCore):
 
         :return: ''np.ndarray''
         """
-        position, orientation = self.client_id.getLinkState(self.id, 11)[:2]
+        position, orientation = self.client_id.getLinkState(self.id, self.ee_id)[:2]
         return np.array(position), np.array(orientation)
 
     def getJointStates(self):
@@ -170,9 +171,9 @@ class Panda(BodyCore):
 
     def solveInverseKinematics(self, pos: np.ndarray, ori: np.ndarray = None):
         if ori is not None:
-            return list(self.client_id.calculateInverseKinematics(self.id, 7, pos, ori))
+            return list(self.client_id.calculateInverseKinematics(self.id, self.ee_id, pos, ori))
         else:
-            return list(self.client_id.calculateInverseKinematics(self.id, 7, pos))
+            return list(self.client_id.calculateInverseKinematics(self.id, self.ee_id, pos))
 
     def append(self, target_pos):
         if len(target_pos) == 9:
