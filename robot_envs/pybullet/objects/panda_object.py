@@ -29,6 +29,8 @@ class Panda(BodyCore):
         super(Panda, self).__init__(
             base_position=base_position, base_orientation=[0.0, 0.0, 0.0, 1.0]
         )
+        self.jl_lower = [-2.8973, -1.7628, -2.8973, -3.0718, -2.8973, -0.0175, -2.8973]
+        self.jl_upper = [2.8973, 1.7628, 2.8973, -0.0698, 2.8973, 3.7525, 2.8973]
 
     @property
     def joint_positions(self):
@@ -171,9 +173,9 @@ class Panda(BodyCore):
 
     def solveInverseKinematics(self, pos: np.ndarray, ori: np.ndarray = None):
         if ori is not None:
-            return list(self.client_id.calculateInverseKinematics(self.id, self.ee_id, pos, ori))
+            return list(self.client_id.calculateInverseKinematics(self.id, self.ee_id, pos, ori, lowerLimits=self.jl_lower, upperLimits=self.jl_upper))
         else:
-            return list(self.client_id.calculateInverseKinematics(self.id, self.ee_id, pos))
+            return list(self.client_id.calculateInverseKinematics(self.id, self.ee_id, pos, lowerLimits=self.jl_lower, upperLimits=self.jl_upper))
 
     def append(self, target_pos):
         if len(target_pos) == 9:
