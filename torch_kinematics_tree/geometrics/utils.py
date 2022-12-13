@@ -1,13 +1,8 @@
 import torch
 import numpy as np
-import operator
-from functools import reduce
 
 
 DEFAULT_ACOS_BOUND: float = 1.0 - 1e-4
-
-
-prod = lambda l: reduce(operator.mul, l, 1)
 
 
 @torch.jit.script
@@ -59,38 +54,6 @@ def skew_symm_matrix_to_vec(R):
     vec[..., 1] = R[..., 0, 2]
     vec[..., 2] = R[..., 1, 0]
     return vec
-
-
-def quaternion_to_matrix(quaternions):
-    """
-    Convert rotations given as quaternions to rotation matrices.
-
-    Args:
-        quaternions: quaternions with real part first,
-            as tensor of shape (..., 4).
-
-    Returns:
-        Rotation matrices as tensor of shape (..., 3, 3).
-    """
-    r, i, j, k = torch.unbind(quaternions, -1)
-    two_s = 2.0 / (quaternions * quaternions).sum(-1)
-
-    o = torch.stack(
-        (
-            1 - two_s * (j * j + k * k),
-            two_s * (i * j - k * r),
-            two_s * (i * k + j * r),
-            two_s * (i * j + k * r),
-            1 - two_s * (i * i + k * k),
-            two_s * (j * k - i * r),
-            two_s * (i * k - j * r),
-            two_s * (j * k + i * r),
-            1 - two_s * (i * i + j * j),
-        ),
-        -1,
-    )
-    return o.reshape(quaternions.shape[:-1] + (3, 3))
-
 
 
 class MinMaxScaler():
@@ -235,26 +198,6 @@ def log_SO3(R, eps=1.0e-14):
     return theta * omegahat
 
 
-def quaternion_relative_angle(q1, q2, cos_bound=1e-4):
-    theta_cos = (q1 * q2).sum(-1)
-
-    if cos_bound > 0.0:
-        bound = 1.0 - cos_bound
-        return acos_linear_extrapolation(theta_cos, (-bound, bound))
-    else:
-        return 2 * torch.acos(theta_cos)
-
-
-def q_convert_xyzw(q):
-    w, x, y, z = torch.unbind(q, dim=-1)
-    return torch.stack([x, y, z, w], dim=-1)
-
-
-def q_convert_wxyz(q):
-    x, y, z, w = torch.unbind(q, dim=-1)
-    return torch.stack([w, x, y, z], dim=-1)
-
-
 def so3_relative_angle(R1, R2, cos_angle=False, eps=1e-4):
     R12 = torch.matmul(R1, R2.transpose(-2, -1))
     return so3_rotation_angle(R12, cos_angle=cos_angle, eps=eps)
@@ -351,6 +294,20 @@ def exp_map_so3(omega, eps=1.0e-14):
         )
     )
     return exp_omegahat
+
+
+def rot_mat_to_euler(R) :
+    sy = torch.sqrt(R[0, 0] * R[0, 0] +  R[1, 0] * R[1, 0])
+    singular = sy < 1e-10
+    if  not singular :
+        x = torch.atan2(R[2, 1] , R[2, 2])
+        y = torch.atan2(-R[2, 0], sy)
+        z = torch.atan2(R[1, 0], R[0, 0])
+    else :
+        x = torch.atan2(-R[1, 2], R[1, 1])
+        y = torch.atan2(-R[2, 0], sy)
+        z = 0
+    return torch.tensor([x, y, z])
 
 
 def to_torch_2d_min(variable):
