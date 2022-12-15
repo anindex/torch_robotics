@@ -150,16 +150,17 @@ class MultiLineSegment(Shape):
         return d
 
     def compute_cost(self, X, **kwargs):
-        X = X.reshape(-1, self.dim)
+        batch_dim = X.shape[:-1]
+        X = X.reshape((-1, self.dim))
         if self.segments is None:
-            return torch.zeros(X.shape[0], **self.tensor_args)
+            return torch.zeros(batch_dim, **self.tensor_args)
         if self.obst_type == 'sdf':
             costs = self.get_sdf(X)
         elif self.obst_type == 'rbf':
             costs = self.get_rbf(X)
         else:
-            raise NotImplementedError()
-        return costs
+            raise NotImplementedError
+        return costs.reshape(batch_dim)
 
     def get_sdf(self, X):
         """
@@ -242,16 +243,17 @@ class MultiSphere(Shape):
         return (torch.linalg.norm(X[:, None] - self.centers[None, :], dim=-1) - self.radii[None, :]).min(-1)
 
     def compute_cost(self, X, **kwargs):
+        batch_dim = X.shape[:-1]
         X = X.reshape((-1, self.dim))
         if self.centers is None or self.radii is None:
-            return torch.zeros(X.shape[0], **self.tensor_args)
+            return torch.zeros(batch_dim, **self.tensor_args)
         if self.obst_type == 'sdf':
             costs = self.get_sdf(X)
         elif self.obst_type == 'rbf':
             costs = self.get_rbf(X)
         else:
             raise NotImplementedError
-        return costs
+        return costs.reshape(batch_dim)
 
     def get_sdf(self, X):
         """
