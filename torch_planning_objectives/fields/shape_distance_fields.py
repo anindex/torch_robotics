@@ -31,6 +31,24 @@ class Shape(ABC):
         raise NotImplementedError()
 
 
+class Point(Shape):
+    """
+    A segment defined with an origin, length and orientation, no batch
+    """
+
+    def __init__(self,
+                 point=None,
+                 tensor_args=None):
+        super().__init__(tensor_args=tensor_args)
+        self.point = point
+
+    def compute_distance(self, x):
+        return torch.linalg.norm(x - self.point, dim=-1)
+    
+    def compute_cost(self, x, **kwargs):
+        return torch.square(x - self.point).sum(-1)
+
+
 class LineSegment(Shape):
     """
     A segment defined with an origin, length and orientation, no batch
@@ -131,7 +149,7 @@ class MultiLineSegment(Shape):
             d[:, i] = segment.compute_distance(x)
         return d
 
-    def compute_cost(self, X):
+    def compute_cost(self, X, **kwargs):
         X = X.reshape(-1, self.dim)
         if self.segments is None:
             return torch.zeros(X.shape[0], **self.tensor_args)
@@ -223,7 +241,7 @@ class MultiSphere(Shape):
     def compute_distance(self, X):
         return (torch.linalg.norm(X[:, None] - self.centers[None, :], dim=-1) - self.radii[None, :]).min(-1)
 
-    def compute_cost(self, X):
+    def compute_cost(self, X, **kwargs):
         X = X.reshape((-1, self.dim))
         if self.centers is None or self.radii is None:
             return torch.zeros(X.shape[0], **self.tensor_args)
@@ -335,7 +353,7 @@ class Box3D(Shape):
         dist2walls = torch.linalg.norm(x.unsqueeze(2) - closest_point2wall, dim=-1)
         return dist2walls.min(-1)[0]
 
-    def compute_cost(self, X):
+    def compute_cost(self, X, **kwargs):
         if self.box_centers is None:
             return np.zeros(X.shape[0])
         if self.obst_type == 'sdf':

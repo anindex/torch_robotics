@@ -227,6 +227,27 @@ class EESE3DistanceField(DistanceField):
 
 
 
+class EndpointEuclideanDistanceField(DistanceField):
+
+    def __init__(self, point, device='cpu'):
+        self.point = point
+        self.device = device
+    
+    def update_endpoint(self, point):
+        self.point = point
+
+    def compute_distance(self, link_tensor):  # position tensor
+        return SE3_distance(link_tensor[..., -1, :3, -1], self.point)   # get EE as last link
+
+    def compute_cost(self, link_tensor, **kwargs):  # position tensor
+        dist = self.compute_distance(link_tensor).squeeze()
+        return torch.square(dist)
+
+    def zero_grad(self):
+        pass
+
+
+
 class SkeletonPointField(DistanceField):
 
     def __init__(self, via_H=None, link_list=None, device='cpu'):
