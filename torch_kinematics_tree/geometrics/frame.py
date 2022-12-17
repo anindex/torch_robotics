@@ -5,8 +5,9 @@ import math
 
 from torch_kinematics_tree.geometrics.utils import (
     vector3_to_skew_symm_matrix, multiply_inv_transform,
-    multiply_transform, quaternion_to_matrix
-) 
+    multiply_transform
+)
+from torch_kinematics_tree.geometrics.quaternion import q_to_rotation_matrix
 
 
 class Frame(object):
@@ -46,7 +47,7 @@ class Frame(object):
         if pose.ndim == 1:
             pose = pose.unsqueeze(0)
         self._trans = pose[:, :3].clone().to(self.device)
-        self._rot = quaternion_to_matrix(pose[:, 3:]).to(self.device)
+        self._rot = q_to_rotation_matrix(pose[:, 3:]).to(self.device)
 
     def set_translation(self, t: torch.Tensor) -> None:
         self._trans = t.to(self.device)
