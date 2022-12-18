@@ -31,22 +31,23 @@ class Shape(ABC):
         raise NotImplementedError()
 
 
-class Point(Shape):
-    """
-    A segment defined with an origin, length and orientation, no batch
-    """
+class MultiPoints(Shape):
 
     def __init__(self,
-                 point=None,
+                 points=None,
                  tensor_args=None):
         super().__init__(tensor_args=tensor_args)
-        self.point = point
+        if points.ndim == 1:
+            points = points.unsqueeze(0)
+        self.points = points
 
     def compute_distance(self, x):
-        return torch.linalg.norm(x - self.point, dim=-1)
+        x = x.unsqueeze(-2)
+        return torch.linalg.norm(x - self.points, dim=-1)
     
     def compute_cost(self, x, **kwargs):
-        return torch.square(x - self.point).sum(-1)
+        x = x.unsqueeze(-2)
+        return torch.linalg.norm(x - self.points, dim=-1).sum(-1)  # sum over num goals
 
 
 class LineSegment(Shape):
