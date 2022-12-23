@@ -208,15 +208,17 @@ class FloorDistanceField(DistanceField):
 
 class EESE3DistanceField(DistanceField):
 
-    def __init__(self, target_H, device='cpu'):
+    def __init__(self, target_H, w_pos=1., w_rot=1., device='cpu'):
         self.target_H = target_H
+        self.w_pos = w_pos
+        self.w_rot = w_rot
         self.device = device
     
     def update_target(self, target_H):
         self.target_H = target_H
 
     def compute_distance(self, link_tensor):  # position tensor
-        return SE3_distance(link_tensor[..., -1, :, :], self.target_H)   # get EE as last link
+        return SE3_distance(link_tensor[..., -1, :, :], self.target_H, w_pos=self.w_pos, w_rot=self.w_rot)   # get EE as last link
 
     def compute_cost(self, link_tensor, **kwargs):  # position tensor
         dist = self.compute_distance(link_tensor).squeeze()
