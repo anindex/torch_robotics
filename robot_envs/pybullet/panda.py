@@ -153,90 +153,91 @@ class PandaEnv(object):
             array = [0, 1, -1, -1]
         else:
             array = [1, 0, -1, -1]
-        box_roles = np.roll(array, self.shift)
-        for box, role in zip(self.boxes, box_roles):
-            box.reset(role=role)
-            if role == 0:
-                s_T1 = box.base_position + z_offset
-            elif role == 1:
-                s_T2 = box.base_position + z_offset
-        self._s_T = [s_T1, s_T2]
+        # box_roles = np.roll(array, self.shift)
+        # for box, role in zip(self.boxes, box_roles):
+        #     box.reset(role=role)
+        #     if role == 0:
+        #         s_T1 = box.base_position + z_offset
+        #     elif role == 1:
+        #         s_T2 = box.base_position + z_offset
+        self._s_T = None
 
         # Reset the roles, positions and possible velocities of #num_obs Spheres.
-        if self.motion_obstacles == 0:
-            sphere_roles = np.zeros(self.num_obst)
-        elif self.motion_obstacles == 1:
-            sphere_roles = np.ones(self.num_obst)
-        else:
-            sphere_roles = np.random.randint(0, 2, size=self.num_obst)
+        # if self.motion_obstacles == 0:
+        #     sphere_roles = np.zeros(self.num_obst)
+        # elif self.motion_obstacles == 1:
+        #     sphere_roles = np.ones(self.num_obst)
+        # else:
+        #     sphere_roles = np.random.randint(0, 2, size=self.num_obst)
 
-        for sphere, role in zip(self.spheres, sphere_roles):
-            if role == 0:
-                _, base_position = random_init_static_sphere_simple(
-                    scale_min=SPHERE_SCALE["MIN"],
-                    scale_max=SPHERE_SCALE["MAX"],
-                    base_position_min=np.array(
-                        [
-                            BOX_CENTER - 0.6 * BOX_SCALE,
-                            -np.abs(BOX_CENTER - 0.5 * BOX_SCALE),
-                            0.05,
-                        ]
-                    ),
-                    base_position_max=np.array(
-                        [
-                            BOX_CENTER + 0.6 * BOX_SCALE,
-                            np.abs(BOX_CENTER - 0.5 * BOX_SCALE),
-                            0.5,
-                        ]
-                    ),
-                    shift_order=[self.shift, self.order],
-                )
-                sphere.init_base_position = base_position
-                sphere.init_base_linear_velocity = np.array([0.0, 0.0, 0.0])
-            else:
-                (
-                    _,
-                    base_position,
-                    base_linear_velocity,
-                ) = random_init_dynamic_sphere_simple(
-                    scale_min=SPHERE_SCALE["MIN"],
-                    scale_max=SPHERE_SCALE["MAX"],
-                    base_position_min=np.array(
-                        [
-                            BOX_CENTER - 0.6 * BOX_SCALE,
-                            -np.abs(BOX_CENTER - 0.5 * BOX_SCALE),
-                            0.05,
-                        ]
-                    ),
-                    base_position_max=np.array(
-                        [
-                            BOX_CENTER + 0.6 * BOX_SCALE,
-                            np.abs(BOX_CENTER - 0.5 * BOX_SCALE),
-                            0.5,
-                        ]
-                    ),
-                    base_linear_velocity_min=np.array(
-                        [
-                            SPHERE_VELOCITY["MIN"],
-                            SPHERE_VELOCITY["MIN"],
-                            SPHERE_VELOCITY["MIN"],
-                        ]
-                    ),
-                    base_linear_velocity_max=np.array(
-                        [
-                            SPHERE_VELOCITY["MAX"] / 4,
-                            SPHERE_VELOCITY["MAX"] / 2,
-                            SPHERE_VELOCITY["MAX"],
-                        ]
-                    ),
-                    shift_order=[self.shift, self.order],
-                )
-                sphere.init_base_position = base_position
-                sphere.init_base_linear_velocity = base_linear_velocity
-            sphere.reset(role=role)
+        # for sphere, role in zip(self.spheres, sphere_roles):
+        #     if role == 0:
+        #         _, base_position = random_init_static_sphere_simple(
+        #             scale_min=SPHERE_SCALE["MIN"],
+        #             scale_max=SPHERE_SCALE["MAX"],
+        #             base_position_min=np.array(
+        #                 [
+        #                     BOX_CENTER - 0.6 * BOX_SCALE,
+        #                     -np.abs(BOX_CENTER - 0.5 * BOX_SCALE),
+        #                     0.05,
+        #                 ]
+        #             ),
+        #             base_position_max=np.array(
+        #                 [
+        #                     BOX_CENTER + 0.6 * BOX_SCALE,
+        #                     np.abs(BOX_CENTER - 0.5 * BOX_SCALE),
+        #                     0.5,
+        #                 ]
+        #             ),
+        #             shift_order=[self.shift, self.order],
+        #         )
+        #         sphere.init_base_position = base_position
+        #         sphere.init_base_linear_velocity = np.array([0.0, 0.0, 0.0])
+        #     else:
+        #         (
+        #             _,
+        #             base_position,
+        #             base_linear_velocity,
+        #         ) = random_init_dynamic_sphere_simple(
+        #             scale_min=SPHERE_SCALE["MIN"],
+        #             scale_max=SPHERE_SCALE["MAX"],
+        #             base_position_min=np.array(
+        #                 [
+        #                     BOX_CENTER - 0.6 * BOX_SCALE,
+        #                     -np.abs(BOX_CENTER - 0.5 * BOX_SCALE),
+        #                     0.05,
+        #                 ]
+        #             ),
+        #             base_position_max=np.array(
+        #                 [
+        #                     BOX_CENTER + 0.6 * BOX_SCALE,
+        #                     np.abs(BOX_CENTER - 0.5 * BOX_SCALE),
+        #                     0.5,
+        #                 ]
+        #             ),
+        #             base_linear_velocity_min=np.array(
+        #                 [
+        #                     SPHERE_VELOCITY["MIN"],
+        #                     SPHERE_VELOCITY["MIN"],
+        #                     SPHERE_VELOCITY["MIN"],
+        #                 ]
+        #             ),
+        #             base_linear_velocity_max=np.array(
+        #                 [
+        #                     SPHERE_VELOCITY["MAX"] / 4,
+        #                     SPHERE_VELOCITY["MAX"] / 2,
+        #                     SPHERE_VELOCITY["MAX"],
+        #                 ]
+        #             ),
+        #             shift_order=[self.shift, self.order],
+        #         )
+        #         sphere.init_base_position = base_position
+        #         sphere.init_base_linear_velocity = base_linear_velocity
+        #     sphere.reset(role=role)
 
         # Get obstacle_information
-        obs_state = self._state_obstacles()
+        # obs_state = self._state_obstacles()
+        obs_state = None
 
         # Reset env variables
         self._goal_idx = 0
@@ -259,106 +260,106 @@ class PandaEnv(object):
             a_t = self.panda.q
         self.panda.setTargetPositions(a_t.squeeze())
         # Update Obstacle
-        for sphere in self.spheres:
-            if sphere.role == 1:
-                base_position = self.client_id.getBasePositionAndOrientation(sphere.id)[
-                    0
-                ]
-                base_linear_velocity = self.client_id.getBaseVelocity(sphere.id)[0]
+        # for sphere in self.spheres:
+        #     if sphere.role == 1:
+        #         base_position = self.client_id.getBasePositionAndOrientation(sphere.id)[
+        #             0
+        #         ]
+        #         base_linear_velocity = self.client_id.getBaseVelocity(sphere.id)[0]
 
-                (
-                    base_position_new,
-                    base_linear_velocity_new,
-                ) = update_linear_velocity_sphere_simple(
-                    scale=sphere.scale,
-                    base_position=base_position,
-                    base_linear_velocity=base_linear_velocity,
-                    base_position_min=np.array(
-                        [
-                            BOX_CENTER - 0.6 * BOX_SCALE,
-                            -np.abs(BOX_CENTER - 0.5 * BOX_SCALE),
-                            0.05,
-                        ]
-                    ),
-                    base_position_max=np.array(
-                        [
-                            BOX_CENTER + 0.6 * BOX_SCALE,
-                            np.abs(BOX_CENTER - 0.5 * BOX_SCALE),
-                            0.5,
-                        ]
-                    ),
-                    shift_order=[self.shift, self.order],
-                )
+        #         (
+        #             base_position_new,
+        #             base_linear_velocity_new,
+        #         ) = update_linear_velocity_sphere_simple(
+        #             scale=sphere.scale,
+        #             base_position=base_position,
+        #             base_linear_velocity=base_linear_velocity,
+        #             base_position_min=np.array(
+        #                 [
+        #                     BOX_CENTER - 0.6 * BOX_SCALE,
+        #                     -np.abs(BOX_CENTER - 0.5 * BOX_SCALE),
+        #                     0.05,
+        #                 ]
+        #             ),
+        #             base_position_max=np.array(
+        #                 [
+        #                     BOX_CENTER + 0.6 * BOX_SCALE,
+        #                     np.abs(BOX_CENTER - 0.5 * BOX_SCALE),
+        #                     0.5,
+        #                 ]
+        #             ),
+        #             shift_order=[self.shift, self.order],
+        #         )
 
-                sphere.base_position = base_position_new
-                sphere.base_linear_velocity = base_linear_velocity_new
+        #         sphere.base_position = base_position_new
+        #         sphere.base_linear_velocity = base_linear_velocity_new
 
         [self.client_id.stepSimulation() for _ in range(self._frequency)]
 
-        self.s_t = [
-            np.array(self.panda.getJointStates()).reshape(1, 1, -1).copy(),
-            self._state_obstacles().copy(),
-        ]
-        self.a_t = a_t.copy()
-        self.is_contact = False
+        # self.s_t = [
+        #     np.array(self.panda.getJointStates()).reshape(1, 1, -1).copy(),
+        #     self._state_obstacles().copy(),
+        # ]
+        # self.a_t = a_t.copy()
+        # self.is_contact = False
 
-        # Check collision
-        import warnings
+        # # Check collision
+        # import warnings
 
-        if (
-            len(self.client_id.getClosestPoints(self.panda.id, 0, self.max_floor_dist))
-            <= 1
-        ):
-            dist2different_links = self.client_id.getClosestPoints(
-                self.panda.id, self.panda.id, self.max_obs_dist
-            )
-            n_links = self.client_id.getNumJoints(self.panda.id) - 1
-            if len(dist2different_links) <= 3 * n_links:
-                pass
-                for obstacles in self.boxes + self.spheres:
-                    dist2obs = self.client_id.getClosestPoints(
-                        self.panda.id, obstacles.id, self.max_obs_dist
-                    )
-                    if len(dist2obs) > 0:
-                        warnings.warn("Connect obs")
-                        # time.sleep(10)
-                        self.is_contact = True
-                        break
-            else:
-                warnings.warn("Connect robot")
-                # time.sleep(10)
-                self.is_contact = True
-        else:
-            warnings.warn("Connect floor")
-            # time.sleep(10)
-            self.is_contact = True
+        # if (
+        #     len(self.client_id.getClosestPoints(self.panda.id, 0, self.max_floor_dist))
+        #     <= 1
+        # ):
+        #     dist2different_links = self.client_id.getClosestPoints(
+        #         self.panda.id, self.panda.id, self.max_obs_dist
+        #     )
+        #     n_links = self.client_id.getNumJoints(self.panda.id) - 1
+        #     if len(dist2different_links) <= 3 * n_links:
+        #         pass
+        #         for obstacles in self.boxes + self.spheres:
+        #             dist2obs = self.client_id.getClosestPoints(
+        #                 self.panda.id, obstacles.id, self.max_obs_dist
+        #             )
+        #             if len(dist2obs) > 0:
+        #                 warnings.warn("Connect obs")
+        #                 # time.sleep(10)
+        #                 self.is_contact = True
+        #                 break
+        #     else:
+        #         warnings.warn("Connect robot")
+        #         # time.sleep(10)
+        #         self.is_contact = True
+        # else:
+        #     warnings.warn("Connect floor")
+        #     # time.sleep(10)
+        #     self.is_contact = True
 
-        # Check whether final state is reached or not
-        dist2goal = np.sqrt(
-            np.sum(
-                (self.panda.getEEPositionAndOrientation()[0] - self.s_T.squeeze()) ** 2
-            )
-        )
-        self.goal_reached[self._goal_idx] = dist2goal < 0.125
-        if self.goal_reached[0] and self._goal_idx == 0:
-            self._goal_idx = 1
+        # # Check whether final state is reached or not
+        # dist2goal = np.sqrt(
+        #     np.sum(
+        #         (self.panda.getEEPositionAndOrientation()[0] - self.s_T.squeeze()) ** 2
+        #     )
+        # )
+        # self.goal_reached[self._goal_idx] = dist2goal < 0.125
+        # if self.goal_reached[0] and self._goal_idx == 0:
+        #     self._goal_idx = 1
 
-        # Update goal flag
-        if self.is_contact | all(self.goal_reached):
-            self._done = True
+        # # Update goal flag
+        # if self.is_contact | all(self.goal_reached):
+        #     self._done = True
 
-        # Calculate costs
-        costs = self.cost_function()
+        # # Calculate costs
+        # costs = self.cost_function()
 
-        # Update buffer
-        self._update_buffer()
+        # # Update buffer
+        # self._update_buffer()
 
-        return (
-            self.s_t,
-            costs,
-            self.done,
-            [self.s_T, self.goal_reached, self.is_contact],
-        )
+        # return (
+        #     self.s_t,
+        #     costs,
+        #     self.done,
+        #     [self.s_T, self.goal_reached, self.is_contact],
+        # )
 
     def close(self):
         self.client_id.disconnect()
@@ -368,8 +369,8 @@ class PandaEnv(object):
         self.panda = Panda()
         self.panda.load2client(self.client_id)
         self._obstacles = dict()
-        self._init_box()
-        self._init_spheres()
+        # self._init_box()
+        # self._init_spheres()
         self._physics_server_initialized = True
 
     def _init_client(self):
@@ -557,6 +558,22 @@ class PandaEnv(object):
 
         costs = -gain / (dist2goal + eps)
         return np.where(self.is_contact, np.ones_like(costs) * 1e2, costs)
+
+    def set_spheres(self, torch_spheres):
+        torch_spheres = torch_spheres.detach().view(-1, 4).cpu().numpy()
+        spheres = []
+        for i in range(torch_spheres.shape[0]):
+            spheres.append(
+                Sphere(
+                    base_position=torch_spheres[i, :3],
+                    base_linear_velocity=np.array([0.0, 0.0, 0.0]),
+                    scale=torch_spheres[i, 3],
+                )
+            )
+        for sphere in spheres:
+            sphere.load2client(self.client_id)
+            sphere.reset(role=0)
+        self._obstacles.update({"spheres": spheres})
 
     def _state_obstacles(self) -> np.ndarray:
         boxes_state = np.concatenate(
