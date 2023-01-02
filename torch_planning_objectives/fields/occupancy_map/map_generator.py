@@ -1,8 +1,8 @@
 import numpy as np
 import torch
 
-from .obst_map import ObstacleRectangle, ObstacleMap
-from .obst_utils import random_rect
+from torch_planning_objectives.fields.occupancy_map.obst_map import ObstacleRectangle, ObstacleMap, ObstacleCircle
+from torch_planning_objectives.fields.occupancy_map.obst_utils import random_rect, random_circle
 import copy
 
 
@@ -13,7 +13,8 @@ def generate_obstacle_map(
         random_gen=False,
         num_obst=0,
         rand_xy_limits=None,
-        rand_shape=[2,2],
+        rand_rect_shape=[2, 2],
+        rand_circle_radius=1,
         map_type=None,
         tensor_args=None,
 ):
@@ -46,17 +47,11 @@ def generate_obstacle_map(
     rand_shape: [float, float]
         Shape [width, height] of randomly generated obstacles.
     """
-    ## Make occpuancy grid
+    ## Make occupancy grid
     obst_map = ObstacleMap(map_dim, cell_size, tensor_args=tensor_args)
     num_fixed = len(obst_list)
-    for param in obst_list:
-        cx, cy, width, height = param
-        rect = ObstacleRectangle(cx,cy,width,height)
-        ## Check validity of new obstacle
-        # valid = rect._obstacle_collision_check(obst_map)
-        # rect._point_collision_check(obst_map,start_pts) & \
-        # rect._point_collision_check(obst_map,goal_pts)
-        rect._add_to_map(obst_map)
+    for obst in obst_list:
+        obst._add_to_map(obst_map)
 
     ## Add random obstacles
     obst_list = copy.deepcopy(obst_list)
@@ -64,25 +59,27 @@ def generate_obstacle_map(
         assert num_fixed <= num_obst, "Total number of obstacles must be greater than or equal to number specified in obst_list"
         xlim = rand_xy_limits[0]
         ylim = rand_xy_limits[1]
-        width = rand_shape[0]
-        height = rand_shape[1]
+        width = rand_rect_shape[0]
+        height = rand_rect_shape[1]
+        radius = rand_circle_radius
         for _ in range(num_obst - num_fixed):
             num_attempts = 0
             max_attempts = 25
             while num_attempts <= max_attempts:
-                rect = random_rect(xlim, ylim, width, height)
+                if np.random.choice(2):
+                    obst = random_rect(xlim, ylim, width, height)
+                else:
+                    obst = random_circle(xlim, ylim, radius)
 
                 # Check validity of new obstacle
-                valid = rect._obstacle_collision_check(obst_map)
-                # rect._point_collision_check(obst_map,start_pts) & \
-                # rect._point_collision_check(obst_map,goal_pts)
+                # Do not overlap obstacles
+                valid = obst._obstacle_collision_check(obst_map)
 
                 if valid:
                     # Add to Map
-                    rect._add_to_map(obst_map)
+                    obst._add_to_map(obst_map)
                     # Add to list
-                    obst_list.append([rect.center_x,rect.center_y,
-                                      rect.width, rect.height])
+                    obst_list.append(obst)
                     break
 
                 if num_attempts == max_attempts:
@@ -96,7 +93,7 @@ def generate_obstacle_map(
 
     ## Fit mapping model
     if map_type == 'direct':
-        return obst_map, np.array(obst_list, dtype=np.float32)
+        return obst_map, obst_list
     else:
         raise IOError('Map type "{}" not recognized'.format(map_type))
 
@@ -105,19 +102,25 @@ if __name__ == "__main__":
     import sys
     import numpy
     numpy.set_printoptions(threshold=sys.maxsize)
-    obst_list = [(0, 0, 4, 8)]
+    obst_list = [
+        ObstacleRectangle(0, 0, 2, 3),
+        ObstacleCircle(-5, -5, 1)
+    ]
+
     cell_size = 0.1
     map_dim = [20, 20]
-    seed = 0
-
-    obst_map = generate_obstacle_map(
+    seed = 2
+    tensor_args = {'device': torch.device('cpu'), 'dtype': torch.float32}
+    obst_map, obst_list = generate_obstacle_map(
         map_dim, obst_list, cell_size,
         map_type='direct',
         random_gen=True,
         # random_gen=False,
         num_obst=5,
-        rand_xy_limits=[[-10, 10], [-10, 10]],
-        rand_shape=[2,2],
+        rand_xy_limits=[[-5, 5], [-5, 5]],
+        rand_rect_shape=[2,2],
+        rand_circle_radius=1,
+        tensor_args=tensor_args
     )
 
     fig = obst_map.plot()
@@ -127,3 +130,6 @@ if __name__ == "__main__":
     X = torch.cat((traj_x.unsqueeze(1), traj_y.unsqueeze(1)), dim=1)
     cost = obst_map.get_collisions(X)
     print(cost)
+
+
+

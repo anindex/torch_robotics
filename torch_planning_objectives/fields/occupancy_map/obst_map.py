@@ -15,14 +15,24 @@ class Obstacle(ABC):
     def __init__(self,center_x,center_y):
         self.center_x = center_x
         self.center_y = center_y
+        self.origin = np.array([self.center_x, self.center_y])
 
-    @abstractmethod
     def _obstacle_collision_check(self, obst_map):
-        pass
+        valid = True
+        obst_map_test = self._add_to_map(deepcopy(obst_map))
+        if np.any(obst_map_test.map > 1):
+            valid = False
+        return valid
 
-    @abstractmethod
     def _point_collision_check(self, obst_map, pts):
-        pass
+        valid = True
+        if pts is not None:
+            obst_map_test = self._add_to_map(np.copy(obst_map))
+            for pt in pts:
+                if obst_map_test[ceil(pt[0]), ceil(pt[1])] >= 1:
+                    valid = False
+                    break
+        return valid
 
     @abstractmethod
     def _add_to_map(self, obst_map):
@@ -45,36 +55,52 @@ class ObstacleRectangle(Obstacle):
         self.width = width
         self.height = height
 
-    def _obstacle_collision_check(self, obst_map):
-        valid=True
-        obst_map_test = self._add_to_map(deepcopy(obst_map))
-        if (np.any( obst_map_test.map > 1)):
-            valid=False
-        return valid
-
-    def _point_collision_check(self,obst_map,pts):
-        valid=True
-        if pts is not None:
-            obst_map_test = self._add_to_map(np.copy(obst_map))
-            for pt in pts:
-                if (obst_map_test[ ceil(pt[0]), ceil(pt[1])] == 1):
-                    valid=False
-                    break
-        return valid
-
     def _add_to_map(self, obst_map):
-        # Convert dims to cell indicies
+        # Convert dims to cell indices
         w = ceil(self.width / obst_map.cell_size)
         h = ceil(self.height / obst_map.cell_size)
         c_x = ceil(self.center_x / obst_map.cell_size)
         c_y = ceil(self.center_y / obst_map.cell_size)
 
         obst_map.map[
-        c_y - ceil(h/2.) + obst_map.origin_yi:
-        c_y + ceil(h/2.) + obst_map.origin_yi,
-        c_x - ceil(w/2.) + obst_map.origin_xi:
-        c_x + ceil(w/2.) + obst_map.origin_xi,
-        ] = 1
+            c_y - ceil(h/2.) + obst_map.origin_yi:
+            c_y + ceil(h/2.) + obst_map.origin_yi,
+            c_x - ceil(w/2.) + obst_map.origin_xi:
+            c_x + ceil(w/2.) + obst_map.origin_xi,
+            ] += 1
+        return obst_map
+
+
+class ObstacleCircle(Obstacle):
+    """
+    Derived 2D circle Obstacle class
+    """
+
+    def __init__(
+            self,
+            center_x=0,
+            center_y=0,
+            radius=1.
+    ):
+        super().__init__(center_x, center_y)
+        self.radius = radius
+
+    def is_inside(self, p):
+        # Check if point p is inside of the discretized circle
+        return np.linalg.norm(p - self.origin) <= self.radius
+
+    def _add_to_map(self, obst_map):
+        # Convert dims to cell indices
+        c_r = ceil(self.radius / obst_map.cell_size)
+        c_x = ceil(self.center_x / obst_map.cell_size)
+        c_y = ceil(self.center_y / obst_map.cell_size)
+
+        for i in range(c_y - 2 * c_r + obst_map.origin_yi, c_y + 2 * c_r + obst_map.origin_yi):
+            for j in range(c_x - 2 * c_r + obst_map.origin_xi, c_x + 2 * c_r + obst_map.origin_xi):
+                p = np.array([(j - obst_map.origin_xi) * obst_map.cell_size,
+                              (i - obst_map.origin_yi) * obst_map.cell_size])
+                if self.is_inside(p):
+                    obst_map.map[j, i] += 1
         return obst_map
 
 
@@ -91,7 +117,7 @@ class ObstacleMap:
             tensor_args = {'device': torch.device('cuda'), 'dtype': torch.float32}
         self.tensor_args = tensor_args
 
-        cmap_dim = [0,0]
+        cmap_dim = [0, 0]
         cmap_dim[0] = ceil(map_dim[0]/cell_size)
         cmap_dim[1] = ceil(map_dim[1]/cell_size)
 
@@ -157,13 +183,12 @@ class ObstacleMap:
         X_occ = X_occ.to(device=self.tensor_args['device'])
 
         # Project out-of-bounds locations to axis
-        X_occ[...,0] = X_occ[...,0].clamp(0, self.map.shape[0]-1)
-        X_occ[...,1] = X_occ[...,1].clamp(0, self.map.shape[1]-1)
+        X_occ[...,0] = X_occ[..., 0].clamp(0, self.map.shape[0]-1)
+        X_occ[...,1] = X_occ[..., 1].clamp(0, self.map.shape[1]-1)
 
         # Collisions
         try:
-            # collision_vals = self.map_torch[X_occ[...,0],X_occ[...,1]]
-            collision_vals = self.map_torch[X_occ[...,1], X_occ[...,0]]
+            collision_vals = self.map_torch[X_occ[..., 1], X_occ[..., 0]]
         except Exception as e:
             print(e)
             print(X_occ)
