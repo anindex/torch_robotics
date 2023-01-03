@@ -56,7 +56,8 @@ def generate_obstacle_map(
     ## Add random obstacles
     obst_list = copy.deepcopy(obst_list)
     if random_gen:
-        assert num_fixed <= num_obst, "Total number of obstacles must be greater than or equal to number specified in obst_list"
+        assert num_fixed <= num_obst, \
+            "Total number of obstacles must be greater than or equal to number specified in obst_list"
         xlim = rand_xy_limits[0]
         ylim = rand_xy_limits[1]
         width = rand_rect_shape[0]
@@ -109,7 +110,7 @@ if __name__ == "__main__":
 
     cell_size = 0.1
     map_dim = [20, 20]
-    seed = 2
+    seed = 5
     tensor_args = {'device': torch.device('cpu'), 'dtype': torch.float32}
     obst_map, obst_list = generate_obstacle_map(
         map_dim, obst_list, cell_size,
@@ -118,7 +119,7 @@ if __name__ == "__main__":
         # random_gen=False,
         num_obst=5,
         rand_xy_limits=[[-5, 5], [-5, 5]],
-        rand_rect_shape=[2,2],
+        rand_rect_shape=[2, 2],
         rand_circle_radius=1,
         tensor_args=tensor_args
     )

@@ -183,8 +183,8 @@ class ObstacleMap:
         X_occ = X_occ.to(device=self.tensor_args['device'])
 
         # Project out-of-bounds locations to axis
-        X_occ[...,0] = X_occ[..., 0].clamp(0, self.map.shape[0]-1)
-        X_occ[...,1] = X_occ[..., 1].clamp(0, self.map.shape[1]-1)
+        X_occ[..., 0] = X_occ[..., 0].clamp(0, self.map.shape[0]-1)
+        X_occ[..., 1] = X_occ[..., 1].clamp(0, self.map.shape[1]-1)
 
         # Collisions
         try:
