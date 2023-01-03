@@ -2,6 +2,7 @@ import numpy as np
 import torch
 
 from torch_planning_objectives.fields.occupancy_map.obst_map import ObstacleRectangle, ObstacleMap, ObstacleCircle
+from torch_planning_objectives.fields.shape_distance_fields import MultiSphere
 from torch_planning_objectives.fields.occupancy_map.obst_utils import random_rect, random_circle
 import copy
 
@@ -96,6 +97,28 @@ def generate_obstacle_map(
         return obst_map, obst_list
     else:
         raise IOError('Map type "{}" not recognized'.format(map_type))
+
+
+def get_sphere_field_from_list(obst_list, tensor_args=None):
+    """
+    Args
+    ---
+    obst_list : [Obstacle]
+        List of Obstacle objects
+    """
+    field = MultiSphere(tensor_args=tensor_args)
+    centers = []
+    radii = []
+    for obst in obst_list:
+        centers.append([obst.center_x, obst.center_y])
+        if isinstance(obst, ObstacleRectangle):
+            radii.append(obst.width / 2.)  # NOTE: Assumes width == height
+        elif isinstance(obst, ObstacleCircle):
+            radii.append(obst.radius)
+        else:
+            raise IOError('Obstacle type "{}" not recognized'.format(type(obst)))
+    field.set_obst(centers, radii)
+    return field
 
 
 if __name__ == "__main__":
