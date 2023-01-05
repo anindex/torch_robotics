@@ -114,7 +114,7 @@ class ObstacleMap:
         assert map_dim[1] % 2 == 0
 
         if tensor_args is None:
-            tensor_args = {'device': torch.device('cuda'), 'dtype': torch.float32}
+            tensor_args = {'device': torch.device('cpu'), 'dtype': torch.float32}
         self.tensor_args = tensor_args
 
         cmap_dim = [0, 0]
