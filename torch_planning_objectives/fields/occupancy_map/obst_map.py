@@ -100,7 +100,7 @@ class ObstacleCircle(Obstacle):
                 p = np.array([(j - obst_map.origin_xi) * obst_map.cell_size,
                               (i - obst_map.origin_yi) * obst_map.cell_size])
                 if self.is_inside(p):
-                    obst_map.map[j, i] += 1
+                    obst_map.map[i, j] += 1
         return obst_map
 
 
