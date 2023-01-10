@@ -12,10 +12,10 @@ class Obstacle(ABC):
     Base 2D Obstacle class
     """
 
-    def __init__(self,center_x,center_y):
+    def __init__(self, center_x, center_y):
         self.center_x = center_x
         self.center_y = center_y
-        self.origin = np.array([self.center_x, self.center_y])
+        self.origin = np.array([center_x, center_y])
 
     def _obstacle_collision_check(self, obst_map):
         valid = True
@@ -77,16 +77,16 @@ class ObstacleCircle(Obstacle):
     """
 
     def __init__(
-            self,
-            center_x=0,
-            center_y=0,
-            radius=1.
+        self,
+        center_x=0,
+        center_y=0,
+        radius=1.
     ):
         super().__init__(center_x, center_y)
         self.radius = radius
 
     def is_inside(self, p):
-        # Check if point p is inside of the discretized circle
+        # Check if point p is inside the discretized circle
         return np.linalg.norm(p - self.origin) <= self.radius
 
     def _add_to_map(self, obst_map):
@@ -94,13 +94,21 @@ class ObstacleCircle(Obstacle):
         c_r = ceil(self.radius / obst_map.cell_size)
         c_x = ceil(self.center_x / obst_map.cell_size)
         c_y = ceil(self.center_y / obst_map.cell_size)
+        # centers in cell indices
+        c_x_cell = c_x + obst_map.origin_xi
+        c_y_cell = c_y + obst_map.origin_yi
 
-        for i in range(c_y - 2 * c_r + obst_map.origin_yi, c_y + 2 * c_r + obst_map.origin_yi):
-            for j in range(c_x - 2 * c_r + obst_map.origin_xi, c_x + 2 * c_r + obst_map.origin_xi):
-                p = np.array([(j - obst_map.origin_xi) * obst_map.cell_size,
-                              (i - obst_map.origin_yi) * obst_map.cell_size])
+        for i in range(c_x_cell - 2 * c_r, c_x_cell + 2 * c_r):
+            if i < 0 or i >= obst_map.x_dim:
+                continue
+            for j in range(c_y_cell - 2 * c_r, c_y_cell + 2 * c_r):
+                if j < 0 or j >= obst_map.y_dim:
+                    continue
+                p = np.array([(i - obst_map.origin_xi) * obst_map.cell_size,
+                              (j - obst_map.origin_yi) * obst_map.cell_size])
                 if self.is_inside(p):
                     obst_map.map[j, i] += 1
+
         return obst_map
 
 
