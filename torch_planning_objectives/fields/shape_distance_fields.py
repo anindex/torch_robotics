@@ -262,13 +262,17 @@ class MultiSphere(Shape):
         ----------
         X : tensor
          2D position trajectories. Shape: [batch,  2]
+        clip_buffer: float
+
+         If the point
+         value above which the sdf is constant
 
         Returns
         -------
 
         """
         dists = torch.linalg.norm(X[:, None] - self.centers[None, :], dim=-1)
-        sdf = (self.radii[None, :] + self.buff[None, :] - dists).sum(-1)
+        sdf = (dists - (self.radii[None, :] + self.buff[None, :])).sum(-1)
         return sdf
 
     def get_rbf(self, X):
@@ -417,7 +421,9 @@ if __name__ == '__main__':
         [3, 3]
     ])
     radii = np.array([
-        0.1, 0.2, 0.3
+        0.1,
+        0.2,
+        0.3
     ])
     shape = MultiSphere()
     shape.set_obst(centers=centers, radii=radii)
