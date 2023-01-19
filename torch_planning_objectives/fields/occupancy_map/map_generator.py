@@ -153,6 +153,94 @@ def generate_obstacle_map(
         raise IOError('Map type "{}" not recognized'.format(map_type))
 
 
+def generate_circle_map(
+        map_dim=(10, 10),
+        obst_list=[],
+        cell_size=1.,
+        random_gen=False,
+        num_obst=0,
+        rand_xy_limits=None,
+        rand_circle_radius=[1., 2.],
+        map_type=None,
+        tensor_args=None,
+):
+
+    """
+    Args
+    ---
+    map_dim : (int,int)
+        2D tuple containing dimensions of obstacle/occupancy grid.
+        Treat as [x,y] coordinates. Origin is in the center.
+        ** Dimensions must be an even number. **
+    cell_sz : float
+        size of each square map cell
+    obst_list : [(cx_i, cy_i, width, height)]
+        List of obstacle param tuples
+    start_pts : float
+        Array of x-y points for start configuration.
+        Dim: [Num. of points, 2]
+    goal_pts : float
+        Array of x-y points for target configuration.
+        Dim: [Num. of points, 2]
+    seed : int or None
+    random_gen : bool
+        Specify whether to generate random obstacles. Will first generate obstacles provided by obst_list,
+        then add random obstacles until number specified by num_obst.
+    num_obst : int
+        Total number of obstacles
+    rand_limit: [[float, float],[float, float]]
+        List defining x-y sampling bounds [[x_min, x_max], [y_min, y_max]]
+    rand_shape: [float, float]
+        Shape [width, height] of randomly generated obstacles.
+    """
+    ## Make occupancy grid
+    obst_map = ObstacleMap(map_dim, cell_size, tensor_args=tensor_args)
+    num_fixed = len(obst_list)
+    for obst in obst_list:
+        obst._add_to_map(obst_map)
+
+    ## Add random obstacles
+    obst_list = copy.deepcopy(obst_list)
+    if random_gen:
+        assert num_fixed <= num_obst, "Total number of obstacles must be greater than or equal to number specified in obst_list"
+        xlim = rand_xy_limits[0]
+        ylim = rand_xy_limits[1]
+        radius_range = rand_circle_radius
+        for _ in range(num_obst - num_fixed):
+            num_attempts = 0
+            max_attempts = 25
+            while num_attempts <= max_attempts:
+                radius = np.random.uniform(radius_range[0], radius_range[1])
+                obst = random_circle(xlim, ylim, radius)
+
+                # Check validity of new obstacle
+                # Do not overlap obstacles
+                valid = obst._obstacle_collision_check(obst_map)
+
+                if valid:
+                    # Add to Map
+                    obst._add_to_map(obst_map)
+                    # Add to list
+                    obst_list.append(obst)
+                    break
+
+                if num_attempts == max_attempts:
+                    print("Obstacle generation: Max. number of attempts reached. ")
+                    print("Total num. obstacles: {}.  Num. random obstacles: {}.\n"
+                          .format( len(obst_list), len(obst_list) - num_fixed))
+
+                num_attempts += 1
+
+    obst_map.convert_map()
+
+    ## Fit mapping model
+    if map_type == 'direct':
+        return obst_map, obst_list
+    else:
+        raise IOError('Map type "{}" not recognized'.format(map_type))
+
+
+
 def get_sphere_field_from_list(obst_list, tensor_args=None):
     """
     Args
