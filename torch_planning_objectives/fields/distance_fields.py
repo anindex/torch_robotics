@@ -164,7 +164,18 @@ class LinkDistanceField(DistanceField):
     def compute_cost(self, link_tensor, obstacle_spheres=None, **kwargs):
         if obstacle_spheres is None:
             return 0
-        link_tensor = link_tensor[..., :3, -1].unsqueeze(-2)
+        num_interpolate = kwargs.get('num_interpolate', 0)
+        link_range = kwargs.get('link_range', [5, 6])
+        link_tensor = link_tensor[..., :3, -1]
+        link_dim = link_tensor.shape[:-1]
+        if num_interpolate > 0:
+            alpha = torch.linspace(0, 1, num_interpolate + 2).type_as(link_tensor)[1:num_interpolate + 1]
+            alpha = alpha.view(tuple([1] * (len(link_dim) - 1) + [-1, 1]))
+            for i in range(link_range[0], link_range[1]):
+                X1, X2 = link_tensor[..., i, :].unsqueeze(-2), link_tensor[..., i + 1, :].unsqueeze(-2)
+                eval_sphere = X1 + (X2 - X1) * alpha
+                link_tensor = torch.cat([link_tensor, eval_sphere], dim=-2)
+        link_tensor = link_tensor.unsqueeze(-2)
         obstacle_spheres = obstacle_spheres.unsqueeze(0)
         return torch.exp(-0.5 * torch.square(link_tensor - obstacle_spheres[..., :3]).sum(-1) / torch.square(obstacle_spheres[..., 3])).sum((-1, -2))
 
@@ -184,7 +195,7 @@ class LinkSelfDistanceField(DistanceField):
 
     def compute_cost(self, link_tensor, **kwargs):   # position tensor
         link_tensor = link_tensor[..., :3, -1]
-        return torch.exp(-0.5 * torch.square(link_tensor.unsqueeze(-2) - link_tensor.unsqueeze(-3)).sum(-1) / self.margin**2).sum((-1, -2))
+        return torch.exp(torch.square(link_tensor.unsqueeze(-2) - link_tensor.unsqueeze(-3)).sum(-1) / (-self.margin**2 * 2)).sum((-1, -2))
 
     def zero_grad(self):
         pass
