@@ -30,6 +30,9 @@ class Shape(ABC):
         """
         raise NotImplementedError()
 
+    def zero_grad(self):
+        pass
+
 
 class MultiPoints(Shape):
 
