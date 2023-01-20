@@ -34,6 +34,9 @@ class Obstacle(ABC):
                     break
         return valid
 
+    def get_center(self):
+        return np.array([self.center_x, self.center_y])
+
     @abstractmethod
     def _add_to_map(self, obst_map):
         pass

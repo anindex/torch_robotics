@@ -249,33 +249,36 @@ class MultiSphere(Shape):
         if self.centers is None or self.radii is None:
             return torch.zeros(batch_dim, **self.tensor_args)
         if self.obst_type == 'sdf':
-            costs = self.get_sdf(X)
+            costs = self.get_sdf(X, **kwargs)
         elif self.obst_type == 'rbf':
-            costs = self.get_rbf(X)
+            costs = self.get_rbf(X, **kwargs)
         else:
             raise NotImplementedError
         return costs.reshape(batch_dim)
 
-    def get_sdf(self, X):
+    def get_sdf(self, X, min_sdf=-torch.inf, max_sdf=torch.inf):
         """
         Parameters
         ----------
         X : tensor
          2D position trajectories. Shape: [batch,  2]
-        clip_buffer: float
-
-         If the point
-         value above which the sdf is constant
+        min_sdf: int
+         clamp sdf to this minimum
+        max_sdf: int
+         clamp sdf to this maximum
 
         Returns
         -------
 
         """
-        dists = torch.linalg.norm(X[:, None] - self.centers[None, :], dim=-1)
-        sdf = (dists - (self.radii[None, :] + self.buff[None, :])).sum(-1)
+        dists_to_centers = torch.linalg.norm(X[:, None] - self.centers[None, :], dim=-1)
+        # sdf is the minimum over sdf of all circles https://jasmcole.com/2019/10/03/signed-distance-fields/
+        sdf = dists_to_centers - (self.radii[None, :] + self.buff[None, :])
+        sdf = torch.clamp(sdf, min=min_sdf, max=max_sdf)
+        sdf = sdf.min(-1)[0]
         return sdf
 
-    def get_rbf(self, X):
+    def get_rbf(self, X, **kwargs):
         """
         Parameters
         ----------
@@ -302,8 +305,8 @@ class MultiSphere(Shape):
         y = torch.linspace(xy_lim[0], xy_lim[1], res)
         X, Y = torch.meshgrid(x, y)
         grid = torch.stack((X, Y), dim=-1)
-        # Z = self.get_sdf(grid.reshape((-1, 2))).reshape((res, res))
-        Z = self.get_rbf(grid.reshape((-1, 2))).reshape((res, res))
+        Z = self.get_sdf(grid.reshape((-1, 2))).reshape((res, res))
+        # Z = self.get_rbf(grid.reshape((-1, 2))).reshape((res, res))
 
         # plt.imshow(Z.cpu().numpy(), cmap='viridis', origin='lower')
         cs = plt.contourf(X.cpu().numpy(), Y.cpu().numpy(), Z.cpu().numpy(), 10, cmap=plt.cm.binary, origin='lower')
@@ -381,6 +384,7 @@ class Box3D(Shape):
         -------
 
         """
+        raise NotImplementedError
         dists = self.compute_distance(X)
         sdf = (self.box_buffer - dists).sum(-1)
         return sdf
