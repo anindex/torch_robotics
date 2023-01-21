@@ -151,7 +151,9 @@ class SphereDistanceField(DistanceField):
 
 class LinkDistanceField(DistanceField):
 
-    def __init__(self, device='cpu'):
+    def __init__(self, field_type='rbf', clamp_sdf=False, device='cpu'):
+        self.field_type = field_type
+        self.clamp_sdf = clamp_sdf
         self.device = device
 
     def compute_distance(self, link_tensor, obstacle_spheres=None, **kwargs):
@@ -159,7 +161,7 @@ class LinkDistanceField(DistanceField):
             return 1e10
         link_tensor = link_tensor[..., :3, -1].unsqueeze(-2)
         obstacle_spheres = obstacle_spheres.unsqueeze(0)
-        return torch.linalg.norm(link_tensor - obstacle_spheres[..., :3], dim=-1).sum((-1, -2))
+        return (torch.linalg.norm(link_tensor - obstacle_spheres[..., :3], dim=-1) - obstacle_spheres[..., 3]).sum((-1, -2)) 
 
     def compute_cost(self, link_tensor, obstacle_spheres=None, **kwargs):
         if obstacle_spheres is None:
@@ -177,7 +179,16 @@ class LinkDistanceField(DistanceField):
                 link_tensor = torch.cat([link_tensor, eval_sphere], dim=-2)
         link_tensor = link_tensor.unsqueeze(-2)
         obstacle_spheres = obstacle_spheres.unsqueeze(0)
-        return torch.exp(-0.5 * torch.square(link_tensor - obstacle_spheres[..., :3]).sum(-1) / torch.square(obstacle_spheres[..., 3])).sum((-1, -2))
+        # signed distance field
+        if self.field_type == 'rbf':
+            return torch.exp(-0.5 * torch.square(link_tensor - obstacle_spheres[..., :3]).sum(-1) / torch.square(obstacle_spheres[..., 3])).sum((-1, -2))
+        elif self.field_type == 'sdf':
+            sdf = -torch.linalg.norm(link_tensor - obstacle_spheres[..., :3], dim=-1) + obstacle_spheres[..., 3]
+            if self.clamp_sdf:
+                sdf = sdf.clamp(min=0.)
+            return sdf.sum((-1, -2))
+        elif self.field_type == 'occupancy':
+            return (torch.linalg.norm(link_tensor - obstacle_spheres[..., :3], dim=-1) < obstacle_spheres[..., 3]).sum((-1, -2))
 
     def zero_grad(self):
         pass
@@ -260,13 +271,14 @@ class EndpointEuclideanDistanceField(DistanceField):
         pass
 
 
+class SkeletonSE3DistanceField(DistanceField):
 
-class SkeletonPointField(DistanceField):
-
-    def __init__(self, via_H=None, link_list=None, device='cpu'):
-        self.via_H = via_H
+    def __init__(self, target_H=None, w_pos=1., w_rot=1., link_list=None, device='cpu'):
+        self.target_H = target_H
+        self.w_pos = w_pos
+        self.w_rot = w_rot
         self.link_list = link_list
-        self.link_weights = {}
+        self.link_weights = None
         self.link_weights_ts = None
         self.device = device
 
@@ -277,13 +289,13 @@ class SkeletonPointField(DistanceField):
         weights = np.array([self.link_weights[l] / total for l in self.link_weights])
         self.link_weights_ts = torch.from_numpy(weights).to(self.device)
 
-    def construct_via_pose_from_configuration(self, model, q, link_list=None):
+    def construct_target_from_configuration(self, model, q, link_list=None):
         self.device = model._device
         if isinstance(q, np.ndarray) or isinstance(q, list):
             q = torch.tensor(q, device=self.device)
         if q.ndim == 1:
             q = q.unsqueeze(0)
-        self.via_H = model.compute_forward_kinematics_link_list(q, return_dict=False, link_list=link_list)
+        self.target_H = model.compute_forward_kinematics_link_list(q, return_dict=False, link_list=link_list)
         if link_list is None:
             if model.link_list is None:
                 self.link_list = model.get_link_names()
@@ -296,16 +308,19 @@ class SkeletonPointField(DistanceField):
             self.link_weights[l] = 1.
         self.link_weights_ts = torch.ones(len(self.link_list), device=self.device) / len(self.link_list)
 
-    def compute_distance(self, link_dict):
-        H = []
-        for i, link_name in enumerate(self.link_list):
-            H_link = link_dict[link_name].get_transform_matrix()
-            H.append(H_link)  # add link dimensions
-        H = torch.stack(H, dim=1)
-        return (SE3_distance(H, self.via_H) * self.link_weights_ts).sum(-1)
+    def compute_distance(self, link_tensor, **kwargs):  # assume link_tensor has index ordering like link_list
+        link_list = kwargs.get('link_list', None)
+        link_weights_ts = self.link_weights_ts
+        target_H = self.target_H
+        if link_list is not None:
+            link_indices = [self.link_list.index(l) for l in link_list]
+            link_tensor = link_tensor[..., link_indices, :, :]
+            target_H = target_H[..., link_indices, :, :]
+            link_weights_ts = link_weights_ts[link_indices] * len(self.link_list) / len(link_indices)  # reweight
+        return (SE3_distance(link_tensor, target_H, w_pos=self.w_pos, w_rot=self.w_rot) * link_weights_ts).sum(-1)
 
-    def compute_cost(self, links_dict):
-        dist = self.compute_distance(links_dict)
+    def compute_cost(self, link_tensor, **kwargs):  # position tensor
+        dist = self.compute_distance(link_tensor, **kwargs).squeeze()
         return torch.square(dist)
 
     def zero_grad(self):
