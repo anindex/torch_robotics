@@ -273,10 +273,11 @@ class EndpointEuclideanDistanceField(DistanceField):
 
 class SkeletonSE3DistanceField(DistanceField):
 
-    def __init__(self, target_H=None, w_pos=1., w_rot=1., link_list=None, device='cpu'):
+    def __init__(self, target_H=None, w_pos=1., w_rot=1., link_list=None, square=True, device='cpu'):
         self.target_H = target_H
         self.w_pos = w_pos
         self.w_rot = w_rot
+        self.square = square
         self.link_list = link_list
         self.link_weights = None
         self.link_weights_ts = None
@@ -321,7 +322,9 @@ class SkeletonSE3DistanceField(DistanceField):
 
     def compute_cost(self, link_tensor, **kwargs):  # position tensor
         dist = self.compute_distance(link_tensor, **kwargs).squeeze()
-        return torch.square(dist)
+        if self.square:
+            dist = torch.square(dist)
+        return dist
 
     def zero_grad(self):
         pass
