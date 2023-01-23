@@ -230,8 +230,9 @@ class FloorDistanceField(DistanceField):
 
 class EESE3DistanceField(DistanceField):
 
-    def __init__(self, target_H, w_pos=1., w_rot=1., device='cpu'):
+    def __init__(self, target_H, w_pos=1., w_rot=1., square=True, device='cpu'):
         self.target_H = target_H
+        self.square = square
         self.w_pos = w_pos
         self.w_rot = w_rot
         self.device = device
@@ -244,7 +245,9 @@ class EESE3DistanceField(DistanceField):
 
     def compute_cost(self, link_tensor, **kwargs):  # position tensor
         dist = self.compute_distance(link_tensor).squeeze()
-        return torch.square(dist)
+        if self.square:
+            dist = torch.square(dist)
+        return dist
 
     def zero_grad(self):
         pass
