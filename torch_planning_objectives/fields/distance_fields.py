@@ -151,9 +151,11 @@ class SphereDistanceField(DistanceField):
 
 class LinkDistanceField(DistanceField):
 
-    def __init__(self, field_type='rbf', clamp_sdf=False, device='cpu'):
+    def __init__(self, field_type='rbf', clamp_sdf=False, num_interpolate=0, link_interpolate_range=[5, 7], device='cpu'):
         self.field_type = field_type
         self.clamp_sdf = clamp_sdf
+        self.num_interpolate = num_interpolate
+        self.link_interpolate_range = link_interpolate_range
         self.device = device
 
     def compute_distance(self, link_tensor, obstacle_spheres=None, **kwargs):
@@ -166,14 +168,12 @@ class LinkDistanceField(DistanceField):
     def compute_cost(self, link_tensor, obstacle_spheres=None, **kwargs):
         if obstacle_spheres is None:
             return 0
-        num_interpolate = kwargs.get('num_interpolate', 0)
-        link_range = kwargs.get('link_range', [5, 6])
         link_tensor = link_tensor[..., :3, -1]
         link_dim = link_tensor.shape[:-1]
-        if num_interpolate > 0:
-            alpha = torch.linspace(0, 1, num_interpolate + 2).type_as(link_tensor)[1:num_interpolate + 1]
+        if self.num_interpolate > 0:
+            alpha = torch.linspace(0, 1, self.num_interpolate + 2).type_as(link_tensor)[1:self.num_interpolate + 1]
             alpha = alpha.view(tuple([1] * (len(link_dim) - 1) + [-1, 1]))
-            for i in range(link_range[0], link_range[1]):
+            for i in range(self.link_interpolate_range[0], self.link_interpolate_range[1]):
                 X1, X2 = link_tensor[..., i, :].unsqueeze(-2), link_tensor[..., i + 1, :].unsqueeze(-2)
                 eval_sphere = X1 + (X2 - X1) * alpha
                 link_tensor = torch.cat([link_tensor, eval_sphere], dim=-2)
