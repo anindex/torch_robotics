@@ -178,7 +178,7 @@ class MultiLineSegment(Shape):
 
         """
         dists = self.compute_distance(X)
-        sdf = (self.buff[None, :] - dists).sum(-1)
+        sdf = (self.buff[None, :] - dists).max(-1)[0]
         return sdf
 
     def get_rbf(self, X):
@@ -271,7 +271,7 @@ class MultiSphere(Shape):
 
         """
         dists = torch.linalg.norm(X[:, None] - self.centers[None, :], dim=-1)
-        sdf = (self.radii[None, :] + self.buff[None, :] - dists).sum(-1)
+        sdf = (self.radii[None, :] + self.buff[None, :] - dists).max(-1)[0]
         return sdf
 
     def get_rbf(self, X):
@@ -381,7 +381,7 @@ class Box3D(Shape):
 
         """
         dists = self.compute_distance(X)
-        sdf = (self.box_buffer - dists).sum(-1)
+        sdf = (self.box_buffer - dists).max(-1)[0]
         return sdf
 
     def get_rbf(self, X):

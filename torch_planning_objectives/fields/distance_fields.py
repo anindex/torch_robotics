@@ -185,8 +185,8 @@ class LinkDistanceField(DistanceField):
         elif self.field_type == 'sdf':
             sdf = -torch.linalg.norm(link_tensor - obstacle_spheres[..., :3], dim=-1) + obstacle_spheres[..., 3]
             if self.clamp_sdf:
-                sdf = sdf.clamp(min=0.)
-            return sdf.sum((-1, -2))
+                sdf = sdf.clamp(max=0.)
+            return sdf.max(-1)[0].max(-1)[0]
         elif self.field_type == 'occupancy':
             return (torch.linalg.norm(link_tensor - obstacle_spheres[..., :3], dim=-1) < obstacle_spheres[..., 3]).sum((-1, -2))
 
@@ -248,27 +248,6 @@ class EESE3DistanceField(DistanceField):
         if self.square:
             dist = torch.square(dist)
         return dist
-
-    def zero_grad(self):
-        pass
-
-
-
-class EndpointEuclideanDistanceField(DistanceField):
-
-    def __init__(self, point, device='cpu'):
-        self.point = point
-        self.device = device
-    
-    def update_endpoint(self, point):
-        self.point = point
-
-    def compute_distance(self, link_tensor):  # position tensor
-        return SE3_distance(link_tensor[..., -1, :3, -1], self.point)   # get EE as last link
-
-    def compute_cost(self, link_tensor, **kwargs):  # position tensor
-        dist = self.compute_distance(link_tensor).squeeze()
-        return torch.square(dist)
 
     def zero_grad(self):
         pass

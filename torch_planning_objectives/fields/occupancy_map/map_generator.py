@@ -241,14 +241,14 @@ def generate_circle_map(
 
 
 
-def get_sphere_field_from_list(obst_list, tensor_args=None):
+def get_sphere_field_from_list(obst_list, field_type='sdf', tensor_args=None):
     """
     Args
     ---
     obst_list : [Obstacle]
         List of Obstacle objects
     """
-    field = MultiSphere(tensor_args=tensor_args)
+    field = MultiSphere(obst_type=field_type, tensor_args=tensor_args)
     centers = []
     radii = []
     for obst in obst_list:
