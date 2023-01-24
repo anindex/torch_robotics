@@ -138,7 +138,7 @@ class MultiLineSegment(Shape):
         for i in range(1, vertices.shape[0]):
             self.segments.append(LineSegment(p1=vertices[i-1], p2=vertices[i]))
         self.buff = torch.tensor(
-                [self.buffer] * vertices.shape[0], **self.tensor_args
+                [self.buffer] * (vertices.shape[0]-1), **self.tensor_args
             )
         if widths is not None:
             self.widths = torch.tensor(widths, **self.tensor_args)
@@ -177,8 +177,11 @@ class MultiLineSegment(Shape):
         -------
 
         """
+        raise NotImplementedError
+        # TODO: compute distance does not return the SIGNED distance.
         dists = self.compute_distance(X)
-        sdf = (self.buff[None, :] - dists).sum(-1)
+        sdf = dists - self.buff[None, :]
+        sdf = sdf.min(-1)[0]
         return sdf
 
     def get_rbf(self, X):
@@ -212,7 +215,7 @@ class MultiLineSegment(Shape):
         Z = self.get_rbf(grid.reshape((-1, 2))).reshape((res, res))
 
         # plt.imshow(Z.cpu().numpy(), cmap='viridis', origin='lower')
-        cs = plt.contourf(X.cpu().numpy(), Y.cpu().numpy(), Z.cpu().numpy(), 10, cmap=plt.cm.binary, origin='lower')
+        cs = plt.contourf(X.cpu().numpy(), Y.cpu().numpy(), Z.cpu().numpy(), 50, cmap=plt.cm.binary, origin='lower')
         plt.colorbar()
         ax.xlim = xy_lim
         ax.ylim = xy_lim
@@ -307,7 +310,7 @@ class MultiSphere(Shape):
         # Z = self.get_rbf(grid.reshape((-1, 2))).reshape((res, res))
 
         # plt.imshow(Z.cpu().numpy(), cmap='viridis', origin='lower')
-        cs = plt.contourf(X.cpu().numpy(), Y.cpu().numpy(), Z.cpu().numpy(), 10, cmap=plt.cm.binary, origin='lower')
+        cs = plt.contourf(X.cpu().numpy(), Y.cpu().numpy(), Z.cpu().numpy(), 50, cmap=plt.cm.binary, origin='lower')
         plt.colorbar()
         ax.xlim = xy_lim
         ax.ylim = xy_lim
@@ -384,7 +387,8 @@ class Box3D(Shape):
         """
         raise NotImplementedError
         dists = self.compute_distance(X)
-        sdf = (self.box_buffer - dists).sum(-1)
+        sdf = dists - self.box_buffer
+        sdf = sdf.min(-1)[0]
         return sdf
 
     def get_rbf(self, X):
