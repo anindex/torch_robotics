@@ -256,16 +256,12 @@ class MultiSphere(Shape):
             raise NotImplementedError
         return costs.reshape(batch_dim)
 
-    def get_sdf(self, X, min_sdf=-torch.inf, max_sdf=torch.inf):
+    def get_sdf(self, X):
         """
         Parameters
         ----------
         X : tensor
          2D position trajectories. Shape: [batch,  2]
-        min_sdf: int
-         clamp sdf to this minimum
-        max_sdf: int
-         clamp sdf to this maximum
 
         Returns
         -------
@@ -274,7 +270,6 @@ class MultiSphere(Shape):
         dists_to_centers = torch.linalg.norm(X[:, None] - self.centers[None, :], dim=-1)
         # sdf is the minimum over sdf of all circles https://jasmcole.com/2019/10/03/signed-distance-fields/
         sdf = dists_to_centers - (self.radii[None, :] + self.buff[None, :])
-        sdf = torch.clamp(sdf, min=min_sdf, max=max_sdf)
         sdf = sdf.min(-1)[0]
         return sdf
 
