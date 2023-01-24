@@ -241,7 +241,7 @@ def generate_circle_map(
 
 
 
-def get_sphere_field_from_list(obst_list, field_type='sdf', tensor_args=None):
+def get_sphere_field_from_list(obst_list, field_type='rbf', tensor_args=None):
     """
     Args
     ---
