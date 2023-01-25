@@ -196,7 +196,9 @@ class LinkDistanceField(DistanceField):
 
 class LinkSelfDistanceField(DistanceField):
 
-    def __init__(self, margin=0.03, device='cpu'):
+    def __init__(self, margin=0.03, num_interpolate=0, link_interpolate_range=[5, 7], device='cpu'):
+        self.num_interpolate = num_interpolate
+        self.link_interpolate_range = link_interpolate_range
         self.margin = margin
         self.device = device
 
@@ -206,6 +208,14 @@ class LinkSelfDistanceField(DistanceField):
 
     def compute_cost(self, link_tensor, **kwargs):   # position tensor
         link_tensor = link_tensor[..., :3, -1]
+        link_dim = link_tensor.shape[:-1]
+        if self.num_interpolate > 0:
+            alpha = torch.linspace(0, 1, self.num_interpolate + 2).type_as(link_tensor)[1:self.num_interpolate + 1]
+            alpha = alpha.view(tuple([1] * (len(link_dim) - 1) + [-1, 1]))
+            for i in range(self.link_interpolate_range[0], self.link_interpolate_range[1]):
+                X1, X2 = link_tensor[..., i, :].unsqueeze(-2), link_tensor[..., i + 1, :].unsqueeze(-2)
+                eval_sphere = X1 + (X2 - X1) * alpha
+                link_tensor = torch.cat([link_tensor, eval_sphere], dim=-2)
         return torch.exp(torch.square(link_tensor.unsqueeze(-2) - link_tensor.unsqueeze(-3)).sum(-1) / (-self.margin**2 * 2)).sum((-1, -2))
 
     def zero_grad(self):
