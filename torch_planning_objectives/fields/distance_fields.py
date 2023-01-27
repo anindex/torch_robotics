@@ -3,6 +3,7 @@ import torch
 import numpy as np
 import copy
 import yaml
+import trimesh
 
 from torch_kinematics_tree.geometrics.utils import transform_point, SE3_distance
 from torch_kinematics_tree.utils.files import get_configs_path
@@ -320,3 +321,85 @@ class SkeletonSE3DistanceField(DistanceField):
 
     def zero_grad(self):
         pass
+
+
+
+class MeshDistanceField(DistanceField):
+
+    def __init__(self, mesh_file, margin=0.03, field_type='rbf', num_interpolate=0, link_interpolate_range=[], base_position=None, base_orientation=None, tensor_args=None) -> None:
+        if tensor_args is None:
+            tensor_args = dict(device='cpu', dtype=torch.float32)
+        self.tensor_args = tensor_args
+        self.field_type = field_type
+        self.num_interpolate = num_interpolate
+        self.link_interpolate_range = link_interpolate_range
+        self.margin = margin
+        if base_position is None:
+            base_position = torch.zeros(3, **self.tensor_args)
+        else:
+            base_position = torch.tensor(base_position, **self.tensor_args)
+        if base_orientation is None:
+            base_orientation = torch.eye(3, **self.tensor_args)
+        else:
+            base_orientation = torch.tensor(base_orientation, **self.tensor_args)
+
+        # Load mesh
+        self.mesh = trimesh.load_mesh(mesh_file)
+        if isinstance(self.mesh, trimesh.Scene):
+            self.mesh = self.mesh.dump()[0]
+        self.vertices = torch.tensor(self.mesh.vertices, **self.tensor_args)
+        self.faces = torch.tensor(self.mesh.faces, **self.tensor_args)
+        # Transform mesh
+        self.vertices = self.vertices @ base_orientation.T + base_position
+
+    def compute_distance(self, points, sample=False, num_samples=100):
+        if sample:
+            indices = np.random.choice(self.vertices.shape[0], num_samples, replace=False)
+            vertices = self.vertices[indices]
+        else:
+            vertices = self.vertices
+        distances = torch.min(torch.norm(points.unsqueeze(-2) - vertices, dim=-1), dim=-1)[0]
+        return distances
+
+    def compute_cost(self, link_tensor, sample=False, num_samples=100, **kwargs):
+        if sample:
+            indices = np.random.choice(self.vertices.shape[0], num_samples, replace=False)
+            vertices = self.vertices[indices]
+        else:
+            vertices = self.vertices
+        link_tensor = link_tensor[..., :3, -1]
+        link_dim = link_tensor.shape[:-1]
+        if self.num_interpolate > 0:
+            alpha = torch.linspace(0, 1, self.num_interpolate + 2).type_as(link_tensor)[1:self.num_interpolate + 1]
+            alpha = alpha.view(tuple([1] * (len(link_dim) - 1) + [-1, 1]))
+            for i in range(self.link_interpolate_range[0], self.link_interpolate_range[1]):
+                X1, X2 = link_tensor[..., i, :].unsqueeze(-2), link_tensor[..., i + 1, :].unsqueeze(-2)
+                eval_sphere = X1 + (X2 - X1) * alpha
+                link_tensor = torch.cat([link_tensor, eval_sphere], dim=-2)
+        link_tensor = link_tensor.unsqueeze(-2)
+        vertices = vertices.unsqueeze(0)
+        # signed distance field
+        if self.field_type == 'rbf':
+            return torch.exp(-0.5 * torch.square(link_tensor - vertices[..., :3]).sum(-1) / (self.margin ** 2)).sum((-1, -2))
+        elif self.field_type == 'occupancy':
+            return (torch.linalg.norm(link_tensor - vertices[..., :3], dim=-1) < self.margin[..., 3]).sum((-1, -2))
+
+    def zero_grad(self):
+        pass
+
+
+
+if __name__ == '__main__':
+    import matplotlib.pyplot as plt
+    import time
+    mesh_file = 'models/chair.obj'
+    mesh = MeshDistanceField(mesh_file)
+    bounds = np.array(mesh.mesh.bounds)
+    print(np.linalg.norm(bounds[1] - bounds[0]))
+    print(mesh.mesh.centroid)
+    points = torch.rand(100, 3)
+    link_tensor = torch.rand(100, 10, 4, 4)
+    start = time.time()
+    distances = mesh.compute_distance(points)
+    costs = mesh.compute_cost(link_tensor)
+    print(time.time() - start)
