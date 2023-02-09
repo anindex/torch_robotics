@@ -1,5 +1,5 @@
 # MIT License
-
+import matplotlib.pyplot as plt
 # Copyright (c) 2022 An Thai Le, João Carvalho
 
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -67,7 +67,7 @@ def generate_obstacle_map(
         cell_size=1.,
         random_gen=False,
         num_obst=0,
-        rand_xy_limits=None,
+        rand_limits=None,
         rand_rect_shape=[2, 2],
         rand_circle_radius=1,
         map_type=None,
@@ -78,8 +78,8 @@ def generate_obstacle_map(
     Args
     ---
     map_dim : (int,int)
-        2D tuple containing dimensions of obstacle/occupancy grid.
-        Treat as [x,y] coordinates. Origin is in the center.
+        2-D or 3-D tuple containing dimensions of obstacle/occupancy grid.
+        Treat as [x,y, z] coordinates. Origin is in the center.
         ** Dimensions must be an even number. **
     cell_sz : float
         size of each square map cell
@@ -112,20 +112,16 @@ def generate_obstacle_map(
     obst_list = copy.deepcopy(obst_list)
     if random_gen:
         assert num_fixed <= num_obst, \
-            "Total number of obstacles must be greater than or equal to number specified in obst_list"
-        xlim = rand_xy_limits[0]
-        ylim = rand_xy_limits[1]
-        width = rand_rect_shape[0]
-        height = rand_rect_shape[1]
+            "Total number of obstacles must be >= number specified in obst_list"
         radius = rand_circle_radius
         for _ in range(num_obst - num_fixed):
             num_attempts = 0
             max_attempts = 25
             while num_attempts <= max_attempts:
                 if np.random.choice(2):
-                    obst = random_rect(xlim, ylim, width, height)
+                    obst = random_rect(rand_limits, rand_rect_shape)
                 else:
-                    obst = random_circle(xlim, ylim, radius)
+                    obst = random_circle(rand_limits, radius)
 
                 # Check validity of new obstacle
                 # Do not overlap obstacles
@@ -269,8 +265,8 @@ if __name__ == "__main__":
     import numpy
     numpy.set_printoptions(threshold=sys.maxsize)
     obst_list = [
-        ObstacleRectangle(0, 0, 2, 3),
-        ObstacleCircle(-5, -5, 1)
+        ObstacleRectangle((0, 0), (2, 3)),
+        ObstacleCircle((-5, -5), 1)
     ]
 
     cell_size = 0.1
@@ -283,13 +279,14 @@ if __name__ == "__main__":
         random_gen=True,
         # random_gen=False,
         num_obst=5,
-        rand_xy_limits=[[-5, 5], [-5, 5]],
+        rand_limits=[[-5, 5], [-5, 5]],
         rand_rect_shape=[2, 2],
         rand_circle_radius=1,
         tensor_args=tensor_args
     )
 
     fig = obst_map.plot()
+    plt.show()
 
     traj_y = torch.linspace(-map_dim[1]/2., map_dim[1]/2., 20)
     traj_x = torch.zeros_like(traj_y)
