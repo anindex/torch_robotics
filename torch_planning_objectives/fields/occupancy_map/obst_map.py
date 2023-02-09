@@ -252,7 +252,7 @@ class ObstacleMap:
             res = self.map.shape[0]
             x = np.linspace(self.lims[0][0], self.lims[0][1], res)
             y = np.linspace(self.lims[1][0], self.lims[1][1], res)
-            ax.contourf(x, y, self.map, cmap='Greys')
+            ax.contourf(x, y, np.clip(self.map, 0, 1), 2, cmap='Greys')
         else:
             x, y, z = np.indices(np.array(self.map.shape) + 1, dtype=int)
             x -= self.origin[0]
