@@ -285,7 +285,10 @@ if __name__ == "__main__":
         tensor_args=tensor_args
     )
 
-    fig = obst_map.plot()
+    fig, ax = plt.subplots()
+
+    obst_map.plot(ax)
+    ax.set_aspect('equal', adjustable='box')
     plt.show()
 
     traj_y = torch.linspace(-map_dim[1]/2., map_dim[1]/2., 20)
