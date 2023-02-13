@@ -132,8 +132,9 @@ class ObstacleRectangle(Obstacle):
             obst_map.map[
                 c_y - ceil(h / 2.) + obst_map_origin_yi:c_y + ceil(h / 2.) + obst_map_origin_yi,
                 c_x - ceil(w / 2.) + obst_map_origin_xi:c_x + ceil(w / 2.) + obst_map_origin_xi,
-                c_z - ceil(d / 2.) + obst_map_origin_zi:c_z + ceil(d / 2.) + obst_map_origin_zi,
+                c_z - ceil(d / 2.) + obst_map_origin_zi:c_z + ceil(d / 2.) + obst_map_origin_zi
             ] += 1
+
         return obst_map
 
 
@@ -254,14 +255,14 @@ class ObstacleMap:
             y = np.linspace(self.lims[1][0], self.lims[1][1], res)
             ax.contourf(x, y, np.clip(self.map, 0, 1), 2, cmap='Greys')
         else:
-            x, y, z = np.indices(np.array(self.map.shape) + 1, dtype=int)
+            x, y, z = np.indices(np.array(self.map.shape) + 1, dtype=float)
             x -= self.origin[0]
-            x = np.ceil(x * self.cell_size)
+            x = x * self.cell_size
             y -= self.origin[1]
-            y = np.ceil(y * self.cell_size)
+            y = y * self.cell_size
             z -= self.origin[2]
-            z = np.ceil(z * self.cell_size)
-            ax.voxels(x, y, z, self.map, facecolors='gray', edgecolor='black', shade=False)
+            z = z * self.cell_size
+            ax.voxels(y, x, z, self.map, facecolors='gray', edgecolor='black', shade=False, alpha=0.05)
 
     def get_collisions(self, X, **kwargs):
         """
@@ -272,6 +273,7 @@ class ObstacleMap:
         :param X: Tensor of trajectories, of shape (batch_size, traj_length, position_dim)
         :return: collision cost on the trajectories
         """
+
         X_occ = X * (1/self.cell_size) + self.c_offset
         X_occ = X_occ.floor()
 
