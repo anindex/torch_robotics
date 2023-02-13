@@ -98,7 +98,7 @@ class Obstacle(ABC):
 
 class ObstacleRectangle(Obstacle):
     """
-    Derived 2D rectangular Obstacle class
+    Derived 2D/3D rectangular/box Obstacle class
     """
 
     def __init__(self, center, shape_dims):
@@ -140,7 +140,7 @@ class ObstacleRectangle(Obstacle):
 
 class ObstacleCircle(Obstacle):
     """
-    Derived 2D circle Obstacle class
+    Derived 2D/3D circle/sphere Obstacle class
     """
 
     def __init__(self, center, radius=1.):

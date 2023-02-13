@@ -256,7 +256,7 @@ class PandaEnv(object):
 
         # Update Panda
         if a_t is None:
-            a_t = self.panda.q
+            a_t = np.array(self.panda.q)
         self.panda.setTargetPositions(a_t.squeeze())
         # Update Obstacle
         for sphere in self.spheres:
@@ -597,3 +597,10 @@ class PandaEnv(object):
             )[None, :]
             obs_state = np.concatenate((boxes_state, spheres_state), axis=1)
             return obs_state
+
+
+if __name__ == '__main__':
+    env = PandaEnv(render=True)
+    env.reset()
+    while True:
+        env.step()
