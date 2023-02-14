@@ -197,7 +197,7 @@ class LinkDistanceField(DistanceField):
 
 class EmbodimentDistanceField(DistanceField):
 
-    def __init__(self, self_margin=0.01, obst_margin=0.03, field_type='rbf', num_interpolate=0, link_interpolate_range=[2, 7], **kwargs):
+    def __init__(self, self_margin=0.005, obst_margin=0.03, field_type='rbf', num_interpolate=0, link_interpolate_range=[2, 7], **kwargs):
         super().__init__(**kwargs)
         self.num_interpolate = num_interpolate
         self.link_interpolate_range = link_interpolate_range

@@ -23,14 +23,13 @@ if __name__ == "__main__":
     ## Get position-rotation links ##
     link_tensor = panda.compute_forward_kinematics_all_links(q)
     link_pos = link_tensor[..., :3, 3]
-    link_pos = link_pos.unique(dim=1)  # remove duplicate positions from the URDF
-
+    link_pos = link_pos.unique(dim=-2)  # remove duplicate positions from the URDF
 
     field = EmbodimentDistanceField(self_margin=0.005, obst_margin=0.03, field_type='occupancy', num_interpolate=4, link_interpolate_range=[2, 7])
     time_start = time.time()
     self_dist, obst_dist = field.compute_distance(link_pos, [df])
-    print(self_dist, obst_dist)
     self_cost, obst_cost = field.compute_cost(link_pos, [df])
-    print(self_cost, obst_cost)
     time_end = time.time()
+    print(self_dist, obst_dist)
+    print(self_cost, obst_cost)
     print(f"Computational Time: {time_end - time_start}")
