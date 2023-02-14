@@ -274,7 +274,9 @@ class EmbodimentDistanceField(DistanceField):
         X_interp = X[..., :-1, :, :] + X_diff * alpha  # batch_dim x (num_interp_link - 1) x num_interpolate x 3
         return torch.cat([link_pos, X_interp.flatten(-3, -2)], dim=-2)  # batch_dim x (num_link + (num_interp_link - 1) * num_interpolate) x 3
 
-    def compute_distance(self, link_pos, df_list=None, **kwargs):  # position tensor
+    def compute_distance(self, link_pos, df_list=None, unique_pos=True, **kwargs):  # position tensor
+        if unique_pos:   # remove duplicate positions from the URDF
+            link_pos = link_pos.unique(dim=-2)
         if self.num_interpolate > 0:
             link_pos = self.interpolate_links(link_pos)
         
@@ -282,7 +284,9 @@ class EmbodimentDistanceField(DistanceField):
         obstacle_distances = self.obstacle_distances(link_pos, df_list, **kwargs).min(-1)[0].min(-1)[0]  # batch_dim
         return self_distances, obstacle_distances
 
-    def compute_cost(self, link_pos, df_list=None, **kwargs):  # position tensor # batch_dim x num_links x 3
+    def compute_cost(self, link_pos, df_list=None, unique_pos=True, **kwargs):  # position tensor # batch_dim x num_links x 3
+        if unique_pos:    # remove duplicate positions from the URDF
+            link_pos = link_pos.unique(dim=-2)
         if self.num_interpolate > 0:
             link_pos = self.interpolate_links(link_pos)
 
