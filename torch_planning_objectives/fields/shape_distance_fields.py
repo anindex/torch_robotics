@@ -23,7 +23,7 @@ class Shape(ABC):
     @abstractmethod
     def compute_distance(self, x):
         """
-        Returns the sign distance at x.
+        Returns the distance at x.
         Parameters
         ----------
             x : numpy array
