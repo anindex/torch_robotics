@@ -15,22 +15,23 @@ from robot_envs.pybullet.objects import Panda
 
 from robot_envs.pybullet.panda import PandaEnv
 from torch_kinematics_tree.geometrics.skeleton import get_skeleton_from_model
+from torch_kinematics_tree.geometrics.utils import link_pos_from_link_tensor
 from torch_kinematics_tree.models.robots import DifferentiableFrankaPanda
 from torch_planning_objectives.fields.collision_bodies import PandaSphereDistanceField
 from torch_planning_objectives.fields.distance_fields import LinkSelfDistanceField, LinkDistanceField, \
-    FloorDistanceField, BorderDistanceField
-from torch_planning_objectives.fields.occupancy_map.map_generator import generate_obstacle_map
-from torch_planning_objectives.fields.occupancy_map.obst_map import ObstacleSphere
+    FloorDistanceField, BorderDistanceField, EmbodimentDistanceField
+from torch_planning_objectives.fields.occupancy_map.map_generator import generate_obstacle_map, build_obstacle_map
+from torch_planning_objectives.fields.primitive_distance_fields import Sphere, Box, InfiniteCylinder
 
 
-class PandaEnv7D(EnvBase):
+class PandaEnvBase(EnvBase):
 
     def __init__(self,
                  name='panda_simple_env',
-                 obstacle_spheres=None,
+                 obst_primitives_l=None,
                  task_space_bounds=((-1.25, 1.25), (-1.25, 1.25), (0, 1.5)),
-                 obstacle_buffer=0.08,
-                 self_buffer=0.05,
+                 obstacle_buffer=0.01,
+                 self_buffer=0.0005,
                  compute_robot_collision_from_occupancy_grid=False,
                  tensor_args=None
                  ):
@@ -60,18 +61,15 @@ class PandaEnv7D(EnvBase):
 
         ################################################################################################
         # Obstacles
-        self.obstacle_spheres = None
-        self.setup_obstacles(obstacle_spheres=obstacle_spheres)
-
-        self.obstacle_buffer = obstacle_buffer
-
-        self.self_buffer = self_buffer
+        self.obst_primitives_l = obst_primitives_l
 
         # optionally setup the obstacle map to use with the robot represented with spheres
         self.compute_robot_collision_from_occupancy_grid = compute_robot_collision_from_occupancy_grid
         self.obstacle_map = None
         if self.compute_robot_collision_from_occupancy_grid:
-            self.setup_obstacle_map(obstacle_spheres=obstacle_spheres)
+            self.panda_collision = PandaSphereDistanceField(tensor_args=tensor_args)
+            self.panda_collision.build_batch_features(batch_dim=[1000, ], clone_objs=True)
+            self.setup_obstacle_map()
 
         ################################################################################################
         # Collisions
@@ -79,33 +77,36 @@ class PandaEnv7D(EnvBase):
         self.diff_panda = DifferentiableFrankaPanda(gripper=False, device=self.tensor_args['device'])
 
         # Robot collision model
-        self.panda_collision = PandaSphereDistanceField(tensor_args=tensor_args)
-        self.panda_collision.build_batch_features(batch_dim=[1000, ], clone_objs=True)
+        self.obstacle_buffer = obstacle_buffer
+        self.self_buffer = self_buffer
+        self.df_collision_self_and_obstacles = EmbodimentDistanceField(
+            self_margin=self_buffer, obst_margin=obstacle_buffer,
+            field_type='occupancy',
+            num_interpolate=4, link_interpolate_range=[2, 7]
+        )
 
-        self.self_collision = LinkSelfDistanceField(tensor_args=tensor_args)
-
-        self.floor_collision = FloorDistanceField(tensor_args=tensor_args)
-
-        self.obstacle_collision = LinkDistanceField(tensor_args=tensor_args)
-
-        self.border_collision = BorderDistanceField(tensor_args=tensor_args)
+        self.df_collision_floor = None
+        # self.floor_collision = FloorDistanceField(tensor_args=tensor_args)
+        self.df_collision_border = None
+        # self.border_collision = BorderDistanceField(tensor_args=tensor_args)
 
     def setup_obstacles(self, obstacle_spheres=None):
         self.obstacle_spheres = torch.zeros(len(obstacle_spheres), 4).to(**self.tensor_args)
         for i, sphere in enumerate(obstacle_spheres):
             self.obstacle_spheres[i, :] = torch.tensor([*sphere]).to(**self.tensor_args)
 
-    def setup_obstacle_map(self, obstacle_spheres=None):
+    def setup_obstacle_map(self):
         map_dim = [ceil((dim_bound[1] - dim_bound[0])/2.)*2 for dim_bound in self.task_space_bounds]
-        obst_list = [ObstacleSphere(sphere[:3], sphere[3]) for sphere in obstacle_spheres]
+
         obst_params = dict(
             map_dim=map_dim,
-            obst_list=obst_list,
+            obst_list=self.obst_primitives_l,
             cell_size=max(map_dim)/20,
             map_type='direct',
-            tensor_args=self.tensor_args,
+            tensor_args=tensor_args,
         )
-        obst_map, obst_list = generate_obstacle_map(**obst_params)
+        obst_map = build_obstacle_map(**obst_params)
+
         self.obstacle_map = obst_map
 
     def compute_collision(self, q, **kwargs):
@@ -128,27 +129,27 @@ class PandaEnv7D(EnvBase):
 
         # reshape to batch, trajectory, link poses
         link_tensor = einops.rearrange(link_tensor, '(b h) links d1 d2 -> b h links d1 d2', b=b, h=h)
+        link_pos = link_pos_from_link_tensor(link_tensor)
 
         if self.compute_robot_collision_from_occupancy_grid:
             collisions = self.collision_robot_occupancy_grid(q, batch_dim=b)
         else:
             ########################
-            # Self collision
-            self_collision = self.self_collision.compute_collision(link_tensor, buffer=self.self_buffer)
-
-            ########################
-            # Obstacle collision
-            obstacle_collision = self.obstacle_collision.compute_collision(link_tensor, obstacle_spheres=self.obstacle_spheres, buffer=self.obstacle_buffer)
+            # Self collision and Obstacle collision
+            collision_self, collision_obstacle = self.df_collision_self_and_obstacles.compute_cost(
+                link_pos, df_list=self.obst_primitives_l, field_type='occupancy'
+            )
 
             ########################
             # Floor collision
-            floor_collision = self.floor_collision.compute_collision(link_tensor, self.floor_min)
+            # collision_floor = self.df_collision_floor.compute_cost()
 
             ########################
             # Border collision
-            border_collision = self.border_collision.compute_collision(link_tensor, self.task_space_bounds_min, self.task_space_bounds_max)
+            # collision_border = self.df_collision_border.compute_cost()
 
-            collisions = self_collision | obstacle_collision | floor_collision | border_collision
+            # collisions = collision_self_and_obstacles | collision_floor | collision_border
+            collisions = collision_self | collision_obstacle
 
         return collisions
 
@@ -164,24 +165,13 @@ class PandaEnv7D(EnvBase):
         link_tensor_spheres_radii = link_tensor_spheres_flat[..., 3]
         distance_grid_points_to_spheres_centers = self.obstacle_map.compute_distances(link_tensor_spheres_centers)
         distance_grid_points_to_spheres_centers_min = torch.min(distance_grid_points_to_spheres_centers, dim=-1)[0]
-        obstacle_collision = torch.any(distance_grid_points_to_spheres_centers_min < link_tensor_spheres_radii,
-                                       dim=-1, keepdim=True)
+        obstacle_collision = torch.any(distance_grid_points_to_spheres_centers_min < link_tensor_spheres_radii, dim=-1, keepdim=True)
         return obstacle_collision
-
-    def draw_sphere(self, ax, sphere):
-        sphere = to_numpy(sphere)
-        center = sphere[:3]
-        radius = sphere[3]
-        u, v = np.mgrid[0:2 * np.pi:30j, 0:np.pi:20j]
-        x = radius * (np.cos(u) * np.sin(v))
-        y = radius * (np.sin(u) * np.sin(v))
-        z = radius * np.cos(v)
-        ax.plot_surface(x + center[0], y + center[1], z + center[2], cmap='gray', alpha=0.75)
 
     def render(self, traj=None, ax=None):
         # plot obstacles
-        for sphere in self.obstacle_spheres:
-            self.draw_sphere(ax, sphere)
+        for obst_primitive in self.obst_primitives_l:
+            obst_primitive.draw(ax)
 
         # plot path
         if traj is not None:
@@ -194,9 +184,9 @@ class PandaEnv7D(EnvBase):
             start_skeleton = get_skeleton_from_model(self.diff_panda, traj[0], self.diff_panda.get_link_names())
             start_skeleton.draw_skeleton(color='r')
 
-        ax.set_xlim(*self.task_space_bounds[0])
-        ax.set_ylim(*self.task_space_bounds[1])
-        ax.set_zlim(*self.task_space_bounds[2])
+        ax.set_xlim3d(*self.task_space_bounds[0])
+        ax.set_ylim3d(*self.task_space_bounds[1])
+        ax.set_zlim3d(*self.task_space_bounds[2])
 
     def render_physics(self, traj=None):
         if traj is not None:
@@ -209,17 +199,36 @@ class PandaEnv7D(EnvBase):
 if __name__ == "__main__":
     tensor_args = dict(device='cpu', dtype=torch.float32)
 
-    spheres = [
-         (0.5, 0.5, 0.5, 0.4)
+    obst_primitives_l = [
+        Sphere(
+            [[0.5, 0.5, 0.5],
+             [-0.8, -0.8, 0.8]],
+            [0.4, 0.2],
+            tensor_args=tensor_args
+        ),
+        Box(
+            [[-0.5, 0.5, 0.5],
+             [0., 0.2, 0.5],
+             ],
+            [[0.6, 0.5, 0.4],
+             [0.2, 0.2, 0.2]
+             ],
+            tensor_args=tensor_args
+        ),
+        InfiniteCylinder(
+            [[1, 1, 1]],
+            [0.3],
+            tensor_args=tensor_args
+        )
     ]
 
-    env = PandaEnv7D(
-        obstacle_spheres=spheres,
+    env = PandaEnvBase(
+        obst_primitives_l=obst_primitives_l,
         tensor_args=tensor_args
     )
 
-    q_start = env.random_coll_free_q()
-    q_goal = env.random_coll_free_q()
+    q_start = env.random_coll_free_q(max_samples=1000)
+    q_goal = env.random_coll_free_q(max_samples=1000)
     path = extend_path(env.distance_q, q_start, q_goal, max_step=np.pi/10, max_dist=torch.inf, tensor_args=tensor_args)
 
     fig = plt.figure()

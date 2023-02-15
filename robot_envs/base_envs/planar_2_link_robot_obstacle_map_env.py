@@ -5,13 +5,13 @@ import torch
 from mp_baselines.planners.utils import tensor_linspace
 from robot_envs.base_envs.env_base import EnvBase
 from robot_envs.base_envs.obstacle_map_env import ObstacleMapEnv
-from torch_planning_objectives.fields.occupancy_map.map_generator import generate_obstacle_map
-from torch_planning_objectives.fields.occupancy_map.obst_map import ObstacleSphere
+from torch_planning_objectives.fields.occupancy_map.map_generator import generate_obstacle_map, build_obstacle_map
+from torch_planning_objectives.fields.primitive_distance_fields import Sphere
 
 
 def create_circles_spaced():
     circles = [
-        (-0.2, 0., 0.05),
+        # (-0.2, 0., 0.05),
         (0.2, 0.5, 0.3),
         (0.3, 0.15, 0.1),
         (0.5, 0.5, 0.1),
@@ -19,9 +19,9 @@ def create_circles_spaced():
         (-0.5, 0.5, 0.3),
         (-0.5, -0.5, 0.3),
     ]
-
-    obst_list = [ObstacleSphere((x, y), r) for x, y, r in circles]
-    return circles, obst_list
+    circles = np.array(circles)
+    primitive_obst_list = [Sphere(circles[:, :2], circles[:, 2])]
+    return primitive_obst_list
 
 
 class RobotPlanarTwoLink(ObstacleMapEnv):
@@ -31,7 +31,7 @@ class RobotPlanarTwoLink(ObstacleMapEnv):
         # Obstacles
         limits = torch.tensor([[-np.pi, np.pi], [-np.pi + 0.01, np.pi - 0.01]], **tensor_args)
 
-        circles, obst_list = create_circles_spaced()
+        obst_list = create_circles_spaced()
 
         cell_size = 0.01
         map_dim = (2, 2)
@@ -42,7 +42,7 @@ class RobotPlanarTwoLink(ObstacleMapEnv):
             map_type='direct',
             tensor_args=tensor_args,
         )
-        obst_map, obst_list = generate_obstacle_map(**obst_params)
+        obst_map = build_obstacle_map(**obst_params)
 
         super().__init__(
             name='planar_2_link_robot',

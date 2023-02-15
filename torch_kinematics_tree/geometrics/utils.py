@@ -318,8 +318,18 @@ def to_torch_2d_min(variable):
         return tensor_var
 
 
-def to_torch(variable):
-    if isinstance(variable, torch.Tensor):
-        return variable
-    else:
-        return torch.tensor(variable)
+def link_pos_from_link_tensor(link_tensor):
+    return link_tensor[..., :3, 3]
+
+
+def to_torch(x, device='cpu', dtype=torch.float, requires_grad=False):
+    if torch.is_tensor(x):
+        return x.clone().to(device=device, dtype=dtype).requires_grad_(requires_grad)
+    return torch.tensor(x, dtype=dtype, device=device, requires_grad=requires_grad)
+
+
+def to_numpy(x, dtype=np.float32):
+    if torch.is_tensor(x):
+        x = x.detach().cpu().numpy().astype(dtype)
+        return x
+    return np.array(x).astype(dtype)

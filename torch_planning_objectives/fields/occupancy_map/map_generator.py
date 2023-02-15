@@ -55,10 +55,27 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 
-from torch_planning_objectives.fields.occupancy_map.obst_map import ObstacleBox, ObstacleMap, ObstacleSphere
+from torch_planning_objectives.fields.obst_map import ObstacleMap
 from torch_planning_objectives.fields.shape_distance_fields import MultiSphere
 from torch_planning_objectives.fields.occupancy_map.obst_utils import random_rect, random_circle
 import copy
+
+
+def build_obstacle_map(
+        map_dim=(10, 10),
+        cell_size=1.,
+        obst_list=[],
+        tensor_args=None,
+        **kwargs
+):
+    ## Make occupancy grid
+    obst_map = ObstacleMap(map_dim, cell_size, tensor_args=tensor_args)
+    for obst in obst_list:
+        obst.add_to_map(obst_map)
+
+    obst_map.convert_map()
+
+    return obst_map
 
 
 def generate_obstacle_map(
@@ -106,7 +123,7 @@ def generate_obstacle_map(
     obst_map = ObstacleMap(map_dim, cell_size, tensor_args=tensor_args)
     num_fixed = len(obst_list)
     for obst in obst_list:
-        obst._add_to_map(obst_map)
+        obst.add_to_map(obst_map)
 
     ## Add random obstacles
     obst_list = copy.deepcopy(obst_list)
@@ -129,7 +146,7 @@ def generate_obstacle_map(
 
                 if valid:
                     # Add to Map
-                    obst._add_to_map(obst_map)
+                    obst.add_to_map(obst_map)
                     # Add to list
                     obst_list.append(obst)
                     break

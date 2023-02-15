@@ -26,11 +26,11 @@ class EnvBase:
         self.q_max = q_max.to(**self.tensor_args)
         self.q_distribution = torch.distributions.uniform.Uniform(self.q_min, self.q_max)
 
-    def sample_q(self, without_collision=True):
+    def sample_q(self, without_collision=True, **kwargs):
         if without_collision:
-            return self.random_coll_free_q()
+            return self.random_coll_free_q(**kwargs)
         else:
-            return self.random_q()
+            return self.random_q(**kwargs)
 
     def random_q(self, n_samples=1):
         # Random position in configuration space
@@ -50,6 +50,8 @@ class EnvBase:
             if idxs_not_in_collision.nelement() == 0:
                 # all points are in collision
                 continue
+            if idxs_not_in_collision.nelement() == 1:
+                idxs_not_in_collision = [idxs_not_in_collision]
             idx_random = torch.randperm(len(idxs_not_in_collision))[:n_samples]
             free_qs = qs[idxs_not_in_collision[idx_random]]
             idx_end = min(idx_begin + free_qs.shape[0], samples.shape[0])

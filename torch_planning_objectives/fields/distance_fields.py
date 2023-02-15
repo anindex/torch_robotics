@@ -46,11 +46,10 @@ class EmbodimentDistanceField(DistanceField):
         self.field_type = field_type
 
     def self_distances(self, link_pos, **kwargs):  # position tensor
-        dist_mat = torch.linalg.norm(link_pos.unsqueeze(-2) - link_pos.unsqueeze(-3),
-                                     dim=-1)  # batch_dim x links x links
+        dist_mat = torch.linalg.norm(link_pos.unsqueeze(-2) - link_pos.unsqueeze(-3), dim=-1)  # batch_dim x links x links
         # select lower triangular
         lower_indices = torch.tril_indices(dist_mat.shape[-1], dist_mat.shape[-1], offset=-1).unbind()
-        distances = dist_mat[:, lower_indices[0], lower_indices[1]]  # batch_dim x (links * (links - 1) / 2)
+        distances = dist_mat[..., lower_indices[0], lower_indices[1]]  # batch_dim x (links * (links - 1) / 2)
         return distances
 
     def compute_self_cost(self, link_pos, field_type=None, margin=None, **kwargs):  # position tensor
@@ -65,7 +64,7 @@ class EmbodimentDistanceField(DistanceField):
         elif field_type == 'sdf':  # this computes the negative cost from the DISTANCE FUNCTION
             return -(self.self_distances(link_pos, **kwargs) - margin).min(-1)[0]
         elif field_type == 'occupancy':
-            distances = self.self_distances(link_pos, **kwargs)  # batch_dim x links x links
+            distances = self.self_distances(link_pos, **kwargs)  # batch_dim x (links * (links - 1) / 2)
             return (distances < margin).sum(-1)
         else:
             raise NotImplementedError('field_type {} not implemented'.format(field_type))
@@ -113,12 +112,10 @@ class EmbodimentDistanceField(DistanceField):
         link_dim = link_pos.shape[:-1]
         alpha = torch.linspace(0, 1, self.num_interpolate + 2).type_as(link_pos)[1:self.num_interpolate + 1]
         alpha = alpha.view(tuple([1] * len(link_dim) + [-1, 1]))  # 1 x 1 x 1 x ... x num_interpolate x 1
-        X = link_pos[..., self.link_interpolate_range[0]:self.link_interpolate_range[1] + 1, :].unsqueeze(
-            -2)  # batch_dim x num_interp_link x 1 x 3
+        X = link_pos[..., self.link_interpolate_range[0]:self.link_interpolate_range[1] + 1, :].unsqueeze(-2)  # batch_dim x num_interp_link x 1 x 3
         X_diff = torch.diff(X, dim=-3)  # batch_dim x (num_interp_link - 1) x 1 x 3
         X_interp = X[..., :-1, :, :] + X_diff * alpha  # batch_dim x (num_interp_link - 1) x num_interpolate x 3
-        return torch.cat([link_pos, X_interp.flatten(-3, -2)],
-                         dim=-2)  # batch_dim x (num_link + (num_interp_link - 1) * num_interpolate) x 3
+        return torch.cat([link_pos, X_interp.flatten(-3, -2)], dim=-2)  # batch_dim x (num_link + (num_interp_link - 1) * num_interpolate) x 3
 
     def compute_distance(self, link_pos, df_list=None, unique_pos=True, **kwargs):  # position tensor
         if unique_pos:  # remove duplicate positions from the URDF
