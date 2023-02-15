@@ -17,8 +17,12 @@ if __name__ == "__main__":
 
     print("===========================Panda Model===============================")
     ## Panda Kinematics ##
-    panda = DifferentiableFrankaPanda(device=device)
+    panda = DifferentiableFrankaPanda(gripper=False, device=device)
     q = torch.randn(batch_size, panda._n_dofs).to(**tensor_args)
+    qd = torch.randn(batch_size, panda._n_dofs).to(**tensor_args)
+
+    ee_pos, ee_rot, lin_jac, ang_jac = panda.compute_fk_and_jacobian(q, qd, 'ee_link')
+    print(ee_pos.shape, ee_rot.shape, lin_jac.shape, ang_jac.shape)
 
     ## Get position-rotation links ##
     link_tensor = panda.compute_forward_kinematics_all_links(q)

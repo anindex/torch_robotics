@@ -16,7 +16,7 @@ class DifferentiableFrankaPanda(DifferentiableTree):
         if gripper:
             robot_file = get_robot_path() / 'franka_description' / 'robots' / 'panda_arm_hand.urdf'
         else:
-            robot_file = get_robot_path() / 'franka_description' / 'robots' / 'panda_no_gripper.urdf'
+            robot_file = get_robot_path() / 'franka_description' / 'robots' / 'panda_arm_no_gripper.urdf'
         self.model_path = robot_file.as_posix()
         self.name = "differentiable_franka_panda"
         super().__init__(self.model_path, self.name, link_list=link_list, device=device)

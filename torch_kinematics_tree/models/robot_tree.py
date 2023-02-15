@@ -61,63 +61,6 @@ from torch_kinematics_tree.models.utils import URDFRobotModel, MJCFRobotModel
 from torch_kinematics_tree.geometrics.spatial_vector import MotionVec
 
 
-def tensor_check(function):
-    """
-    A decorator for checking the device of input tensors
-    """
-
-    @dataclass
-    class BatchInfo:
-        shape: torch.Size = torch.Size([])
-        init: bool = False
-
-    def preprocess(arg, obj, batch_info):
-        if type(arg) is torch.Tensor:
-            # Check dimensions & convert to 2-dim tensors
-            assert arg.ndim in [1, 2], f"Input tensors must have ndim of 1 or 2."
-
-            if batch_info.init:
-                assert (
-                    batch_info.shape == arg.shape[:-1]
-                ), "Batch size mismatch between input tensors."
-            else:
-                batch_info.init = True
-                batch_info.shape = arg.shape[:-1]
-
-            if len(batch_info.shape) == 0:
-                return arg.unsqueeze(0)
-
-        return arg
-
-    def postprocess(arg, batch_info):
-        if type(arg) is torch.Tensor and batch_info.init and len(batch_info.shape) == 0:
-            return arg[0, ...]
-
-        return arg
-
-    def wrapper(self, *args, **kwargs):
-        batch_info = BatchInfo()
-
-        # Parse input
-        processed_args = [preprocess(arg, self, batch_info) for arg in args]
-        processed_kwargs = {
-            key: preprocess(kwargs[key], self, batch_info) for key in kwargs
-        }
-
-        # Perform function
-        ret = function(self, *processed_args, **processed_kwargs)
-
-        # Parse output
-        if type(ret) is torch.Tensor:
-            return postprocess(ret, batch_info)
-        elif type(ret) is tuple:
-            return tuple([postprocess(r, batch_info) for r in ret])
-        else:
-            return ret
-
-    return wrapper
-
-
 def convert_link_dict_to_tensor(link_dict, link_list):
     return torch.stack([link_dict[name].get_transform_matrix() for name in link_list], dim=1)
 
@@ -178,7 +121,6 @@ class DifferentiableTree(torch.nn.Module):
     def update_base_pose(self, pose_vec):
         self._bodies[0].update_pose(pose_vec)
 
-    @tensor_check
     def update_kinematic_state(self, q: torch.Tensor, qd: torch.Tensor) -> None:
         """
 
@@ -236,7 +178,6 @@ class DifferentiableTree(torch.nn.Module):
 
         return
 
-    @tensor_check
     def compute_forward_kinematics_all_links(
         self, q: torch.Tensor, return_dict=False,
     ) -> torch.Tensor:
@@ -262,7 +203,6 @@ class DifferentiableTree(torch.nn.Module):
         else:
             return pose_dict
 
-    @tensor_check
     def compute_forward_kinematics_link_list(
         self, q: torch.Tensor, return_dict=False, link_list=None,
     ) -> torch.Tensor:
@@ -295,9 +235,8 @@ class DifferentiableTree(torch.nn.Module):
             link_dict = {k: v for k, v in pose_dict.items() if k in link_list}
             return link_dict
 
-    @tensor_check
     def compute_forward_kinematics(
-        self, q: torch.Tensor, link_name: str, state_less: bool = False
+        self, q: torch.Tensor,  qd: torch.Tensor, link_name: str, state_less: bool = False
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """
 
@@ -311,58 +250,48 @@ class DifferentiableTree(torch.nn.Module):
         assert q.ndim == 2
 
         if state_less:
-            return self.compute_forward_kinematics_all_links(q)[link_name]
+            return self.compute_forward_kinematics_all_links(q)[link_name]  # return SE3 matrix
         else:
-            qd = torch.zeros_like(q)
             self.update_kinematic_state(q, qd)
 
             pose = self._bodies[self._name_to_idx_map[link_name]].pose
             pos = pose.translation
             rot = pose.get_quaternion()
-            return pos, rot
+            return pos, rot  # return tuple of translation and rotation
 
-    @tensor_check
-    def compute_endeffector_jacobian(
-        self, q: torch.Tensor, link_name: str
+    def compute_fk_and_jacobian(
+        self, q: torch.Tensor, qd: torch.Tensor, link_name: str
     ) -> Tuple[torch.Tensor, torch.Tensor]:
-        """
-
+        r"""
         Args:
             link_name: name of link name for the jacobian
             q: joint angles [batch_size x n_dofs]
-
-        Returns: linear and angular jacobian
-
+            qd: joint velocities [batch_size x n_dofs]
+        Returns: ee_pos, ee_rot and linear and angular jacobian
         """
-        assert len(q.shape) == 2
         batch_size = q.shape[0]
-        self.compute_forward_kinematics(q, link_name)
+        ee_pos, ee_rot = self.compute_forward_kinematics(q, qd, link_name)
 
-        e_pose = self._bodies[self._name_to_idx_map[link_name]].pose
-        p_e = e_pose.translation
+        lin_jac = torch.zeros([batch_size, 3, self._n_dofs], device=self._device)
+        ang_jac = torch.zeros([batch_size, 3, self._n_dofs], device=self._device)
+        # any joints larger than this joint, will have 0 in the jacobian
+        # parent_name = self._urdf_model.get_name_of_parent_body(link_name)
+        parent_joint_id = self._model.find_joint_of_body(link_name)
 
-        lin_jac, ang_jac = (
-            torch.zeros([batch_size, 3, self._n_dofs], device=self._device),
-            torch.zeros([batch_size, 3, self._n_dofs], device=self._device),
+        # do this as a tensor cross product:
+        for i, idx in enumerate(self._controlled_joints):
+            if (idx - 1) > parent_joint_id:
+                continue
+            pose = self._bodies[idx].pose
+            axis_idx = self._bodies[idx].axis_idx
+            p_i = pose.translation
+            z_i = torch.index_select(pose.rotation, -1, axis_idx).squeeze(-1)
+            lin_jac[:, :, i] = torch.cross(z_i, ee_pos - p_i)
+            ang_jac[:, :, i] = z_i
+
+        return (
+            ee_pos, ee_rot, lin_jac, ang_jac,
         )
-
-        joint_id = self._bodies[self._name_to_idx_map[link_name]].joint_id
-
-        while link_name != self._bodies[0].name:
-            if joint_id in self._controlled_joints:
-                i = self._controlled_joints.index(joint_id)
-                idx = joint_id
-
-                pose = self._bodies[idx].pose
-                axis = self._bodies[idx].joint_axis
-                p_i = pose.translation
-                z_i = pose.rotation @ axis.squeeze()
-                lin_jac[:, :, i] = torch.cross(z_i, p_e - p_i, dim=-1)
-                ang_jac[:, :, i] = z_i
-            link_name = self._model.get_name_of_parent_body(link_name)
-            joint_id = self._bodies[self._name_to_idx_map[link_name]].joint_id
-
-        return lin_jac, ang_jac
 
     def get_joint_limits(self) -> List[Dict[str, torch.Tensor]]:
         """
