@@ -55,7 +55,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 
-from torch_planning_objectives.fields.occupancy_map.obst_map import ObstacleRectangle, ObstacleMap, ObstacleCircle
+from torch_planning_objectives.fields.occupancy_map.obst_map import ObstacleBox, ObstacleMap, ObstacleSphere
 from torch_planning_objectives.fields.shape_distance_fields import MultiSphere
 from torch_planning_objectives.fields.occupancy_map.obst_utils import random_rect, random_circle
 import copy
@@ -250,9 +250,9 @@ def get_sphere_field_from_list(obst_list, tensor_args=None):
     radii = []
     for obst in obst_list:
         centers.append([obst.center_x, obst.center_y])
-        if isinstance(obst, ObstacleRectangle):
+        if isinstance(obst, ObstacleBox):
             radii.append(obst.width / 2.)  # NOTE: Assumes width == height
-        elif isinstance(obst, ObstacleCircle):
+        elif isinstance(obst, ObstacleSphere):
             radii.append(obst.radius)
         else:
             raise IOError('Obstacle type "{}" not recognized'.format(type(obst)))
@@ -265,8 +265,8 @@ if __name__ == "__main__":
     import numpy
     numpy.set_printoptions(threshold=sys.maxsize)
     obst_list = [
-        ObstacleRectangle((0, 0), (2, 3)),
-        ObstacleCircle((-5, -5), 1)
+        ObstacleBox((0, 0), (2, 3)),
+        ObstacleSphere((-5, -5), 1)
     ]
 
     cell_size = 0.1

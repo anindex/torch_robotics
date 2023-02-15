@@ -15,11 +15,9 @@ class DistanceField(ABC):
     def __init__(self, tensor_args=None):
         self.tensor_args = tensor_args
 
-    @abstractmethod
     def distances(self):
         pass
 
-    @abstractmethod
     def compute_collision(self):
         pass
 
@@ -86,15 +84,15 @@ class SphereDistanceField(DistanceField):
             self._link_spheres.append(link_spheres)
 
     def build_batch_features(self, clone_objs=False, batch_dim=None):
-        """clones poses/object instances for computing across batch. Use this once per batch size change to avoid re-initialization over repeated calls.
+        """clones poses/object instances for computing across batch.
+        Use this once per batch size change to avoid re-initialization over repeated calls.
         Args:
             clone_objs (bool, optional): clones objects. Defaults to False.
             batch_size ([type], optional): batch_size to clone. Defaults to None.
         """
-
-        if (batch_dim is not None):
+        if batch_dim is not None:
             self.batch_dim = batch_dim
-        if (clone_objs):
+        if clone_objs:
             self._batch_link_spheres = []
             for i in range(len(self._link_spheres)):
                 _batch_link_i = self._link_spheres[i].view(
@@ -109,12 +107,12 @@ class SphereDistanceField(DistanceField):
         links_pos: bxnx3
         links_rot: bxnx3x3
         '''
-
         for i in range(len(self.robot_links)):
             link_H = links_dict[self.robot_links[i]].get_transform_matrix()
             link_pos, link_rot = link_H[..., :-1, -1], link_H[..., :3, :3]
-            self.w_batch_link_spheres[i][..., :3] = transform_point(self._batch_link_spheres[i][..., :3], link_rot,
-                                                                    link_pos.unsqueeze(-2))
+            self.w_batch_link_spheres[i][..., :3] = transform_point(
+                self._batch_link_spheres[i][..., :3], link_rot, link_pos.unsqueeze(-2)
+            )
 
     def check_collisions(self, obstacle_spheres=None):
         """Analytic method to compute signed distance between links.
@@ -173,10 +171,11 @@ class LinkDistanceField(DistanceField):
 
     def distances(self, link_tensor, obstacle_spheres):
         link_pos = link_tensor[..., :3, -1]
+        link_pos = link_pos.unsqueeze(-2)
         obstacle_spheres = obstacle_spheres.unsqueeze(0).unsqueeze(0)
         centers = obstacle_spheres[..., :3]
         radii = obstacle_spheres[..., 3]
-        return torch.linalg.norm(link_pos - centers, dim=-1, keepdims=True) - radii
+        return torch.linalg.norm(link_pos - centers, dim=-1) - radii
 
     def compute_collision(self, link_tensor, obstacle_spheres=None, buffer=0.02):  # position tensor
         collisions = torch.zeros(link_tensor.shape[:2]).to(**self.tensor_args)  # batch, trajectory
@@ -279,7 +278,7 @@ class FloorDistanceField(DistanceField):
             return collisions
         distances = self.distances(link_tensor)
         floor_collisions = distances < floor_min
-        any_floor_collisions = torch.any(torch.any(floor_collisions, dim=-1), dim=-1)
+        any_floor_collisions = torch.any(floor_collisions, dim=-1)
         return any_floor_collisions
 
     def compute_distance(self, link_tensor):
@@ -287,6 +286,38 @@ class FloorDistanceField(DistanceField):
         return distances.mean(-1)  # z axis
 
     def compute_cost(self, link_tensor, **kwargs):
+        return torch.exp(-0.5 * torch.square(link_tensor[..., 2, -1].mean(-1)) / self.margin ** 2)
+
+    def zero_grad(self):
+        pass
+
+
+class BorderDistanceField(DistanceField):
+
+    def __init__(self, margin=0.05, **kwargs):
+        super().__init__(**kwargs)
+        self.margin = margin
+
+    def distances(self, link_tensor):
+        link_pos = link_tensor[..., :3, -1]
+        return link_pos
+
+    def compute_collision(self, link_tensor, task_space_min=None, task_space_max=None):
+        collisions = torch.zeros(link_tensor.shape[:2]).to(**self.tensor_args)  # batch, trajectory
+        if task_space_min is None and task_space_max is None:
+            return collisions
+        distances = self.distances(link_tensor)
+        collisions = torch.logical_or(distances < task_space_min, distances > task_space_max)
+        any_collisions = torch.any(torch.any(collisions, dim=-1), dim=-1)
+        return any_collisions
+
+    def compute_distance(self, link_tensor):
+        raise NotImplementedError
+        distances = self.distances(link_tensor)
+        return distances.mean(-1)  # z axis
+
+    def compute_cost(self, link_tensor, **kwargs):
+        raise NotImplementedError
         return torch.exp(-0.5 * torch.square(link_tensor[..., 2, -1].mean(-1)) / self.margin ** 2)
 
     def zero_grad(self):

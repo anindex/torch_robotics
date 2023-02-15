@@ -1,7 +1,7 @@
 from math import ceil
 import random
 import matplotlib.pyplot as plt
-from .obst_map import ObstacleRectangle, ObstacleCircle
+from .obst_map import ObstacleBox, ObstacleSphere
 
 
 def round_up(n, decimals=0):
@@ -18,7 +18,7 @@ def random_rect(center_lims, shape_dims):
     Generates an rectangular obstacle object, with random location and dimensions.
     """
     center = random_center(center_lims)
-    return ObstacleRectangle(center, shape_dims)
+    return ObstacleBox(center, shape_dims)
 
 
 def random_circle(center_lims, radius):
@@ -26,7 +26,7 @@ def random_circle(center_lims, radius):
     Generates a circle obstacle object, with random location and dimensions.
     """
     center = random_center(center_lims)
-    return ObstacleCircle(center, radius)
+    return ObstacleSphere(center, radius)
 
 
 def save_map_image(obst_map=None,start_pts=None,goal_pts=None,dir='.'):

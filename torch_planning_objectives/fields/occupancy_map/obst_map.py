@@ -96,7 +96,7 @@ class Obstacle(ABC):
         pass
 
 
-class ObstacleRectangle(Obstacle):
+class ObstacleBox(Obstacle):
     """
     Derived 2D/3D rectangular/box Obstacle class
     """
@@ -138,7 +138,7 @@ class ObstacleRectangle(Obstacle):
         return obst_map
 
 
-class ObstacleCircle(Obstacle):
+class ObstacleSphere(Obstacle):
     """
     Derived 2D/3D circle/sphere Obstacle class
     """
@@ -298,6 +298,15 @@ class ObstacleMap:
             print(X_occ)
             print(X_occ.clamp(0, self.map.shape[0]-1))
         return collision_vals
+
+    def compute_distances(self, X, **kwargs):
+        """
+        Computes euclidean distances of X to all points in the occupied grid
+        """
+        X_grid_points_idxs = torch.nonzero(self.map_torch > 0)
+        X_grid_points_task_space = (X_grid_points_idxs - self.c_offset) * self.cell_size
+        distances = torch.cdist(X, X_grid_points_task_space, p=2.0)
+        return distances
 
     def compute_cost(self, X, **kwargs):
         return self.get_collisions(X, **kwargs)
