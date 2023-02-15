@@ -238,8 +238,8 @@ class DifferentiableTree(torch.nn.Module):
 
     @tensor_check
     def compute_forward_kinematics_all_links(
-        self, q: torch.Tensor, return_dict=False
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        self, q: torch.Tensor, return_dict=False,
+    ) -> torch.Tensor:
         """
         Stateless forward kinematics
         Args:
@@ -264,8 +264,8 @@ class DifferentiableTree(torch.nn.Module):
 
     @tensor_check
     def compute_forward_kinematics_link_list(
-        self, q: torch.Tensor, return_dict=False, link_list=None
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        self, q: torch.Tensor, return_dict=False, link_list=None,
+    ) -> torch.Tensor:
         """
 
         Args:
