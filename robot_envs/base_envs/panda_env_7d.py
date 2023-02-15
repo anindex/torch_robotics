@@ -31,6 +31,7 @@ class PandaEnv7D(EnvBase):
                  task_space_bounds=((-1.25, 1.25), (-1.25, 1.25), (0, 1.5)),
                  obstacle_buffer=0.08,
                  self_buffer=0.05,
+                 compute_robot_collision_from_occupancy_grid=False,
                  tensor_args=None
                  ):
         ################################################################################################
@@ -67,8 +68,8 @@ class PandaEnv7D(EnvBase):
         self.self_buffer = self_buffer
 
         # optionally setup the obstacle map to use with the robot represented with spheres
+        self.compute_robot_collision_from_occupancy_grid = compute_robot_collision_from_occupancy_grid
         self.obstacle_map = None
-        self.compute_robot_collision_from_occupancy_grid = False
         if self.compute_robot_collision_from_occupancy_grid:
             self.setup_obstacle_map(obstacle_spheres=obstacle_spheres)
 
@@ -107,7 +108,7 @@ class PandaEnv7D(EnvBase):
         obst_map, obst_list = generate_obstacle_map(**obst_params)
         self.obstacle_map = obst_map
 
-    def check_collision(self, q, **kwargs):
+    def compute_collision(self, q, **kwargs):
         b = 1
         h = 1
         if q.ndim == 1:
@@ -163,11 +164,12 @@ class PandaEnv7D(EnvBase):
         link_tensor_spheres_radii = link_tensor_spheres_flat[..., 3]
         distance_grid_points_to_spheres_centers = self.obstacle_map.compute_distances(link_tensor_spheres_centers)
         distance_grid_points_to_spheres_centers_min = torch.min(distance_grid_points_to_spheres_centers, dim=-1)[0]
-        obstacle_collision = torch.any(distance_grid_points_to_spheres_centers_min < link_tensor_spheres_radii, dim=-1,
-                                       keepdim=True)
+        obstacle_collision = torch.any(distance_grid_points_to_spheres_centers_min < link_tensor_spheres_radii,
+                                       dim=-1, keepdim=True)
         return obstacle_collision
 
     def draw_sphere(self, ax, sphere):
+        sphere = to_numpy(sphere)
         center = sphere[:3]
         radius = sphere[3]
         u, v = np.mgrid[0:2 * np.pi:30j, 0:np.pi:20j]

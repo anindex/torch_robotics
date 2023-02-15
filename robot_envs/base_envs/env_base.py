@@ -45,7 +45,7 @@ class EnvBase:
         idx_begin = 0
         for i in range(max_tries):
             qs = self.random_q(max_samples)
-            in_collision = self.check_collision(qs).squeeze()
+            in_collision = self.compute_collision(qs).squeeze()
             idxs_not_in_collision = torch.argwhere(in_collision == False).squeeze()
             if idxs_not_in_collision.nelement() == 0:
                 # all points are in collision
@@ -65,7 +65,11 @@ class EnvBase:
         return samples.squeeze()
 
     @abstractmethod
-    def check_collision(self, q, **kwargs):
+    def compute_collision(self, q, **kwargs):
+        raise NotImplementedError
+
+    @abstractmethod
+    def compute_cost(self, q, **kwargs):
         raise NotImplementedError
 
     @staticmethod
