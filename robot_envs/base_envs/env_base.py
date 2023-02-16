@@ -72,7 +72,7 @@ class EnvBase:
 
     def compute_collision(self, q, **kwargs):
         q_pos = self.get_q_position(q)
-        return self._compute_collision(q_pos)
+        return self._compute_collision(q_pos, **kwargs)
 
     @abstractmethod
     def _compute_collision_cost(self, q, **kwargs):
@@ -80,7 +80,7 @@ class EnvBase:
 
     def compute_collision_cost(self, q, **kwargs):
         q_pos = self.get_q_position(q)
-        return self._compute_collision_cost(q_pos)
+        return self._compute_collision_cost(q_pos, **kwargs)
 
     def get_q_position(self, q):
         return q[..., :self.q_n_dofs]
@@ -98,5 +98,11 @@ class EnvBase:
 
     @abstractmethod
     def render_physics(self, **kwargs):
+        raise NotImplementedError
+
+    def get_rrt_params(self):
+        raise NotImplementedError
+
+    def get_sgpmp_params(self):
         raise NotImplementedError
 

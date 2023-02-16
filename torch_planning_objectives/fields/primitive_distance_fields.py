@@ -75,7 +75,7 @@ class Sphere(Polytope):
         self.radii = to_torch(radii, **self.tensor_args)
 
     def __repr__(self):
-        return f"MultiSphere(centers={self.centers}, radii={self.radii})"
+        return f"Sphere(centers={self.centers}, radii={self.radii})"
 
     def compute_signed_distance(self, x):
         """
@@ -239,11 +239,19 @@ class Box(Polytope):
             z = np.cos(Theta) / np.sqrt(2)
             return x, y, z
 
-        x, y, z = get_cube()
-        for center, size in zip(self.centers, self.sizes):
-            cx, cy, cz = to_numpy(center)
-            a, b, c = to_numpy(size)
-            ax.plot_surface(cx + x * a, cy + y * b, cz + z * c, cmap='gray', alpha=0.75)
+        if ax.name == '3d':
+            x, y, z = get_cube()
+            for center, size in zip(self.centers, self.sizes):
+                cx, cy, cz = to_numpy(center)
+                a, b, c = to_numpy(size)
+                ax.plot_surface(cx + x * a, cy + y * b, cz + z * c, cmap='gray', alpha=0.75)
+        else:
+            for center, size in zip(self.centers, self.sizes):
+                cx, cy = to_numpy(center)
+                a, b = to_numpy(size)
+                rectangle = plt.Rectangle((cx-a/2, cy-b/2), a, b, color='gray', alpha=0.75)
+                ax.add_patch(rectangle)
+
 
 
 class InfiniteCylinder(Polytope):

@@ -85,11 +85,11 @@ class PointMassEnvBase(EnvBase):
 
         return cost_collision
 
-    def _compute_collision_cost(self, q, **kwargs):
-        return self.compute_cost_collision_internal(q, field_type='sdf', **kwargs)
+    def _compute_collision_cost(self, q, field_type='sdf', **kwargs):
+        return self.compute_cost_collision_internal(q, field_type=field_type, **kwargs)
 
-    def _compute_collision(self, q, **kwargs):
-        return self.compute_cost_collision_internal(q, field_type='occupancy', **kwargs)
+    def _compute_collision(self, q, field_type='occupancy', **kwargs):
+        return self.compute_cost_collision_internal(q, field_type=field_type, **kwargs)
 
     def render(self, ax=None):
         # plot obstacles

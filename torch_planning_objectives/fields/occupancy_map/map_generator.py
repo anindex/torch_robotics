@@ -55,6 +55,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 
+from experiment_launcher.utils import fix_random_seed
 from torch_planning_objectives.fields.obst_map import ObstacleMap
 from torch_planning_objectives.fields.shape_distance_fields import MultiSphere
 from torch_planning_objectives.fields.occupancy_map.obst_utils import random_rect, random_circle
@@ -87,7 +88,6 @@ def generate_obstacle_map(
         rand_limits=None,
         rand_rect_shape=[2, 2],
         rand_circle_radius=1,
-        map_type=None,
         tensor_args=None,
 ):
 
@@ -133,7 +133,7 @@ def generate_obstacle_map(
         radius = rand_circle_radius
         for _ in range(num_obst - num_fixed):
             num_attempts = 0
-            max_attempts = 25
+            max_attempts = 100
             while num_attempts <= max_attempts:
                 if np.random.choice(2):
                     obst = random_rect(rand_limits, rand_rect_shape)
@@ -142,7 +142,7 @@ def generate_obstacle_map(
 
                 # Check validity of new obstacle
                 # Do not overlap obstacles
-                valid = obst._obstacle_collision_check(obst_map)
+                valid = obst.obstacle_collision_check(obst_map)
 
                 if valid:
                     # Add to Map
@@ -160,11 +160,7 @@ def generate_obstacle_map(
 
     obst_map.convert_map()
 
-    ## Fit mapping model
-    if map_type == 'direct':
-        return obst_map, obst_list
-    else:
-        raise IOError('Map type "{}" not recognized'.format(map_type))
+    return obst_map, obst_list
 
 
 def generate_circle_map(
@@ -278,25 +274,22 @@ def get_sphere_field_from_list(obst_list, field_type='rbf', tensor_args=None):
 
 
 if __name__ == "__main__":
+    fix_random_seed(1)
+
     import sys
     import numpy
     numpy.set_printoptions(threshold=sys.maxsize)
-    obst_list = [
-        ObstacleBox((0, 0), (2, 3)),
-        ObstacleSphere((-5, -5), 1)
-    ]
 
+    obst_list = []
     cell_size = 0.1
     map_dim = [20, 20]
-    seed = 5
     tensor_args = {'device': torch.device('cpu'), 'dtype': torch.float32}
-    obst_map, obst_list = generate_obstacle_map(
+    obst_map, _ = generate_obstacle_map(
         map_dim, obst_list, cell_size,
-        map_type='direct',
         random_gen=True,
         # random_gen=False,
-        num_obst=5,
-        rand_limits=[[-5, 5], [-5, 5]],
+        num_obst=20,
+        rand_limits=[[-9, 9], [-9, 9]],
         rand_rect_shape=[2, 2],
         rand_circle_radius=1,
         tensor_args=tensor_args
