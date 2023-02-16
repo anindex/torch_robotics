@@ -94,6 +94,16 @@ class DifferentiableRigidBody(torch.nn.Module):
 
         # local joint axis (w.r.t. joint coordinate frame):
         self.joint_axis = rigid_body_params["joint_axis"]
+        self.axis_idx = torch.nonzero(self.joint_axis.squeeze(0))
+        if self.axis_idx.nelement() > 0:
+            self.axis_idx = self.axis_idx[0]
+
+        if self.joint_axis[0, 0] == 1:
+            self.axis_rot_fn = x_rot
+        elif self.joint_axis[0, 1] == 1:
+            self.axis_rot_fn = y_rot
+        else:
+            self.axis_rot_fn = z_rot
         self.joint_type = rigid_body_params["joint_type"]
         self.joint_limits = rigid_body_params["joint_limits"]
 
@@ -209,12 +219,13 @@ class DifferentiableRigidBody(torch.nn.Module):
             qd_clamped = qd
 
         if self.joint_type in ['revolute', 'continuous']:
-            if torch.abs(self.joint_axis[0, 0]) == 1:
-                rot = x_rot(torch.sign(self.joint_axis[0, 0]) * q_clamped)
-            elif torch.abs(self.joint_axis[0, 1]) == 1:
-                rot = y_rot(torch.sign(self.joint_axis[0, 1]) * q_clamped)
-            else:
-                rot = z_rot(torch.sign(self.joint_axis[0, 2]) * q_clamped)
+            rot = self.axis_rot_fn(q_clamped)
+            # if torch.abs(self.joint_axis[0, 0]) == 1:
+            #     rot = x_rot(torch.sign(self.joint_axis[0, 0]) * q_clamped)
+            # elif torch.abs(self.joint_axis[0, 1]) == 1:
+            #     rot = y_rot(torch.sign(self.joint_axis[0, 1]) * q_clamped)
+            # else:
+            #     rot = z_rot(torch.sign(self.joint_axis[0, 2]) * q_clamped)
 
             self.joint_pose.set_translation(
                 self.trans.repeat(batch_size, 1)
