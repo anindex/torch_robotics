@@ -36,7 +36,7 @@ class DistanceField(ABC):
 
 class EmbodimentDistanceField(DistanceField):
 
-    def __init__(self, self_margin=0.005, obst_margin=0.03, field_type='rbf', num_interpolate=0,
+    def __init__(self, self_margin=0.005, obst_margin=0.03, field_type='rbf', clamp_sdf=True, num_interpolate=0,
                  link_interpolate_range=[2, 7], **kwargs):
         super().__init__(**kwargs)
         self.num_interpolate = num_interpolate
@@ -44,6 +44,7 @@ class EmbodimentDistanceField(DistanceField):
         self.self_margin = self_margin
         self.obst_margin = obst_margin
         self.field_type = field_type
+        self.clamp_sdf = clamp_sdf
 
     def self_distances(self, link_pos, **kwargs):  # position tensor
         dist_mat = torch.linalg.norm(link_pos.unsqueeze(-2) - link_pos.unsqueeze(-3), dim=-1)  # batch_dim x links x links
@@ -51,6 +52,13 @@ class EmbodimentDistanceField(DistanceField):
         lower_indices = torch.tril_indices(dist_mat.shape[-1], dist_mat.shape[-1], offset=-1).unbind()
         distances = dist_mat[..., lower_indices[0], lower_indices[1]]  # batch_dim x (links * (links - 1) / 2)
         return distances
+
+    def compute_self_collision(self, link_pos, margin=None, **kwargs):  # position tensor
+        if margin is None:
+            margin = self.self_margin
+        distances = self.self_distances(link_pos, **kwargs)  # batch_dim x links x links
+        any_self_collision = torch.any(distances < margin, dim=-1)
+        return any_self_collision
 
     def compute_self_cost(self, link_pos, field_type=None, margin=None, **kwargs):  # position tensor
         if field_type is None:
@@ -62,19 +70,15 @@ class EmbodimentDistanceField(DistanceField):
                 torch.square(link_pos.unsqueeze(-2) - link_pos.unsqueeze(-3)).sum(-1) / (-margin ** 2 * 2)).sum(
                 (-1, -2))
         elif field_type == 'sdf':  # this computes the negative cost from the DISTANCE FUNCTION
-            return -(self.self_distances(link_pos, **kwargs) - margin).min(-1)[0]
+            margin_minus_sdf = -(self.self_distances(link_pos, **kwargs) - margin).min(-1)[0]
+            if self.clamp_sdf:
+                return torch.relu(margin_minus_sdf)
+            return margin_minus_sdf
         elif field_type == 'occupancy':
             distances = self.self_distances(link_pos, **kwargs)  # batch_dim x (links * (links - 1) / 2)
             return (distances < margin).sum(-1)
         else:
             raise NotImplementedError('field_type {} not implemented'.format(field_type))
-
-    def compute_self_collision(self, link_pos, margin=None, **kwargs):  # position tensor
-        if margin is None:
-            margin = self.self_margin
-        distances = self.self_distances(link_pos, **kwargs)  # batch_dim x links x links
-        any_self_collision = torch.any(distances < margin, dim=-1)
-        return any_self_collision
 
     def obstacle_distances(self, link_pos, df_list=None, **kwargs):
         if df_list is None:
@@ -102,7 +106,10 @@ class EmbodimentDistanceField(DistanceField):
             return torch.exp(
                 torch.square(self.obstacle_distances(link_pos, df_list, **kwargs)) / (-margin ** 2 * 2)).sum((-1, -2))
         elif field_type == 'sdf':  # this computes the negative cost from the SIGNED DISTANCE FUNCTION
-            return -(self.obstacle_distances(link_pos, df_list, **kwargs) - margin).min(-1)[0].min(-1)[0]
+            margin_minus_sdf = -(self.obstacle_distances(link_pos, df_list, **kwargs) - margin).min(-1)[0].min(-1)[0]
+            if self.clamp_sdf:
+                return torch.relu(margin_minus_sdf)
+            return margin_minus_sdf
         elif field_type == 'occupancy':
             return (self.obstacle_distances(link_pos, df_list, **kwargs) < margin).sum((-1, -2))
         else:
@@ -119,14 +126,7 @@ class EmbodimentDistanceField(DistanceField):
             link_pos = torch.cat([link_pos, X_interp.flatten(-3, -2)], dim=-2)  # batch_dim x (num_link + (num_interp_link - 1) * num_interpolate) x 3
         return link_pos
 
-    @staticmethod
-    def remove_duplicate_link_pos(link_pos, unique_pos=True, **kwargs):
-        if unique_pos:  # remove duplicate positions from the URDF
-            link_pos = link_pos.unique(dim=-2)
-        return link_pos
-
     def compute_distance(self, link_pos, df_list=None, **kwargs):  # position tensor
-        link_pos = self.remove_duplicate_link_pos(link_pos, **kwargs)
         link_pos = self.interpolate_links(link_pos)
 
         self_distances = self.self_distances(link_pos, **kwargs).min(-1)[0]  # batch_dim
@@ -135,7 +135,6 @@ class EmbodimentDistanceField(DistanceField):
 
     def compute_cost(self, link_pos, df_list=None, **kwargs):
         # position tensor # batch_dim x num_links x 3
-        link_pos = self.remove_duplicate_link_pos(link_pos, **kwargs)
         link_pos = self.interpolate_links(link_pos)
 
         self_cost = self.compute_self_cost(link_pos, **kwargs)

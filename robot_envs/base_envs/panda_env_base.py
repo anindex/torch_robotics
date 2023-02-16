@@ -1,26 +1,24 @@
-import sys
 import time
 from math import ceil
 
-import numpy as np
+import time
+from math import ceil
 
+import einops
+import numpy as np
 import torch
 from matplotlib import pyplot as plt
-import einops
 
 from mp_baselines.planners.utils import extend_path, to_numpy
 from robot_envs.base_envs.env_base import EnvBase
-from robot_envs.base_envs.obstacle_map_env import ObstacleMapEnv
 from robot_envs.pybullet.objects import Panda
-
 from robot_envs.pybullet.panda import PandaEnv
 from torch_kinematics_tree.geometrics.skeleton import get_skeleton_from_model
 from torch_kinematics_tree.geometrics.utils import link_pos_from_link_tensor
 from torch_kinematics_tree.models.robots import DifferentiableFrankaPanda
 from torch_planning_objectives.fields.collision_bodies import PandaSphereDistanceField
-from torch_planning_objectives.fields.distance_fields import LinkSelfDistanceField, LinkDistanceField, \
-    FloorDistanceField, BorderDistanceField, EmbodimentDistanceField
-from torch_planning_objectives.fields.occupancy_map.map_generator import generate_obstacle_map, build_obstacle_map
+from torch_planning_objectives.fields.distance_fields import EmbodimentDistanceField
+from torch_planning_objectives.fields.occupancy_map.map_generator import build_obstacle_map
 from torch_planning_objectives.fields.primitive_distance_fields import Sphere, Box, InfiniteCylinder
 
 
@@ -75,7 +73,7 @@ class PandaEnvBase(EnvBase):
         # Collisions
         # Robot torch
         self.diff_panda = DifferentiableFrankaPanda(gripper=False, device=self.tensor_args['device'])
-        self.link_names_for_collision = ['panda_link1', 'panda_link3', 'panda_link4', 'panda_link5', 'panda_link7', 'ee_link']
+        self.link_names_for_collision_checking = ['panda_link1', 'panda_link3', 'panda_link4', 'panda_link5', 'panda_link7', 'panda_link8', 'ee_link']
 
         # Robot collision model
         self.obstacle_buffer = obstacle_buffer
@@ -122,9 +120,8 @@ class PandaEnvBase(EnvBase):
         # batch, trajectory length, q dimension
         q = einops.rearrange(q, 'b h d -> (b h) d')
 
-        link_tensor = self.diff_panda.compute_forward_kinematics_all_links(q)
-        self.diff_panda.get_link_names()
-        self.diff_panda.compute_forward_kinematics_link_list(q)
+        # link_tensor = self.diff_panda.compute_forward_kinematics_all_links(q)
+        link_tensor = self.diff_panda.compute_forward_kinematics_link_list(q, link_list=self.link_names_for_collision_checking)
 
         # reshape to batch, trajectory, link poses
         link_tensor = einops.rearrange(link_tensor, '(b h) links d1 d2 -> b h links d1 d2', b=b, h=h)
@@ -175,14 +172,18 @@ class PandaEnvBase(EnvBase):
         obstacle_collision = torch.any(distance_grid_points_to_spheres_centers_min < link_tensor_spheres_radii, dim=-1, keepdim=True)
         return obstacle_collision
 
-    def render(self, traj=None, ax=None):
+    def render(self, ax=None):
         # plot obstacles
         for obst_primitive in self.obst_primitives_l:
             obst_primitive.draw(ax)
 
+        ax.set_xlim3d(*self.task_space_bounds[0])
+        ax.set_ylim3d(*self.task_space_bounds[1])
+        ax.set_zlim3d(*self.task_space_bounds[2])
+
+    def render_trajectory(self, traj=None, ax=None):
         # plot path
         if traj is not None:
-            traj = torch.Tensor(traj)
             for t in range(traj.shape[0] - 1):
                 skeleton = get_skeleton_from_model(self.diff_panda, traj[t], self.diff_panda.get_link_names())
                 skeleton.draw_skeleton()
@@ -190,10 +191,6 @@ class PandaEnvBase(EnvBase):
             skeleton.draw_skeleton(color='g')
             start_skeleton = get_skeleton_from_model(self.diff_panda, traj[0], self.diff_panda.get_link_names())
             start_skeleton.draw_skeleton(color='r')
-
-        ax.set_xlim3d(*self.task_space_bounds[0])
-        ax.set_ylim3d(*self.task_space_bounds[1])
-        ax.set_zlim3d(*self.task_space_bounds[2])
 
     def render_physics(self, traj=None):
         if traj is not None:
@@ -240,7 +237,8 @@ if __name__ == "__main__":
 
     fig = plt.figure()
     ax = fig.add_subplot(projection='3d')
-    env.render(path, ax)
+    env.render(ax)
+    env.render_trajectory(path, ax)
     plt.show()
 
     env.render_physics(path)
