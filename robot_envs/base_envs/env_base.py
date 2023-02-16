@@ -45,7 +45,7 @@ class EnvBase:
         idx_begin = 0
         for i in range(max_tries):
             qs = self.random_q(max_samples)
-            in_collision = self.compute_collision(qs).squeeze()
+            in_collision = self._compute_collision(qs).squeeze()
             idxs_not_in_collision = torch.argwhere(in_collision == False).squeeze()
             if idxs_not_in_collision.nelement() == 0:
                 # all points are in collision
@@ -67,12 +67,26 @@ class EnvBase:
         return samples.squeeze()
 
     @abstractmethod
-    def compute_collision(self, q, **kwargs):
+    def _compute_collision(self, q, **kwargs):
         raise NotImplementedError
 
+    def compute_collision(self, q, **kwargs):
+        q_pos = self.get_q_position(q)
+        return self._compute_collision(q_pos)
+
     @abstractmethod
-    def compute_cost(self, q, **kwargs):
+    def _compute_collision_cost(self, q, **kwargs):
         raise NotImplementedError
+
+    def compute_collision_cost(self, q, **kwargs):
+        q_pos = self.get_q_position(q)
+        return self._compute_collision_cost(q_pos)
+
+    def get_q_position(self, q):
+        return q[..., :self.q_n_dofs]
+
+    def get_q_velocity(self, q):
+        return q[..., self.q_n_dofs:2*self.q_n_dofs]
 
     @staticmethod
     def distance_q(q1, q2):

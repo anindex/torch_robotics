@@ -322,10 +322,10 @@ def link_pos_from_link_tensor(link_tensor):
     return link_tensor[..., :3, 3]
 
 
-def to_torch(x, device='cpu', dtype=torch.float, requires_grad=False):
+def to_torch(x, device='cpu', dtype=torch.float):
     if torch.is_tensor(x):
-        return x.clone().to(device=device, dtype=dtype).requires_grad_(requires_grad)
-    return torch.tensor(x, dtype=dtype, device=device, requires_grad=requires_grad)
+        return x.clone().to(device=device, dtype=dtype)
+    return torch.tensor(x, dtype=dtype, device=device)
 
 
 def to_numpy(x, dtype=np.float32):

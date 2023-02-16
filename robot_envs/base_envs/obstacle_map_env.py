@@ -27,7 +27,7 @@ class ObstacleMapEnv(EnvBase):
         # if there is no forward kinematics, assume it's the identity
         return qs
 
-    def compute_collision(self, qs, **kwargs):
+    def _compute_collision(self, qs, **kwargs):
         if qs.ndim == 1:
             qs = qs.unsqueeze(0).unsqueeze(0)  # add batch and trajectory_length dimension for interface
         elif qs.ndim == 2:

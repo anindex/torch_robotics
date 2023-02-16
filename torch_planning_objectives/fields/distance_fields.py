@@ -109,30 +109,34 @@ class EmbodimentDistanceField(DistanceField):
             raise NotImplementedError('field_type {} not implemented'.format(field_type))
 
     def interpolate_links(self, link_pos):
-        link_dim = link_pos.shape[:-1]
-        alpha = torch.linspace(0, 1, self.num_interpolate + 2).type_as(link_pos)[1:self.num_interpolate + 1]
-        alpha = alpha.view(tuple([1] * len(link_dim) + [-1, 1]))  # 1 x 1 x 1 x ... x num_interpolate x 1
-        X = link_pos[..., self.link_interpolate_range[0]:self.link_interpolate_range[1] + 1, :].unsqueeze(-2)  # batch_dim x num_interp_link x 1 x 3
-        X_diff = torch.diff(X, dim=-3)  # batch_dim x (num_interp_link - 1) x 1 x 3
-        X_interp = X[..., :-1, :, :] + X_diff * alpha  # batch_dim x (num_interp_link - 1) x num_interpolate x 3
-        return torch.cat([link_pos, X_interp.flatten(-3, -2)], dim=-2)  # batch_dim x (num_link + (num_interp_link - 1) * num_interpolate) x 3
+        if self.num_interpolate > 0:
+            link_dim = link_pos.shape[:-1]
+            alpha = torch.linspace(0, 1, self.num_interpolate + 2).type_as(link_pos)[1:self.num_interpolate + 1]
+            alpha = alpha.view(tuple([1] * len(link_dim) + [-1, 1]))  # 1 x 1 x 1 x ... x num_interpolate x 1
+            X = link_pos[..., self.link_interpolate_range[0]:self.link_interpolate_range[1] + 1, :].unsqueeze(-2)  # batch_dim x num_interp_link x 1 x 3
+            X_diff = torch.diff(X, dim=-3)  # batch_dim x (num_interp_link - 1) x 1 x 3
+            X_interp = X[..., :-1, :, :] + X_diff * alpha  # batch_dim x (num_interp_link - 1) x num_interpolate x 3
+            link_pos = torch.cat([link_pos, X_interp.flatten(-3, -2)], dim=-2)  # batch_dim x (num_link + (num_interp_link - 1) * num_interpolate) x 3
+        return link_pos
 
-    def compute_distance(self, link_pos, df_list=None, unique_pos=True, **kwargs):  # position tensor
+    @staticmethod
+    def remove_duplicate_link_pos(link_pos, unique_pos=True, **kwargs):
         if unique_pos:  # remove duplicate positions from the URDF
             link_pos = link_pos.unique(dim=-2)
-        if self.num_interpolate > 0:
-            link_pos = self.interpolate_links(link_pos)
+        return link_pos
+
+    def compute_distance(self, link_pos, df_list=None, **kwargs):  # position tensor
+        link_pos = self.remove_duplicate_link_pos(link_pos, **kwargs)
+        link_pos = self.interpolate_links(link_pos)
 
         self_distances = self.self_distances(link_pos, **kwargs).min(-1)[0]  # batch_dim
         obstacle_distances = self.obstacle_distances(link_pos, df_list, **kwargs).min(-1)[0].min(-1)[0]  # batch_dim
         return self_distances, obstacle_distances
 
-    def compute_cost(self, link_pos, df_list=None, unique_pos=True, **kwargs):
+    def compute_cost(self, link_pos, df_list=None, **kwargs):
         # position tensor # batch_dim x num_links x 3
-        if unique_pos:  # remove duplicate positions from the URDF
-            link_pos = link_pos.unique(dim=-2)
-        if self.num_interpolate > 0:
-            link_pos = self.interpolate_links(link_pos)
+        link_pos = self.remove_duplicate_link_pos(link_pos, **kwargs)
+        link_pos = self.interpolate_links(link_pos)
 
         self_cost = self.compute_self_cost(link_pos, **kwargs)
         obstacle_cost = self.compute_obstacle_cost(link_pos, df_list, **kwargs)

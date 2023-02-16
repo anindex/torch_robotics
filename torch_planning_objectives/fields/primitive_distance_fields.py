@@ -4,6 +4,7 @@ from math import ceil
 
 import numpy as np
 import torch
+from matplotlib import pyplot as plt
 
 from torch_kinematics_tree.geometrics.utils import to_torch, to_numpy
 
@@ -153,11 +154,14 @@ class Sphere(Polytope):
         for center, radius in zip(self.centers, self.radii):
             center = to_numpy(center)
             radius = to_numpy(radius)
-            u, v = np.mgrid[0:2 * np.pi:30j, 0:np.pi:20j]
-            x = radius * (np.cos(u) * np.sin(v))
-            y = radius * (np.sin(u) * np.sin(v))
-            z = radius * np.cos(v)
-            ax.plot_surface(x + center[0], y + center[1], z + center[2], cmap='gray', alpha=0.75)
+            if ax.name == '3d':
+                u, v = np.mgrid[0:2 * np.pi:30j, 0:np.pi:20j]
+                x = radius * (np.cos(u) * np.sin(v))
+                y = radius * (np.sin(u) * np.sin(v))
+                z = radius * np.cos(v)
+                ax.plot_surface(x + center[0], y + center[1], z + center[2], cmap='gray', alpha=0.75)
+            else:
+                ax.add_patch(plt.Circle((center[0], center[1]), radius, color='gray', alpha=0.75))
 
 
 class Box(Polytope):

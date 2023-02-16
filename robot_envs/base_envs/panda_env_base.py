@@ -75,6 +75,7 @@ class PandaEnvBase(EnvBase):
         # Collisions
         # Robot torch
         self.diff_panda = DifferentiableFrankaPanda(gripper=False, device=self.tensor_args['device'])
+        self.link_names_for_collision = ['panda_link1', 'panda_link3', 'panda_link4', 'panda_link5', 'panda_link7', 'ee_link']
 
         # Robot collision model
         self.obstacle_buffer = obstacle_buffer
@@ -90,11 +91,6 @@ class PandaEnvBase(EnvBase):
         self.df_collision_border = None
         # self.border_collision = BorderDistanceField(tensor_args=tensor_args)
 
-    def setup_obstacles(self, obstacle_spheres=None):
-        self.obstacle_spheres = torch.zeros(len(obstacle_spheres), 4).to(**self.tensor_args)
-        for i, sphere in enumerate(obstacle_spheres):
-            self.obstacle_spheres[i, :] = torch.tensor([*sphere]).to(**self.tensor_args)
-
     def setup_obstacle_map(self):
         map_dim = [ceil((dim_bound[1] - dim_bound[0])/2.)*2 for dim_bound in self.task_space_bounds]
 
@@ -109,7 +105,7 @@ class PandaEnvBase(EnvBase):
 
         self.obstacle_map = obst_map
 
-    def compute_collision(self, q, **kwargs):
+    def compute_cost_collision_internal(self, q, field_type='occupancy', **kwargs):
         b = 1
         h = 1
         if q.ndim == 1:
@@ -117,8 +113,9 @@ class PandaEnvBase(EnvBase):
         elif q.ndim == 2:
             b = q.shape[0]
             q = q.unsqueeze(0)
-        elif q.nim == 3:
-            b = q.shape[0], h = q.shape[1]
+        elif q.ndim == 3:
+            b = q.shape[0]
+            h = q.shape[1]
         elif q.ndim > 3:
             raise NotImplementedError
 
@@ -126,18 +123,20 @@ class PandaEnvBase(EnvBase):
         q = einops.rearrange(q, 'b h d -> (b h) d')
 
         link_tensor = self.diff_panda.compute_forward_kinematics_all_links(q)
+        self.diff_panda.get_link_names()
+        self.diff_panda.compute_forward_kinematics_link_list(q)
 
         # reshape to batch, trajectory, link poses
         link_tensor = einops.rearrange(link_tensor, '(b h) links d1 d2 -> b h links d1 d2', b=b, h=h)
         link_pos = link_pos_from_link_tensor(link_tensor)
 
         if self.compute_robot_collision_from_occupancy_grid:
-            collisions = self.collision_robot_occupancy_grid(q, batch_dim=b)
+            cost_collision = self.collision_robot_occupancy_grid(q, batch_dim=b)
         else:
             ########################
             # Self collision and Obstacle collision
-            collision_self, collision_obstacle = self.df_collision_self_and_obstacles.compute_cost(
-                link_pos, df_list=self.obst_primitives_l, field_type='occupancy'
+            cost_collision_self, cost_collision_obstacle = self.df_collision_self_and_obstacles.compute_cost(
+                link_pos, df_list=self.obst_primitives_l, field_type=field_type
             )
 
             ########################
@@ -148,10 +147,18 @@ class PandaEnvBase(EnvBase):
             # Border collision
             # collision_border = self.df_collision_border.compute_cost()
 
-            # collisions = collision_self_and_obstacles | collision_floor | collision_border
-            collisions = collision_self | collision_obstacle
+            if field_type == 'occupancy':
+                cost_collision = cost_collision_self | cost_collision_obstacle
+            else:
+                cost_collision = cost_collision_self + cost_collision_obstacle
 
-        return collisions
+        return cost_collision
+
+    def _compute_collision_cost(self, q, **kwargs):
+        return self.compute_cost_collision_internal(q, field_type='sdf', **kwargs)
+
+    def _compute_collision(self, q, **kwargs):
+        return self.compute_cost_collision_internal(q, field_type='occupancy', **kwargs)
 
     def collision_robot_occupancy_grid(self, q, batch_dim=1):
         # Computes the collisions between the robot spheres and the occupancy grid
