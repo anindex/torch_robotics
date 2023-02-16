@@ -307,6 +307,10 @@ class URDFRobotModel(RobotModel):
         return body_params
 
 
+def convert_link_dict_to_tensor(link_dict, link_list):
+    return torch.stack([link_dict[name].get_transform_matrix() for name in link_list], dim=1)
+
+
 if __name__ == '__main__':
     from torch_kinematics_tree.utils.files import get_mjcf_path
     hand = MJCFRobotModel(get_mjcf_path() / 'shadow_hand_series_e.xml')

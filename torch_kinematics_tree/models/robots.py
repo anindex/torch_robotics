@@ -14,9 +14,9 @@ class DifferentiableKUKAiiwa(DifferentiableTree):
 class DifferentiableFrankaPanda(DifferentiableTree):
     def __init__(self, link_list: Optional[str] = None, gripper=True, device='cpu'):
         if gripper:
-            robot_file = get_robot_path() / 'franka_description' / 'robots' / 'panda_arm_hand.urdf'
+            robot_file = get_robot_path() / 'franka_description' / 'urdf' / 'panda_arm_hand.urdf'
         else:
-            robot_file = get_robot_path() / 'franka_description' / 'robots' / 'panda_arm_no_gripper.urdf'
+            robot_file = get_robot_path() / 'franka_description' / 'urdf' / 'panda_arm_no_gripper.urdf'
         self.model_path = robot_file.as_posix()
         self.name = "differentiable_franka_panda"
         super().__init__(self.model_path, self.name, link_list=link_list, device=device)
@@ -36,7 +36,7 @@ class DifferentiableUR10(DifferentiableTree):
 
 class DifferentiableTiagoDualHolo(DifferentiableTree):
     def __init__(self, link_list: Optional[str] = None, device='cpu'):
-        robot_file = get_robot_path() / 'tiago_dual_description' / 'tiago_dual_holobase_minimal.urdf'
+        robot_file = get_robot_path() / 'tiago_dual_description' / 'urdf' / 'tiago_dual_holobase_minimal.urdf'
         self.model_path = robot_file.as_posix()
         self.name = "differentiable_tiago_dual_holo"
         super().__init__(self.model_path, self.name, link_list=link_list, device=device)
@@ -44,7 +44,7 @@ class DifferentiableTiagoDualHolo(DifferentiableTree):
 
 class DifferentiableTiagoDualHoloMove(DifferentiableTree):
     def __init__(self, link_list: Optional[str] = None, device='cpu'):
-        robot_file = get_robot_path() / 'tiago_dual_description' / 'tiago_dual_holobase_minimal_holonomic.urdf'
+        robot_file = get_robot_path() / 'tiago_dual_description' / 'urdf' / 'tiago_dual_holobase_minimal_holonomic.urdf'
         self.model_path = robot_file.as_posix()
         self.name = "differentiable_tiago_dual_holo_move"
         super().__init__(self.model_path, self.name, link_list=link_list, device=device)
@@ -55,7 +55,7 @@ class DifferentiableTiagoDualHoloMove(DifferentiableTree):
 
 class DifferentiableShadowHand(DifferentiableTree):
     def __init__(self, link_list: Optional[str] = None, device='cpu'):
-        robot_file = get_robot_path() / 'shadow_hand' / 'shadow_hand.urdf'
+        robot_file = get_robot_path() / 'sr_grasp_description' / 'urdf' /'shadow_hand.urdf'
         self.model_path = robot_file.as_posix()
         self.name = "differentiable_shadow_hand"
         super().__init__(self.model_path, self.name, link_list=link_list, device=device)
@@ -63,7 +63,7 @@ class DifferentiableShadowHand(DifferentiableTree):
 
 class DifferentiableAllegroHand(DifferentiableTree):
     def __init__(self, link_list: Optional[str] = None, device='cpu'):
-        robot_file = get_robot_path() / 'allegro_hand' / 'allegro_hand.urdf'
+        robot_file = get_robot_path() / 'allegro_hand_description' / 'urdf' / 'allegro_hand.urdf'
         self.model_path = robot_file.as_posix()
         self.name = "differentiable_allegro_hand"
         super().__init__(self.model_path, self.name, link_list=link_list, device=device)

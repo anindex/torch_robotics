@@ -3,6 +3,7 @@ from torch_kinematics_tree.models.robots import DifferentiableFrankaPanda
 from torch_planning_objectives.fields.distance_fields import EmbodimentDistanceField
 from torch_planning_objectives.fields.primitive_distance_fields import MultiSpheres
 import torch
+import numpy as np
 
 
 if __name__ == "__main__":
@@ -22,7 +23,10 @@ if __name__ == "__main__":
     qd = torch.randn(batch_size, panda._n_dofs).to(**tensor_args)
 
     ee_pos, ee_rot, lin_jac, ang_jac = panda.compute_fk_and_jacobian(q, qd, 'ee_link')
-    print(ee_pos.shape, ee_rot.shape, lin_jac.shape, ang_jac.shape)
+    target_pos = np.array([0.8, 0.8, 0.5])
+    euler = np.array([torch.pi / 2, 0.0, 0.0])
+    q_sol = panda.inverse_kinematics(target_pos, euler, frame='ee_link', step_rate=0.01, max_iter=1000)
+    # print(ee_pos.shape, ee_rot.shape, lin_jac.shape, ang_jac.shape)
 
     ## Get position-rotation links ##
     link_tensor = panda.compute_forward_kinematics_all_links(q)

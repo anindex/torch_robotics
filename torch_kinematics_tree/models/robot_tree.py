@@ -52,22 +52,22 @@
 # SOFTWARE.
 
 from typing import List, Tuple, Dict, Optional
-from dataclasses import dataclass
-
+from scipy.spatial.transform import Rotation
 import torch
 import numpy as np
+import pinocchio as pin
+
 from torch_kinematics_tree.models.rigid_body import DifferentiableRigidBody
-from torch_kinematics_tree.models.utils import URDFRobotModel, MJCFRobotModel
+from torch_kinematics_tree.models.utils import URDFRobotModel, MJCFRobotModel, convert_link_dict_to_tensor
+from torch_kinematics_tree.models.pinocchio.model import PinocchioModel
+from torch_kinematics_tree.models.pinocchio.tasks import BodyTask
 from torch_kinematics_tree.geometrics.spatial_vector import MotionVec
 
-
-def convert_link_dict_to_tensor(link_dict, link_list):
-    return torch.stack([link_dict[name].get_transform_matrix() for name in link_list], dim=1)
 
 
 class DifferentiableTree(torch.nn.Module):
 
-    def __init__(self, model_path: str, name="", link_list=None, device='cpu'):
+    def __init__(self, model_path, name="", link_list=None, device='cpu'):
 
         super().__init__()
 
@@ -85,6 +85,8 @@ class DifferentiableTree(torch.nn.Module):
         self._bodies = torch.nn.ModuleList()
         self._n_dofs = 0
         self._controlled_joints = []
+
+        self.pin_model = PinocchioModel(model_path=model_path)
 
         # NOTE: making the joint a part of the rigid body
         # while urdfs model joints and rigid bodies separately
@@ -292,6 +294,28 @@ class DifferentiableTree(torch.nn.Module):
         return (
             ee_pos, ee_rot, lin_jac, ang_jac,
         )
+
+    def inverse_kinematics(self, target_position, target_euler, frame='ee_link', step_rate=0.05, **kwargs):
+        """
+        Inverse kinematics
+        Args:
+            target_position (np.array): target position
+            target_euler (np.array): target orientation
+            joint_indices (np.array): joint indices
+
+        Returns:
+            np.array: joint angles
+        """
+        target_orientation = Rotation.from_euler('xyz', target_euler).as_matrix()
+        pose = pin.SE3(target_orientation, target_position)
+        end_effector_task = BodyTask(
+            frame,
+            position_cost=1.0,  # [cost] / [m]
+            orientation_cost=1.0,  # [cost] / [rad]
+            lm_damping=1.0,  # tuned for this setup
+        )
+        end_effector_task.set_target(pose)
+        return self.pin_model.solve_ik([end_effector_task], dt=step_rate, **kwargs)
 
     def get_joint_limits(self) -> List[Dict[str, torch.Tensor]]:
         """
