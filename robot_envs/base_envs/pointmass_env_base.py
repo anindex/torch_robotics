@@ -1,5 +1,4 @@
 import einops
-import numpy as np
 import torch
 from matplotlib import pyplot as plt
 
@@ -91,6 +90,39 @@ class PointMassEnvBase(EnvBase):
     def _compute_collision(self, q, field_type='occupancy', **kwargs):
         return self.compute_cost_collision_internal(q, field_type=field_type, **kwargs)
 
+    def get_rrt_params(self):
+        # RRT planner parameters
+        params = dict(
+            env=self,
+            n_iters=10000,
+            max_best_cost_iters=3000,
+            cost_eps=1e-2,
+            step_size=0.01,
+            n_radius=0.1,
+            n_knn=10,
+            max_time=60.,
+            goal_prob=0.1,
+            tensor_args=self.tensor_args
+        )
+        return params
+
+    def get_sgpmp_params(self):
+        # SGPMP planner parameters
+        params = dict(
+            dt=0.02,
+            n_dof=self.q_n_dofs,
+            temperature=1.,
+            step_size=0.05,
+            sigma_start_init=1e-3,
+            sigma_goal_init=1e-3,
+            sigma_gp_init=10.,
+            sigma_start_sample=1e-3,
+            sigma_goal_sample=1e-3,
+            sigma_gp_sample=1.,
+            tensor_args=self.tensor_args,
+        )
+        return params
+
     def render(self, ax=None):
         # plot obstacles
         for obst_primitive in self.obst_primitives_l:
@@ -98,6 +130,7 @@ class PointMassEnvBase(EnvBase):
 
         ax.set_xlim(*self.task_space_bounds[0])
         ax.set_ylim(*self.task_space_bounds[1])
+
 
 
 if __name__ == "__main__":

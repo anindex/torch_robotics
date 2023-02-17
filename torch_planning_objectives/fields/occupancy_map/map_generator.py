@@ -133,7 +133,7 @@ def generate_obstacle_map(
         radius = rand_circle_radius
         for _ in range(num_obst - num_fixed):
             num_attempts = 0
-            max_attempts = 100
+            max_attempts = 200
             while num_attempts <= max_attempts:
                 if np.random.choice(2):
                     obst = random_rect(rand_limits, rand_rect_shape)
