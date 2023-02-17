@@ -84,8 +84,7 @@ class Skeleton():
     def get_node_list_dict(self):
         return {k: v for k, v in self.node_pos.items() if k in self.node_list}
 
-    def draw_skeleton(self, pos=None, shift=None, with_labels=False, color='b'):
-        ax = plt.gca()
+    def draw_skeleton(self, pos=None, shift=None, with_labels=False, color='b', ax=None):
         if pos is None:
             pos = self.node_pos
         else:

@@ -73,7 +73,8 @@ class PandaEnvBase(EnvBase):
         # Collisions
         # Robot torch
         self.diff_panda = DifferentiableFrankaPanda(gripper=False, device=self.tensor_args['device'])
-        self.link_names_for_collision_checking = ['panda_link1', 'panda_link3', 'panda_link4', 'panda_link5', 'panda_link7', 'panda_link8', 'ee_link']
+        self.link_names_for_collision_checking = ['panda_link1', 'panda_link3', 'panda_link4', 'panda_link5',
+                                                  'panda_link7', 'panda_link8', 'ee_link']
 
         # Robot collision model
         self.obstacle_buffer = obstacle_buffer
@@ -186,11 +187,11 @@ class PandaEnvBase(EnvBase):
         if traj is not None:
             for t in range(traj.shape[0] - 1):
                 skeleton = get_skeleton_from_model(self.diff_panda, traj[t], self.diff_panda.get_link_names())
-                skeleton.draw_skeleton()
+                skeleton.draw_skeleton(ax=ax)
             skeleton = get_skeleton_from_model(self.diff_panda, traj[-1], self.diff_panda.get_link_names())
-            skeleton.draw_skeleton(color='g')
+            skeleton.draw_skeleton(ax=ax, color='g')
             start_skeleton = get_skeleton_from_model(self.diff_panda, traj[0], self.diff_panda.get_link_names())
-            start_skeleton.draw_skeleton(color='r')
+            start_skeleton.draw_skeleton(ax=ax, color='r')
 
     def render_physics(self, traj=None):
         if traj is not None:
