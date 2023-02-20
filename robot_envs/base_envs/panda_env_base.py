@@ -186,11 +186,11 @@ class PandaEnvBase(EnvBase):
         params = dict(
             env=self,
             n_iters=20000,
-            max_best_cost_iters=5000,
+            max_best_cost_iters=50,
             cost_eps=1e-2,
             step_size=np.pi/20,
             n_radius=np.pi/4,
-            n_knn=5,
+            n_knn=10,
             max_time=60.,
             goal_prob=0.2,
             tensor_args=self.tensor_args

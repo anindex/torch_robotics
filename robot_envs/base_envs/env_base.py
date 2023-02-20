@@ -107,7 +107,7 @@ class EnvBase:
 
     @abstractmethod
     def render_physics(self, **kwargs):
-        raise NotImplementedError
+        pass
 
     def get_rrt_params(self):
         raise NotImplementedError
