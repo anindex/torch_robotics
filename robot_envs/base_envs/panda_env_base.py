@@ -207,7 +207,7 @@ class PandaEnvBase(EnvBase):
         params = dict(
             dt=0.02,
             n_dof=self.q_n_dofs,
-            num_samples=64,
+            num_samples=32,
             temperature=1.,
             step_size=1.,
             sigma_start_init=1e-4,
