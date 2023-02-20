@@ -129,6 +129,7 @@ class PointMassEnvBase(EnvBase):
             n_knn=10,
             max_time=60.,
             goal_prob=0.2,
+            n_pre_samples=10000,
             tensor_args=self.tensor_args
         )
         return params

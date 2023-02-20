@@ -193,6 +193,7 @@ class PandaEnvBase(EnvBase):
             n_knn=10,
             max_time=240.,
             goal_prob=0.2,
+            n_pre_samples=50000,
             tensor_args=self.tensor_args
         )
         return params
