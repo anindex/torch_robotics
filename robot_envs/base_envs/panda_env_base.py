@@ -210,6 +210,10 @@ class PandaEnvBase(EnvBase):
             sigma_start_sample=1e-4,
             sigma_goal_sample=1e-4,
             sigma_gp_sample=0.2,
+            sigma_start=1e-4,
+            sigma_gp=5e-4,
+            sigma_goal_prior=1e-4,
+            sigma_coll=5e-6,
             tensor_args=self.tensor_args,
         )
         return params
