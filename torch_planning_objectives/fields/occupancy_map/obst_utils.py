@@ -2,7 +2,7 @@ from math import ceil
 import random
 import matplotlib.pyplot as plt
 
-from torch_planning_objectives.fields.primitive_distance_fields import Box, Sphere
+from torch_planning_objectives.fields.primitive_distance_fields import BoxField, SphereField
 
 
 def round_up(n, decimals=0):
@@ -19,7 +19,7 @@ def random_rect(center_lims, shape_dims):
     Generates an rectangular obstacle object, with random location and dimensions.
     """
     center = random_center(center_lims)
-    return Box([center], [shape_dims])
+    return BoxField([center], [shape_dims])
 
 
 def random_circle(center_lims, radius):
@@ -27,7 +27,7 @@ def random_circle(center_lims, radius):
     Generates a circle obstacle object, with random location and dimensions.
     """
     center = random_center(center_lims)
-    return Sphere([center], [radius])
+    return SphereField([center], [radius])
 
 
 def save_map_image(obst_map=None,start_pts=None,goal_pts=None,dir='.'):

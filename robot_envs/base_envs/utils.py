@@ -11,11 +11,11 @@ def plot_trajectories(ax, trajs, line_color='red', plot_markers=False, label='',
             start_state = traj[0]
             goal_state = traj[-1]
             if ax.name == '3d':
-                ax.plot3D(traj[:, 0], traj[:, 1], traj[:, 2], marker='o', markersize=2., color=line_color, **plot_options)
-                ax.scatter3D(start_state[0], start_state[1], start_state[2], color='g', marker='o', s=100)
-                ax.scatter3D(goal_state[0], goal_state[1], goal_state[2], color='r', marker='o', s=100)
+                ax.plot3D(traj[:, 0], traj[:, 1], traj[:, 2], marker='o', markersize=2., color=line_color, zorder=20, **plot_options)
+                ax.scatter3D(start_state[0], start_state[1], start_state[2], color='g', marker='o', zorder=20, s=100)
+                ax.scatter3D(goal_state[0], goal_state[1], goal_state[2], color='r', marker='o', zorder=20, s=100)
             else:
-                ax.plot(traj[:, 0], traj[:, 1], marker='o', markersize=2., color=line_color, **plot_options)
+                ax.plot(traj[:, 0], traj[:, 1], marker='o', markersize=2., color=line_color, zorder=20, **plot_options)
                 ax.scatter(start_state[0], start_state[1],  color='g', marker='o', s=100, zorder=20)
                 ax.scatter(goal_state[0], goal_state[1],  color='r', marker='o', s=100, zorder=20)
 

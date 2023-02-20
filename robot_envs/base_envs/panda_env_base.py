@@ -13,13 +13,14 @@ from mp_baselines.planners.utils import extend_path, to_numpy
 from robot_envs.base_envs.env_base import EnvBase
 from robot_envs.pybullet.objects import Panda
 from robot_envs.pybullet.panda import PandaEnv
+from robot_envs.pybullet.panda_bullet_base import PandaEnvPyBulletBase
 from torch_kinematics_tree.geometrics.skeleton import get_skeleton_from_model
 from torch_kinematics_tree.geometrics.utils import link_pos_from_link_tensor
 from torch_kinematics_tree.models.robots import DifferentiableFrankaPanda
 from torch_planning_objectives.fields.collision_bodies import PandaSphereDistanceField
 from torch_planning_objectives.fields.distance_fields import EmbodimentDistanceField, BorderDistanceField
 from torch_planning_objectives.fields.occupancy_map.map_generator import build_obstacle_map
-from torch_planning_objectives.fields.primitive_distance_fields import Sphere, Box, InfiniteCylinder
+from torch_planning_objectives.fields.primitive_distance_fields import SphereField, BoxField, InfiniteCylinderField
 
 
 class PandaEnvBase(EnvBase):
@@ -44,7 +45,10 @@ class PandaEnvBase(EnvBase):
                          work_space_dim=3, tensor_args=tensor_args)
 
         # Physics Environment
-        self.panda_bullet_env = PandaEnv(render=True)
+        self.panda_bullet_env = PandaEnvPyBulletBase(
+            obst_primitives_l=obst_primitives_l,
+            render=True
+        )
 
         ################################################################################################
         # Task space dimensions
@@ -186,12 +190,12 @@ class PandaEnvBase(EnvBase):
         params = dict(
             env=self,
             n_iters=20000,
-            max_best_cost_iters=1000,
+            max_best_cost_iters=500,
             cost_eps=1e-2,
-            step_size=np.pi/20,
-            n_radius=np.pi/4,
-            n_knn=10,
-            max_time=240.,
+            step_size=np.pi/16,
+            n_radius=np.pi/2,
+            n_knn=5,
+            max_time=60.,
             goal_prob=0.2,
             n_pre_samples=50000,
             tensor_args=self.tensor_args
@@ -246,9 +250,11 @@ class PandaEnvBase(EnvBase):
 
     def render_physics(self, traj=None):
         if traj is not None:
+            traj = to_numpy(traj)
             self.panda_bullet_env.reset()
             for t in range(traj.shape[0] - 1):
-                self.panda_bullet_env.step(to_numpy(torch.cat((traj[t], torch.tensor([0, 0, 0, 0, 0])))))
+                action = np.concatenate((traj[t], np.zeros(5)))
+                self.panda_bullet_env.step(action)
                 time.sleep(0.5)
 
 
@@ -256,13 +262,13 @@ if __name__ == "__main__":
     tensor_args = dict(device='cpu', dtype=torch.float32)
 
     obst_primitives_l = [
-        Sphere(
+        SphereField(
             [[0.5, 0.5, 0.5],
              [-0.8, -0.8, 0.8]],
             [0.4, 0.2],
             tensor_args=tensor_args
         ),
-        Box(
+        BoxField(
             [[-0.5, 0.5, 0.5],
              [0., 0.2, 0.5],
              ],
@@ -271,7 +277,7 @@ if __name__ == "__main__":
              ],
             tensor_args=tensor_args
         ),
-        InfiniteCylinder(
+        InfiniteCylinderField(
             [[1, 1, 1]],
             [0.3],
             tensor_args=tensor_args
@@ -293,5 +299,5 @@ if __name__ == "__main__":
     env.render_trajectories(ax, [path])
     plt.show()
 
-    env.render_physics(path)
+    # env.render_physics(path)
 

@@ -6,7 +6,7 @@ from mp_baselines.planners.utils import extend_path, to_numpy
 from robot_envs.base_envs.env_base import EnvBase
 from robot_envs.base_envs.utils import plot_trajectories
 from torch_planning_objectives.fields.distance_fields import EmbodimentDistanceField, BorderDistanceField
-from torch_planning_objectives.fields.primitive_distance_fields import Sphere
+from torch_planning_objectives.fields.primitive_distance_fields import SphereField
 
 
 class PointMassEnvBase(EnvBase):
@@ -176,7 +176,7 @@ if __name__ == "__main__":
     tensor_args = dict(device='cpu', dtype=torch.float32)
 
     obst_primitives_l = [
-        Sphere(
+        SphereField(
             [[0.3, 0.3],
              [0.6, 0.6]],
             [0.1, 0.2],

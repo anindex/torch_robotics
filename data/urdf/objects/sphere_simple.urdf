@@ -21,14 +21,16 @@
         </inertial>
         <visual>
             <geometry>
-                <sphere radius="1.0"/>
+<!--                <sphere radius="1.0"/>-->
+                <sphere radius="0.15"/>
             </geometry>
             <origin rpy="0. 0. 0." xyz="0. 0. 0."/>
             <material name="white"/>
         </visual>
         <collision>
             <geometry>
-                <sphere radius="0.9"/>
+<!--                <sphere radius="0.9"/>-->
+                <sphere radius="0.15"/>
             </geometry>
             <origin rpy="0. 0. 0." xyz="0. 0. 0."/>
         </collision>

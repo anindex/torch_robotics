@@ -6,7 +6,7 @@ from mp_baselines.planners.utils import tensor_linspace
 from robot_envs.base_envs.env_base import EnvBase
 from robot_envs.base_envs.obstacle_map_env import ObstacleMapEnv
 from torch_planning_objectives.fields.occupancy_map.map_generator import generate_obstacle_map, build_obstacle_map
-from torch_planning_objectives.fields.primitive_distance_fields import Sphere
+from torch_planning_objectives.fields.primitive_distance_fields import SphereField
 
 
 def create_circles_spaced():
@@ -20,7 +20,7 @@ def create_circles_spaced():
         (-0.5, -0.5, 0.3),
     ]
     circles = np.array(circles)
-    primitive_obst_list = [Sphere(circles[:, :2], circles[:, 2])]
+    primitive_obst_list = [SphereField(circles[:, :2], circles[:, 2])]
     return primitive_obst_list
 
 

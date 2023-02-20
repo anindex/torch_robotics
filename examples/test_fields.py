@@ -1,7 +1,7 @@
 import time
 from torch_kinematics_tree.models.robots import DifferentiableFrankaPanda
 from torch_planning_objectives.fields.distance_fields import EmbodimentDistanceField
-from torch_planning_objectives.fields.primitive_distance_fields import Sphere
+from torch_planning_objectives.fields.primitive_distance_fields import SphereField
 import torch
 
 
@@ -9,7 +9,7 @@ if __name__ == "__main__":
     batch_size = 10
     device = 'cpu'
     tensor_args = dict(device=device, dtype=torch.float32)
-    df = Sphere(
+    df = SphereField(
         centers=[[1., 1., 1.], [0., 0., 2.], [0., 0., 3.]],
         radii=[0.5, 0.5, 0.5],
         tensor_args=tensor_args

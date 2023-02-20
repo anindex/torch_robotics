@@ -9,7 +9,7 @@ from matplotlib import pyplot as plt
 from torch_kinematics_tree.geometrics.utils import to_torch, to_numpy
 
 
-class Polytope(ABC):
+class PolytopeField(ABC):
     """
     Polytope represents workspace objects in N-D.
     """
@@ -59,7 +59,7 @@ class Polytope(ABC):
         raise NotImplementedError
 
 
-class Sphere(Polytope):
+class SphereField(PolytopeField):
     
     def __init__(self, centers, radii, tensor_args=None):
         """
@@ -164,7 +164,7 @@ class Sphere(Polytope):
                 ax.add_patch(plt.Circle((center[0], center[1]), radius, color='gray', alpha=0.75))
 
 
-class Box(Polytope):
+class BoxField(PolytopeField):
 
     def __init__(self, centers, sizes, tensor_args=None):
         """
@@ -254,7 +254,7 @@ class Box(Polytope):
 
 
 
-class InfiniteCylinder(Polytope):
+class InfiniteCylinderField(PolytopeField):
 
     def __init__(self, centers, radii, tensor_args=None):
         """
@@ -308,7 +308,7 @@ class InfiniteCylinder(Polytope):
             ax.plot_surface(xc, yc, zc, cmap='gray', alpha=0.75)
 
 
-class Cylinder(InfiniteCylinder):
+class CylinderField(InfiniteCylinderField):
 
     def __init__(self, centers, radii, heights, tensor_args=None):
         """
@@ -353,7 +353,7 @@ class Cylinder(InfiniteCylinder):
         raise NotImplementedError
 
 
-class Ellipsoid(Polytope):
+class EllipsoidField(PolytopeField):
 
     def __init__(self, center, radii, tensor_args=None):
         """
@@ -386,7 +386,7 @@ class Ellipsoid(Polytope):
         return f"Ellipsoid(center={self.center}, radii={self.radii})"
 
 
-class Capsule(Polytope):
+class CapsuleField(PolytopeField):
 
     def __init__(self, center, radius, height, tensor_args=None):
         """
