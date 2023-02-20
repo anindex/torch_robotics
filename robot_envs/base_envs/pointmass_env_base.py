@@ -4,7 +4,8 @@ from matplotlib import pyplot as plt
 
 from mp_baselines.planners.utils import extend_path, to_numpy
 from robot_envs.base_envs.env_base import EnvBase
-from torch_planning_objectives.fields.distance_fields import EmbodimentDistanceField
+from robot_envs.base_envs.utils import plot_trajectories
+from torch_planning_objectives.fields.distance_fields import EmbodimentDistanceField, BorderDistanceField
 from torch_planning_objectives.fields.primitive_distance_fields import Sphere
 
 
@@ -15,7 +16,8 @@ class PointMassEnvBase(EnvBase):
                  q_min=(-1, -1),
                  q_max=(1, 1),
                  obst_primitives_l=None,
-                 task_space_bounds=((-1., 1.), (-1., 1.), (-1., 1.)),
+                 work_space_dim=2,
+                 work_space_bounds=((-1., 1.), (-1., 1.), (-1., 1.)),
                  obstacle_buffer=0.01,
                  self_buffer=0.0005,
                  tensor_args=None
@@ -26,17 +28,26 @@ class PointMassEnvBase(EnvBase):
         q_max = torch.tensor(q_max)
         q_n_dofs = len(q_min)
 
-        super().__init__(name=name, q_n_dofs=q_n_dofs, q_min=q_min, q_max=q_max, tensor_args=tensor_args)
+        super().__init__(name=name, q_n_dofs=q_n_dofs, q_min=q_min, q_max=q_max,
+                         work_space_dim=work_space_dim, tensor_args=tensor_args)
 
         ################################################################################################
         # Task space dimensions
-        self.task_space_bounds = task_space_bounds
-        self.task_space_bounds_min = torch.Tensor([task_space_bounds[0][0],
-                                                   task_space_bounds[1][0],
-                                                   task_space_bounds[2][0]]).to(**tensor_args)
-        self.task_space_bounds_max = torch.Tensor([task_space_bounds[0][1],
-                                                   task_space_bounds[1][1],
-                                                   task_space_bounds[2][1]]).to(**tensor_args)
+        self.work_space_bounds = work_space_bounds
+        if self.work_space_dim == 3:
+            self.work_space_bounds_min = torch.Tensor([work_space_bounds[0][0],
+                                                       work_space_bounds[1][0],
+                                                       work_space_bounds[2][0]]).to(**tensor_args)
+            self.work_space_bounds_max = torch.Tensor([work_space_bounds[0][1],
+                                                       work_space_bounds[1][1],
+                                                       work_space_bounds[2][1]]).to(**tensor_args)
+        elif self.work_space_dim == 2:
+            self.work_space_bounds_min = torch.Tensor([work_space_bounds[0][0],
+                                                       work_space_bounds[1][0]]).to(**tensor_args)
+            self.work_space_bounds_max = torch.Tensor([work_space_bounds[0][1],
+                                                       work_space_bounds[1][1]]).to(**tensor_args)
+        else:
+            raise NotImplementedError
 
         ################################################################################################
         # Obstacles
@@ -47,8 +58,17 @@ class PointMassEnvBase(EnvBase):
         self.obstacle_buffer = obstacle_buffer
         self.self_buffer = self_buffer
         self.df_collision_self_and_obstacles = EmbodimentDistanceField(
+            field_type='occupancy',
             self_margin=self_buffer, obst_margin=obstacle_buffer,
-            num_interpolate=4, link_interpolate_range=[2, 7]
+            tensor_args=tensor_args
+        )
+
+        self.df_collision_border = BorderDistanceField(
+            work_space_bounds_min=self.work_space_bounds_min,
+            work_space_bounds_max=self.work_space_bounds_max,
+            field_type='occupancy',
+            obst_margin=0.,
+            tensor_args=tensor_args
         )
 
     def compute_cost_collision_internal(self, q, field_type='occupancy', **kwargs):
@@ -80,7 +100,14 @@ class PointMassEnvBase(EnvBase):
         cost_collision_obstacle = self.df_collision_self_and_obstacles.compute_obstacle_cost(
             link_pos, df_list=self.obst_primitives_l, field_type=field_type)
 
-        cost_collision = cost_collision_obstacle
+        # Border collision
+        cost_collision_border = self.df_collision_border.compute_cost(
+            link_pos, field_type=field_type)
+
+        if field_type == 'occupancy':
+            cost_collision = cost_collision_obstacle | cost_collision_border
+        else:
+            cost_collision = cost_collision_obstacle + cost_collision_border
 
         return cost_collision
 
@@ -101,7 +128,7 @@ class PointMassEnvBase(EnvBase):
             n_radius=0.1,
             n_knn=10,
             max_time=60.,
-            goal_prob=0.1,
+            goal_prob=0.2,
             tensor_args=self.tensor_args
         )
         return params
@@ -128,8 +155,14 @@ class PointMassEnvBase(EnvBase):
         for obst_primitive in self.obst_primitives_l:
             obst_primitive.draw(ax)
 
-        ax.set_xlim(*self.task_space_bounds[0])
-        ax.set_ylim(*self.task_space_bounds[1])
+        ax.set_xlim(*self.work_space_bounds[0])
+        ax.set_ylim(*self.work_space_bounds[1])
+        if self.work_space_dim == 3:
+            ax.set_zlim(*self.work_space_bounds[2])
+            ax.view_init(azim=0, elev=90)
+
+    def render_trajectories(self, ax=None, trajs=None, **kwargs):
+        plot_trajectories(ax, trajs, **kwargs)
 
 
 

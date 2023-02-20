@@ -11,6 +11,7 @@ class EnvBase:
                  q_n_dofs=2,
                  q_min=None,
                  q_max=None,
+                 work_space_dim=2,
                  tensor_args=None
                  ):
         self.tensor_args = tensor_args
@@ -25,6 +26,10 @@ class EnvBase:
         self.q_min = q_min.to(**self.tensor_args)
         self.q_max = q_max.to(**self.tensor_args)
         self.q_distribution = torch.distributions.uniform.Uniform(self.q_min, self.q_max)
+
+        ################################################################################################
+        # Work space
+        self.work_space_dim = work_space_dim
 
     def sample_q(self, without_collision=True, **kwargs):
         if without_collision:
@@ -94,6 +99,10 @@ class EnvBase:
 
     @abstractmethod
     def render(self, **kwargs):
+        raise NotImplementedError
+
+    @abstractmethod
+    def render_trajectories(self, **kwargs):
         raise NotImplementedError
 
     @abstractmethod

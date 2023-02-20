@@ -12,12 +12,15 @@ class ObstacleMapEnv(EnvBase):
                  q_n_dofs=2,
                  q_min=None,
                  q_max=None,
+                 work_space_dim=2,
                  obstacle_map=None,
                  tensor_args=None,
                  ):
         ################################################################################################
         # Robot
-        super().__init__(name=name, q_n_dofs=q_n_dofs, q_min=q_min, q_max=q_max, tensor_args=tensor_args)
+        super().__init__(name=name, q_n_dofs=q_n_dofs, q_min=q_min, q_max=q_max,
+                         work_space_dim=work_space_dim,
+                         tensor_args=tensor_args)
 
         ################################################################################################
         # Obstacle map

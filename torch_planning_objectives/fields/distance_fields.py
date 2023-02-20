@@ -34,17 +34,35 @@ class DistanceField(ABC):
         pass
 
 
-class EmbodimentDistanceField(DistanceField):
+class EmbodimentDistanceFieldBase(DistanceField):
 
-    def __init__(self, self_margin=0.005, obst_margin=0.03, field_type='rbf', clamp_sdf=True, num_interpolate=0,
+    def __init__(self, field_type='rbf', clamp_sdf=True, num_interpolate=0,
                  link_interpolate_range=[2, 7], **kwargs):
         super().__init__(**kwargs)
         self.num_interpolate = num_interpolate
         self.link_interpolate_range = link_interpolate_range
-        self.self_margin = self_margin
-        self.obst_margin = obst_margin
         self.field_type = field_type
         self.clamp_sdf = clamp_sdf
+
+    def interpolate_links(self, link_pos):
+        if self.num_interpolate > 0:
+            link_dim = link_pos.shape[:-1]
+            alpha = torch.linspace(0, 1, self.num_interpolate + 2).type_as(link_pos)[1:self.num_interpolate + 1]
+            alpha = alpha.view(tuple([1] * len(link_dim) + [-1, 1]))  # 1 x 1 x 1 x ... x num_interpolate x 1
+            X = link_pos[..., self.link_interpolate_range[0]:self.link_interpolate_range[1] + 1, :].unsqueeze(-2)  # batch_dim x num_interp_link x 1 x 3
+            X_diff = torch.diff(X, dim=-3)  # batch_dim x (num_interp_link - 1) x 1 x 3
+            X_interp = X[..., :-1, :, :] + X_diff * alpha  # batch_dim x (num_interp_link - 1) x num_interpolate x 3
+            link_pos = torch.cat([link_pos, X_interp.flatten(-3, -2)], dim=-2)  # batch_dim x (num_link + (num_interp_link - 1) * num_interpolate) x 3
+        return link_pos
+
+
+
+class EmbodimentDistanceField(EmbodimentDistanceFieldBase):
+
+    def __init__(self, self_margin=0.005, obst_margin=0.03, **kwargs):
+        super().__init__(**kwargs)
+        self.self_margin = self_margin
+        self.obst_margin = obst_margin
 
     def self_distances(self, link_pos, **kwargs):  # position tensor
         dist_mat = torch.linalg.norm(link_pos.unsqueeze(-2) - link_pos.unsqueeze(-3), dim=-1)  # batch_dim x links x links
@@ -75,8 +93,9 @@ class EmbodimentDistanceField(DistanceField):
                 return torch.relu(margin_minus_sdf)
             return margin_minus_sdf
         elif field_type == 'occupancy':
-            distances = self.self_distances(link_pos, **kwargs)  # batch_dim x (links * (links - 1) / 2)
-            return (distances < margin).sum(-1)
+            return self.compute_self_collision(link_pos, **kwargs)
+            # distances = self.self_distances(link_pos, **kwargs)  # batch_dim x (links * (links - 1) / 2)
+            # return (distances < margin).sum(-1)
         else:
             raise NotImplementedError('field_type {} not implemented'.format(field_type))
 
@@ -88,10 +107,10 @@ class EmbodimentDistanceField(DistanceField):
         dfs = [df.compute_signed_distance(link_pos).view(link_dim) for df in df_list]  # df() returns batch_dim x links
         return torch.stack(dfs, dim=-2)  # batch_dim x num_sdfs x links
 
-    def compute_obstacle_collision(self, link_pos, margin=None, **kwargs):  # position tensor
+    def compute_obstacle_collision(self, link_pos, df_list, margin=None, **kwargs):  # position tensor
         if margin is None:
             margin = self.obst_margin
-        distances = self.obstacle_distances(link_pos, **kwargs).min(-1)[0].min(-1)[0]  # batch_dim
+        distances = self.obstacle_distances(link_pos, df_list, **kwargs).min(-1)[0].min(-1)[0]  # batch_dim
         any_collision = distances < margin
         return any_collision
 
@@ -111,20 +130,10 @@ class EmbodimentDistanceField(DistanceField):
                 return torch.relu(margin_minus_sdf)
             return margin_minus_sdf
         elif field_type == 'occupancy':
-            return (self.obstacle_distances(link_pos, df_list, **kwargs) < margin).sum((-1, -2))
+            return self.compute_obstacle_collision(link_pos, df_list, **kwargs)
+            # return (self.obstacle_distances(link_pos, df_list, **kwargs) < margin).sum((-1, -2))
         else:
             raise NotImplementedError('field_type {} not implemented'.format(field_type))
-
-    def interpolate_links(self, link_pos):
-        if self.num_interpolate > 0:
-            link_dim = link_pos.shape[:-1]
-            alpha = torch.linspace(0, 1, self.num_interpolate + 2).type_as(link_pos)[1:self.num_interpolate + 1]
-            alpha = alpha.view(tuple([1] * len(link_dim) + [-1, 1]))  # 1 x 1 x 1 x ... x num_interpolate x 1
-            X = link_pos[..., self.link_interpolate_range[0]:self.link_interpolate_range[1] + 1, :].unsqueeze(-2)  # batch_dim x num_interp_link x 1 x 3
-            X_diff = torch.diff(X, dim=-3)  # batch_dim x (num_interp_link - 1) x 1 x 3
-            X_interp = X[..., :-1, :, :] + X_diff * alpha  # batch_dim x (num_interp_link - 1) x num_interpolate x 3
-            link_pos = torch.cat([link_pos, X_interp.flatten(-3, -2)], dim=-2)  # batch_dim x (num_link + (num_interp_link - 1) * num_interpolate) x 3
-        return link_pos
 
     def compute_distance(self, link_pos, df_list=None, **kwargs):  # position tensor
         link_pos = self.interpolate_links(link_pos)
@@ -143,6 +152,69 @@ class EmbodimentDistanceField(DistanceField):
 
     def zero_grad(self):
         pass
+
+
+class BorderDistanceField(EmbodimentDistanceFieldBase):
+
+    def __init__(self, work_space_bounds_min=None, work_space_bounds_max=None,
+                 obst_margin=0.03, **kwargs):
+        super().__init__(**kwargs)
+        self.work_space_bounds_min = work_space_bounds_min
+        self.work_space_bounds_max = work_space_bounds_max
+        self.obst_margin = obst_margin
+
+    def obstacle_distances(self, link_pos, **kwargs):
+        signed_distances_bounds_min = link_pos - self.work_space_bounds_min
+        signed_distances_bounds_min = torch.sign(signed_distances_bounds_min) * torch.abs(signed_distances_bounds_min)
+        signed_distances_bounds_max = self.work_space_bounds_max - link_pos
+        signed_distances_bounds_max = torch.sign(signed_distances_bounds_max) * torch.abs(signed_distances_bounds_max)
+        signed_distances_bounds = torch.cat((signed_distances_bounds_min, signed_distances_bounds_max), dim=-1)
+        return signed_distances_bounds
+
+    def compute_obstacle_collision(self, link_pos, margin=None, **kwargs):  # position tensor
+        if margin is None:
+            margin = self.obst_margin
+        signed_distances_bounds = self.obstacle_distances(link_pos)
+        signed_distances_bounds = signed_distances_bounds.min(-1)[0].min(-1)[0]
+        any_collision = signed_distances_bounds < margin
+        return any_collision
+
+    def compute_obstacle_cost(self, link_pos, field_type=None, margin=None, **kwargs):
+        if field_type is None:
+            field_type = self.field_type
+        if margin is None:
+            margin = self.obst_margin
+        if field_type == 'rbf':
+            return torch.exp(
+                torch.square(self.obstacle_distances(link_pos, **kwargs)) / (-margin ** 2 * 2)).sum((-1, -2))
+        elif field_type == 'sdf':  # this computes the negative cost from the SIGNED DISTANCE FUNCTION
+            margin_minus_sdf = -(self.obstacle_distances(link_pos, **kwargs) - margin).min(-1)[0].min(-1)[0]
+            if self.clamp_sdf:
+                return torch.relu(margin_minus_sdf)
+            return margin_minus_sdf
+        elif field_type == 'occupancy':
+            return self.compute_obstacle_collision(link_pos, **kwargs)
+            # return (self.obstacle_distances(link_pos, **kwargs) < margin).sum((-1, -2))
+        else:
+            raise NotImplementedError('field_type {} not implemented'.format(field_type))
+
+    def compute_distance(self, link_pos, **kwargs):  # position tensor
+        link_pos = self.interpolate_links(link_pos)
+
+        obstacle_distances = self.obstacle_distances(link_pos, **kwargs).min(-1)[0].min(-1)[0]  # batch_dim
+        return obstacle_distances
+
+    def compute_cost(self, link_pos, **kwargs):
+        # position tensor # batch_dim x num_links x 3
+        link_pos = self.interpolate_links(link_pos)
+
+        obstacle_cost = self.compute_obstacle_cost(link_pos, **kwargs)
+        return obstacle_cost
+
+    def zero_grad(self):
+        pass
+
+
 
 
 class FloorDistanceField(DistanceField):
@@ -175,7 +247,7 @@ class FloorDistanceField(DistanceField):
         pass
 
 
-class BorderDistanceField(DistanceField):
+class BorderDistanceFieldOLD(DistanceField):
 
     def __init__(self, target_H, w_pos=1., w_rot=1., square=True, **kwargs):
         super().__init__(**kwargs)

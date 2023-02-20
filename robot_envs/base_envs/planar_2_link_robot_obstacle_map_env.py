@@ -49,6 +49,7 @@ class RobotPlanarTwoLink(ObstacleMapEnv):
             q_n_dofs=2,
             q_min=limits[:, 0],
             q_max=limits[:, 1],
+            work_space_dim=2,
             obstacle_map=obst_map,
             tensor_args=tensor_args
         )

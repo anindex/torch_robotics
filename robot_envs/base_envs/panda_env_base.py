@@ -17,7 +17,7 @@ from torch_kinematics_tree.geometrics.skeleton import get_skeleton_from_model
 from torch_kinematics_tree.geometrics.utils import link_pos_from_link_tensor
 from torch_kinematics_tree.models.robots import DifferentiableFrankaPanda
 from torch_planning_objectives.fields.collision_bodies import PandaSphereDistanceField
-from torch_planning_objectives.fields.distance_fields import EmbodimentDistanceField
+from torch_planning_objectives.fields.distance_fields import EmbodimentDistanceField, BorderDistanceField
 from torch_planning_objectives.fields.occupancy_map.map_generator import build_obstacle_map
 from torch_planning_objectives.fields.primitive_distance_fields import Sphere, Box, InfiniteCylinder
 
@@ -27,7 +27,7 @@ class PandaEnvBase(EnvBase):
     def __init__(self,
                  name='panda_simple_env',
                  obst_primitives_l=None,
-                 task_space_bounds=((-1.25, 1.25), (-1.25, 1.25), (0, 1.5)),
+                 work_space_bounds=((-1.25, 1.25), (-1.25, 1.25), (0, 1.5)),
                  obstacle_buffer=0.01,
                  self_buffer=0.0005,
                  compute_robot_collision_from_occupancy_grid=False,
@@ -40,20 +40,21 @@ class PandaEnvBase(EnvBase):
         q_max = torch.tensor(self.panda_robot.jl_upper)
         q_n_dofs = len(q_min)
 
-        super().__init__(name=name, q_n_dofs=q_n_dofs, q_min=q_min, q_max=q_max, tensor_args=tensor_args)
+        super().__init__(name=name, q_n_dofs=q_n_dofs, q_min=q_min, q_max=q_max,
+                         work_space_dim=3, tensor_args=tensor_args)
 
         # Physics Environment
         self.panda_bullet_env = PandaEnv(render=True)
 
         ################################################################################################
         # Task space dimensions
-        self.task_space_bounds = task_space_bounds
-        self.task_space_bounds_min = torch.Tensor([task_space_bounds[0][0],
-                                                   task_space_bounds[1][0],
-                                                   task_space_bounds[2][0]]).to(**tensor_args)
-        self.task_space_bounds_max = torch.Tensor([task_space_bounds[0][1],
-                                                   task_space_bounds[1][1],
-                                                   task_space_bounds[2][1]]).to(**tensor_args)
+        self.work_space_bounds = work_space_bounds
+        self.work_space_bounds_min = torch.Tensor([work_space_bounds[0][0],
+                                                   work_space_bounds[1][0],
+                                                   work_space_bounds[2][0]]).to(**tensor_args)
+        self.work_space_bounds_max = torch.Tensor([work_space_bounds[0][1],
+                                                   work_space_bounds[1][1],
+                                                   work_space_bounds[2][1]]).to(**tensor_args)
 
         self.floor_min = torch.Tensor([0.]).to(**tensor_args)  # floor z position
 
@@ -85,13 +86,19 @@ class PandaEnvBase(EnvBase):
             num_interpolate=4, link_interpolate_range=[2, 7]
         )
 
+        self.df_collision_border = BorderDistanceField(
+            work_space_bounds_min=self.work_space_bounds_min,
+            work_space_bounds_max=self.work_space_bounds_max,
+            field_type='occupancy',
+            obst_margin=0.,
+            tensor_args=tensor_args
+        )
+
         self.df_collision_floor = None
         # self.floor_collision = FloorDistanceField(tensor_args=tensor_args)
-        self.df_collision_border = None
-        # self.border_collision = BorderDistanceField(tensor_args=tensor_args)
 
     def setup_obstacle_map(self):
-        map_dim = [ceil((dim_bound[1] - dim_bound[0])/2.)*2 for dim_bound in self.task_space_bounds]
+        map_dim = [ceil((dim_bound[1] - dim_bound[0])/2.)*2 for dim_bound in self.work_space_bounds]
 
         obst_params = dict(
             map_dim=map_dim,
@@ -138,17 +145,18 @@ class PandaEnvBase(EnvBase):
             )
 
             ########################
+            # Border collision
+            cost_collision_border = self.df_collision_border.compute_cost(
+                link_pos, field_type=field_type)
+
+            ########################
             # Floor collision
             # collision_floor = self.df_collision_floor.compute_cost()
 
-            ########################
-            # Border collision
-            # collision_border = self.df_collision_border.compute_cost()
-
             if field_type == 'occupancy':
-                cost_collision = cost_collision_self | cost_collision_obstacle
+                cost_collision = cost_collision_self | cost_collision_obstacle | cost_collision_border
             else:
-                cost_collision = cost_collision_self + cost_collision_obstacle
+                cost_collision = cost_collision_self + cost_collision_obstacle + cost_collision_border
 
         return cost_collision
 
@@ -173,25 +181,62 @@ class PandaEnvBase(EnvBase):
         obstacle_collision = torch.any(distance_grid_points_to_spheres_centers_min < link_tensor_spheres_radii, dim=-1, keepdim=True)
         return obstacle_collision
 
+    def get_rrt_params(self):
+        # RRT planner parameters
+        params = dict(
+            env=self,
+            n_iters=20000,
+            max_best_cost_iters=5000,
+            cost_eps=1e-2,
+            step_size=np.pi/20,
+            n_radius=np.pi/4,
+            n_knn=5,
+            max_time=60.,
+            goal_prob=0.2,
+            tensor_args=self.tensor_args
+        )
+        return params
+
+    def get_sgpmp_params(self):
+        # SGPMP planner parameters
+        params = dict(
+            dt=0.02,
+            n_dof=self.q_n_dofs,
+            temperature=1.,
+            step_size=1.,
+            sigma_start_init=1e-4,
+            sigma_goal_init=1e-4,
+            sigma_gp_init=0.4,
+            sigma_start_sample=1e-4,
+            sigma_goal_sample=1e-4,
+            sigma_gp_sample=0.2,
+            tensor_args=self.tensor_args,
+        )
+        return params
+
     def render(self, ax=None):
         # plot obstacles
         for obst_primitive in self.obst_primitives_l:
             obst_primitive.draw(ax)
 
-        ax.set_xlim3d(*self.task_space_bounds[0])
-        ax.set_ylim3d(*self.task_space_bounds[1])
-        ax.set_zlim3d(*self.task_space_bounds[2])
+        ax.view_init(azim=0, elev=90)
+        ax.set_xlim3d(*self.work_space_bounds[0])
+        ax.set_ylim3d(*self.work_space_bounds[1])
+        ax.set_zlim3d(*self.work_space_bounds[2])
 
-    def render_trajectory(self, traj=None, ax=None):
+    def render_trajectories(self, ax=None, traj_l=None, line_color='orange', plot_only_one=False, **kwargs):
         # plot path
-        if traj is not None:
-            for t in range(traj.shape[0] - 1):
-                skeleton = get_skeleton_from_model(self.diff_panda, traj[t], self.diff_panda.get_link_names())
-                skeleton.draw_skeleton(ax=ax)
-            skeleton = get_skeleton_from_model(self.diff_panda, traj[-1], self.diff_panda.get_link_names())
-            skeleton.draw_skeleton(ax=ax, color='g')
-            start_skeleton = get_skeleton_from_model(self.diff_panda, traj[0], self.diff_panda.get_link_names())
-            start_skeleton.draw_skeleton(ax=ax, color='r')
+        if traj_l is not None:
+            for traj in traj_l:
+                for t in range(traj.shape[0] - 1):
+                    skeleton = get_skeleton_from_model(self.diff_panda, traj[t], self.diff_panda.get_link_names())
+                    skeleton.draw_skeleton(ax=ax, color=line_color)
+                start_skeleton = get_skeleton_from_model(self.diff_panda, traj[0], self.diff_panda.get_link_names())
+                start_skeleton.draw_skeleton(ax=ax, color='green')
+                goal_skeleton = get_skeleton_from_model(self.diff_panda, traj[-1], self.diff_panda.get_link_names())
+                goal_skeleton.draw_skeleton(ax=ax, color='red')
+                if plot_only_one:
+                    break
 
     def render_physics(self, traj=None):
         if traj is not None:
@@ -239,7 +284,7 @@ if __name__ == "__main__":
     fig = plt.figure()
     ax = fig.add_subplot(projection='3d')
     env.render(ax)
-    env.render_trajectory(path, ax)
+    env.render_trajectories(ax, [path])
     plt.show()
 
     env.render_physics(path)
