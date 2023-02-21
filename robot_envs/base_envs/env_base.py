@@ -115,3 +115,5 @@ class EnvBase:
     def get_sgpmp_params(self):
         raise NotImplementedError
 
+    def get_gpmp_params(self):
+        raise NotImplementedError
