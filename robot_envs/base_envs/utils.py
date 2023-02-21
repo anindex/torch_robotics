@@ -63,4 +63,5 @@ def plot_trajectories_in_time(trajs, q_n_dofs=2, label=''):
                     axs[i, 1].set_ylabel(f'dq{i}')
                 axs[-1, 1].set_xlabel('Step')
 
-    fig.tight_layout()
+        fig.tight_layout()
+        return fig, axs

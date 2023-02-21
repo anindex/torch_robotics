@@ -248,7 +248,7 @@ class PandaEnvBase(EnvBase):
                 if plot_only_one:
                     break
 
-    def render_physics(self, traj=None):
+    def render_physics(self, traj=None, **kwargs):
         if traj is not None:
             traj = to_numpy(traj)
             self.panda_bullet_env.reset()
