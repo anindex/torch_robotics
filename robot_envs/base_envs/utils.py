@@ -37,16 +37,18 @@ def plot_velocities_fn(ax, trajs, color='black'):
         # ax2.plot(np.arange(traj.shape[0]), x2_dot, label='x2_dot')
 
 
-def plot_trajectories_in_time(trajs, q_n_dofs=2, label=''):
-    plot_options = dict(linewidth=1.)
+def plot_trajectories_in_time(trajs, q_n_dofs=2, ax=None, **plot_options):
     if trajs is not None:
-        if trajs[0].shape[-1] > q_n_dofs:
-            fig, axs = plt.subplots(q_n_dofs, 2, squeeze=False, figsize=(12, 1.5*q_n_dofs))
-            axs[0, 0].set_title('Position')
-            axs[0, 1].set_title('Velocity')
+        if ax is None:
+            if trajs[0].shape[-1] > q_n_dofs:
+                fig, axs = plt.subplots(q_n_dofs, 2, squeeze=False, figsize=(12, 1.5*q_n_dofs))
+                axs[0, 0].set_title('Position')
+                axs[0, 1].set_title('Velocity')
+            else:
+                fig, axs = plt.subplots(q_n_dofs, 1, squeeze=False, figsize=(12, 1.5*q_n_dofs))
+                axs[0, 0].set_title('Position')
         else:
-            fig, axs = plt.subplots(q_n_dofs, 1, squeeze=False, figsize=(12, 1.5*q_n_dofs))
-            axs[0, 0].set_title('Position')
+            axs = ax
 
         for traj in trajs:
             traj = to_numpy(traj)
@@ -63,5 +65,7 @@ def plot_trajectories_in_time(trajs, q_n_dofs=2, label=''):
                     axs[i, 1].set_ylabel(f'dq{i}')
                 axs[-1, 1].set_xlabel('Step')
 
-        fig.tight_layout()
-        return fig, axs
+        if ax is None:
+            fig.tight_layout()
+            return fig, axs
+
