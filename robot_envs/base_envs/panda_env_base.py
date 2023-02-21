@@ -101,6 +101,12 @@ class PandaEnvBase(EnvBase):
         self.df_collision_floor = None
         # self.floor_collision = FloorDistanceField(tensor_args=tensor_args)
 
+        self.df_collision_l = [
+            self.df_collision_self_and_obstacles,
+            self.df_collision_border,
+            self.df_collision_floor
+        ]
+
     def setup_obstacle_map(self):
         map_dim = [ceil((dim_bound[1] - dim_bound[0])/2.)*2 for dim_bound in self.work_space_bounds]
 

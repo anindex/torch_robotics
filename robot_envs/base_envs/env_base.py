@@ -31,6 +31,10 @@ class EnvBase:
         # Work space
         self.work_space_dim = work_space_dim
 
+        ################################################################################################
+        # Collision distance fields
+        self.df_collision_l = None
+
     def sample_q(self, without_collision=True, **kwargs):
         if without_collision:
             return self.random_coll_free_q(**kwargs)
@@ -92,6 +96,13 @@ class EnvBase:
 
     def get_q_velocity(self, q):
         return q[..., self.q_n_dofs:2*self.q_n_dofs]
+
+    def zero_grad(self):
+        for df in self.df_collision_l:
+            try:
+                df.zero_grad()
+            except:
+                pass
 
     @staticmethod
     def distance_q(q1, q2):

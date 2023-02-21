@@ -71,6 +71,11 @@ class PointMassEnvBase(EnvBase):
             tensor_args=tensor_args
         )
 
+        self.df_collision_l = [
+            self.df_collision_self_and_obstacles,
+            self.df_collision_border
+        ]
+
     def compute_cost_collision_internal(self, q, field_type='occupancy', **kwargs):
         b = 1
         h = 1
