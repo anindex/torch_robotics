@@ -106,7 +106,7 @@ class EnvBase:
         raise NotImplementedError
 
     @abstractmethod
-    def render_physics(self, **kwargs):
+    def render_physics(self, traj=None, **kwargs):
         pass
 
     def get_rrt_params(self):
