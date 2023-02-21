@@ -102,7 +102,7 @@ class EnvBase:
             try:
                 obstacle.zero_grad()
             except:
-                pass
+                raise NotImplementedError
 
     @staticmethod
     def distance_q(q1, q2):
