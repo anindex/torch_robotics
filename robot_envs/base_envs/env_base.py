@@ -32,8 +32,8 @@ class EnvBase:
         self.work_space_dim = work_space_dim
 
         ################################################################################################
-        # Collision distance fields
-        self.df_collision_l = None
+        # Obstacle primitives distance fields
+        self.obst_primitives_l = None
 
     def sample_q(self, without_collision=True, **kwargs):
         if without_collision:
@@ -98,9 +98,9 @@ class EnvBase:
         return q[..., self.q_n_dofs:2*self.q_n_dofs]
 
     def zero_grad(self):
-        for df in self.df_collision_l:
+        for obstacle in self.obst_primitives_l:
             try:
-                df.zero_grad()
+                obstacle.zero_grad()
             except:
                 pass
 

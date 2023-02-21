@@ -71,11 +71,6 @@ class PointMassEnvBase(EnvBase):
             tensor_args=tensor_args
         )
 
-        self.df_collision_l = [
-            self.df_collision_self_and_obstacles,
-            self.df_collision_border
-        ]
-
     def compute_cost_collision_internal(self, q, field_type='occupancy', **kwargs):
         b = 1
         h = 1
@@ -173,7 +168,7 @@ class PointMassEnvBase(EnvBase):
             num_particles_per_goal=64,
             num_samples=64,
             temperature=1.,
-            step_size=1e-3,
+            step_size=1e-4,
             sigma_start_init=1e-4,
             sigma_goal_init=1e-4,
             sigma_gp_init=0.4,

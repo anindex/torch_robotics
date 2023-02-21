@@ -216,7 +216,7 @@ class PandaEnvBase(EnvBase):
             num_particles_per_goal=1,
             num_samples=32,
             temperature=1.,
-            step_size=1.,
+            step_size=1e-4,
             sigma_start_init=1e-4,
             sigma_goal_init=1e-4,
             sigma_gp_init=0.4,

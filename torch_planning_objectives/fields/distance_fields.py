@@ -151,7 +151,7 @@ class EmbodimentDistanceField(EmbodimentDistanceFieldBase):
         return self_cost, obstacle_cost
 
     def zero_grad(self):
-        pass
+        raise NotImplementedError
 
 
 class BorderDistanceField(EmbodimentDistanceFieldBase):
@@ -212,7 +212,7 @@ class BorderDistanceField(EmbodimentDistanceFieldBase):
         return obstacle_cost
 
     def zero_grad(self):
-        pass
+        raise NotImplementedError
 
 
 
@@ -244,7 +244,7 @@ class FloorDistanceField(DistanceField):
         return torch.exp(-0.5 * torch.square(link_tensor[..., 2, -1].mean(-1)) / self.margin ** 2)
 
     def zero_grad(self):
-        pass
+        raise NotImplementedError
 
 
 class BorderDistanceFieldOLD(DistanceField):
@@ -282,7 +282,7 @@ class BorderDistanceFieldOLD(DistanceField):
         return torch.exp(-0.5 * torch.square(link_tensor[..., 2, -1].mean(-1)) / self.margin ** 2)
 
     def zero_grad(self):
-        pass
+        raise NotImplementedError
 
 
 class SphereDistanceField(DistanceField):
@@ -399,6 +399,7 @@ class SphereDistanceField(DistanceField):
         return self.w_batch_link_spheres
 
     def zero_grad(self):
+        raise NotImplementedError
         self.self_dist.detach_()
         self.self_dist.grad = None
         self.obst_dist.detach_()
@@ -469,7 +470,7 @@ class LinkDistanceField(DistanceField):
             return (torch.linalg.norm(link_tensor - obstacle_spheres[..., :3], dim=-1) < obstacle_spheres[..., 3]).sum((-1, -2))
 
     def zero_grad(self):
-        pass
+        raise NotImplementedError
 
 
 class LinkSelfDistanceField(DistanceField):
@@ -507,7 +508,7 @@ class LinkSelfDistanceField(DistanceField):
         return torch.exp(torch.square(link_tensor.unsqueeze(-2) - link_tensor.unsqueeze(-3)).sum(-1) / (-self.margin**2 * 2)).sum((-1, -2))
 
     def zero_grad(self):
-        pass
+        raise NotImplementedError
 
 
 class EESE3DistanceField(DistanceField):
@@ -533,7 +534,7 @@ class EESE3DistanceField(DistanceField):
         return dist
 
     def zero_grad(self):
-        pass
+        raise NotImplementedError
 
 
 class SkeletonSE3DistanceField(DistanceField):
@@ -592,7 +593,7 @@ class SkeletonSE3DistanceField(DistanceField):
         return dist
 
     def zero_grad(self):
-        pass
+        raise NotImplementedError
 
 
 class MeshDistanceField(DistanceField):
@@ -656,7 +657,7 @@ class MeshDistanceField(DistanceField):
             return (torch.linalg.norm(link_tensor - vertices[..., :3], dim=-1) < self.margin[..., 3]).sum((-1, -2))
 
     def zero_grad(self):
-        pass
+        raise NotImplementedError
 
 
 
