@@ -130,7 +130,7 @@ class EmbodimentDistanceField(EmbodimentDistanceFieldBase):
                 return torch.relu(margin_minus_sdf)
             return margin_minus_sdf
         elif field_type == 'occupancy':
-            return self.compute_obstacle_collision(link_pos, df_list, **kwargs)
+            return self.compute_obstacle_collision(link_pos, df_list, margin=margin, **kwargs)
             # return (self.obstacle_distances(link_pos, df_list, **kwargs) < margin).sum((-1, -2))
         else:
             raise NotImplementedError('field_type {} not implemented'.format(field_type))
