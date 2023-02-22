@@ -71,6 +71,10 @@ class PointMassEnvBase(EnvBase):
             tensor_args=tensor_args
         )
 
+        ################################################################################################
+        # Guides diffusion
+        self.guide_collision_avoidance_scale = 1e-2
+
     def compute_cost_collision_internal(self, q, field_type='occupancy', **kwargs):
         b = 1
         h = 1

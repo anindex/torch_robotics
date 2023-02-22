@@ -40,6 +40,7 @@ def plot_velocities_fn(ax, trajs, color='black'):
 
 def plot_trajectories_in_time(trajs, q_n_dofs=2, ax=None, color='black', label='gt', zorder=1, linewidth=1.,
                               limits=None,
+                              eps=1e-1,
                               **plot_options):
     if trajs is not None:
         if ax is None:
@@ -55,12 +56,17 @@ def plot_trajectories_in_time(trajs, q_n_dofs=2, ax=None, color='black', label='
 
         for traj in trajs:
             traj = to_numpy(traj)
+            # position
             traj_pos = traj[:, :q_n_dofs]
             for i, q_pos in enumerate(traj_pos.T):
                 axs[i, 0].plot(q_pos, color=color, label=label, zorder=zorder, linewidth=linewidth)
                 axs[i, 0].set_ylabel(f'q{i}')
+                if limits is not None:
+                    limits_min = to_numpy(limits[0])
+                    limits_max = to_numpy(limits[1])
+                    axs[i, 0].set_ylim(limits_min[i] - eps, limits_max[i] + eps)
             axs[-1, 0].set_xlabel('Step')
-
+            # velocity
             if trajs[0].shape[-1] > q_n_dofs:
                 traj_vel = traj[:, q_n_dofs:]
                 for i, q_vel in enumerate(traj_vel.T):

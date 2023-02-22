@@ -25,6 +25,7 @@ class EnvBase:
         assert q_min is not None and q_max is not None, "q_min and q_max cannot be None"
         self.q_min = q_min.to(**self.tensor_args)
         self.q_max = q_max.to(**self.tensor_args)
+        self.q_limits = [q_min, q_max]
         self.q_distribution = torch.distributions.uniform.Uniform(self.q_min, self.q_max)
 
         ################################################################################################
@@ -54,7 +55,7 @@ class EnvBase:
         idx_begin = 0
         for i in range(max_tries):
             qs = self.random_q(max_samples)
-            in_collision = self._compute_collision(qs).squeeze()
+            in_collision = self.compute_collision(qs).squeeze()
             idxs_not_in_collision = torch.argwhere(in_collision == False).squeeze()
             if idxs_not_in_collision.nelement() == 0:
                 # all points are in collision

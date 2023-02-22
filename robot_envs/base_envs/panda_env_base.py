@@ -101,11 +101,9 @@ class PandaEnvBase(EnvBase):
         self.df_collision_floor = None
         # self.floor_collision = FloorDistanceField(tensor_args=tensor_args)
 
-        self.df_collision_l = [
-            self.df_collision_self_and_obstacles,
-            self.df_collision_border,
-            self.df_collision_floor
-        ]
+        ################################################################################################
+        # Guides diffusion
+        self.guide_collision_avoidance_scale = 1e-1
 
     def setup_obstacle_map(self):
         map_dim = [ceil((dim_bound[1] - dim_bound[0])/2.)*2 for dim_bound in self.work_space_bounds]
@@ -170,11 +168,11 @@ class PandaEnvBase(EnvBase):
 
         return cost_collision
 
-    def _compute_collision_cost(self, q, **kwargs):
-        return self.compute_cost_collision_internal(q, field_type='sdf', **kwargs)
+    def _compute_collision_cost(self, q, field_type='sdf', **kwargs):
+        return self.compute_cost_collision_internal(q, field_type=field_type, **kwargs)
 
-    def _compute_collision(self, q, **kwargs):
-        return self.compute_cost_collision_internal(q, field_type='occupancy', **kwargs)
+    def _compute_collision(self, q, field_type='occupancy', **kwargs):
+        return self.compute_cost_collision_internal(q, field_type=field_type, **kwargs)
 
     def collision_robot_occupancy_grid(self, q, batch_dim=1):
         # Computes the collisions between the robot spheres and the occupancy grid
