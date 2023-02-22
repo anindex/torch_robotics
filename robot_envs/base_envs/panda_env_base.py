@@ -103,7 +103,9 @@ class PandaEnvBase(EnvBase):
 
         ################################################################################################
         # Guides diffusion
-        self.guide_collision_avoidance_scale = 1e-1
+        self.guide_scale_collision_avoidance = 1e-1
+        self.guide_scale_smoothness_finite_diff_velocity = 1e-1
+        self.guide_scale_gp_prior = 1e-1
 
     def setup_obstacle_map(self):
         map_dim = [ceil((dim_bound[1] - dim_bound[0])/2.)*2 for dim_bound in self.work_space_bounds]

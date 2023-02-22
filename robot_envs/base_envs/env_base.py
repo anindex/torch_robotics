@@ -36,6 +36,9 @@ class EnvBase:
         # Obstacle primitives distance fields
         self.obst_primitives_l = None
 
+    def add_obstacle_primitive(self, obst_primitive):
+        self.obst_primitives_l.append(obst_primitive)
+
     def sample_q(self, without_collision=True, **kwargs):
         if without_collision:
             return self.random_coll_free_q(**kwargs)
@@ -97,6 +100,9 @@ class EnvBase:
 
     def get_q_velocity(self, q):
         return q[..., self.q_n_dofs:2*self.q_n_dofs]
+
+    def get_q_acceleration(self, q):
+        raise NotImplementedError
 
     def zero_grad(self):
         for obstacle in self.obst_primitives_l:
