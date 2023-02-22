@@ -209,6 +209,7 @@ class PandaEnvBase(EnvBase):
     def get_sgpmp_params(self):
         # SGPMP planner parameters
         params = dict(
+            opt_iters=1000,
             dt=0.02,
             n_dof=self.q_n_dofs,
             num_particles_per_goal=1,
@@ -227,7 +228,7 @@ class PandaEnvBase(EnvBase):
             sigma_coll=5e-6,
             delta=0.1,
             trust_region=False,
-            method='inverse',
+            method='cholesky',
             tensor_args=self.tensor_args,
         )
         return params
@@ -235,12 +236,15 @@ class PandaEnvBase(EnvBase):
     def get_gpmp_params(self):
         # GPMP planner parameters
         params = dict(
+            # opt_iters=200,
+            opt_iters=500,
             dt=0.02,
             n_dof=self.q_n_dofs,
-            num_particles_per_goal=32,
+            num_particles_per_goal=1,
             num_samples=32,
             temperature=1.,
-            step_size=1e-3,
+            # step_size=1e-3,
+            step_size=5e-3,
             sigma_start_init=1e-4,
             sigma_goal_init=1e-4,
             sigma_gp_init=0.4,
@@ -253,7 +257,7 @@ class PandaEnvBase(EnvBase):
             sigma_coll=5e-6,
             delta=0.01,
             trust_region=False,
-            method='inverse',
+            method='cholesky',
             tensor_args=self.tensor_args,        )
         return params
 

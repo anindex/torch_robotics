@@ -141,6 +141,7 @@ class PointMassEnvBase(EnvBase):
     def get_sgpmp_params(self):
         # SGPMP planner parameters
         params = dict(
+            opt_iters=1000,
             dt=0.02,
             n_dof=self.q_n_dofs,
             num_particles_per_goal=1,
@@ -167,12 +168,15 @@ class PointMassEnvBase(EnvBase):
     def get_gpmp_params(self):
         # GPMP planner parameters
         params = dict(
+            # opt_iters=200,
+            opt_iters=500,
             dt=0.02,
             n_dof=self.q_n_dofs,
             num_particles_per_goal=1,
             num_samples=64,
             temperature=1.,
-            step_size=0.04,
+            # step_size=0.04,
+            step_size=5e-3,
             sigma_start_init=1e-4,
             sigma_goal_init=1e-4,
             sigma_gp_init=0.2,
