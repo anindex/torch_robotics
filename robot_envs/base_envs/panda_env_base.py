@@ -269,13 +269,13 @@ class PandaEnvBase(EnvBase):
         ax.set_ylim3d(*self.work_space_bounds[1])
         ax.set_zlim3d(*self.work_space_bounds[2])
 
-    def render_trajectories(self, ax=None, traj_l=None, line_color='orange', plot_only_one=False, **kwargs):
+    def render_trajectories(self, ax=None, traj_l=None, color='orange', plot_only_one=False, **kwargs):
         # plot path
         if traj_l is not None:
             for traj in traj_l:
                 for t in range(traj.shape[0] - 1):
                     skeleton = get_skeleton_from_model(self.diff_panda, traj[t], self.diff_panda.get_link_names())
-                    skeleton.draw_skeleton(ax=ax, color=line_color)
+                    skeleton.draw_skeleton(ax=ax, color=color)
                 start_skeleton = get_skeleton_from_model(self.diff_panda, traj[0], self.diff_panda.get_link_names())
                 start_skeleton.draw_skeleton(ax=ax, color='green')
                 goal_skeleton = get_skeleton_from_model(self.diff_panda, traj[-1], self.diff_panda.get_link_names())
