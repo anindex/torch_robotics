@@ -18,7 +18,7 @@ class PointMassEnvBase(EnvBase):
                  obst_primitives_l=None,
                  work_space_dim=2,
                  work_space_bounds=((-1., 1.), (-1., 1.), (-1., 1.)),
-                 obstacle_buffer=0.01,
+                 obstacle_buffer=0.03,
                  self_buffer=0.0005,
                  tensor_args=None
                  ):
@@ -98,7 +98,7 @@ class PointMassEnvBase(EnvBase):
         # No need to compute self collisions in a point mass
         # Obstacle collision
         cost_collision_obstacle = self.df_collision_self_and_obstacles.compute_obstacle_cost(
-            link_pos, df_list=self.obst_primitives_l, field_type=field_type)
+            link_pos, df_list=self.obst_primitives_l, field_type=field_type, **kwargs)
 
         # Border collision
         cost_collision_border = self.df_collision_border.compute_cost(
@@ -153,9 +153,9 @@ class PointMassEnvBase(EnvBase):
             sigma_gp=5e-4,
             sigma_goal_prior=1e-4,
             sigma_coll=5e-6,
-            delta=0.1,
-            trust_region=False,
-            method='inverse',
+            delta=0.0,
+            trust_region=True,
+            method='cholesky',
             tensor_args=self.tensor_args,
         )
         return params
@@ -165,23 +165,23 @@ class PointMassEnvBase(EnvBase):
         params = dict(
             dt=0.02,
             n_dof=self.q_n_dofs,
-            num_particles_per_goal=64,
+            num_particles_per_goal=1,
             num_samples=64,
             temperature=1.,
-            step_size=1e-4,
+            step_size=0.04,
             sigma_start_init=1e-4,
             sigma_goal_init=1e-4,
-            sigma_gp_init=0.4,
+            sigma_gp_init=0.2,
             sigma_start_sample=1e-4,
             sigma_goal_sample=1e-4,
             sigma_gp_sample=0.2,
             sigma_start=1e-4,
-            sigma_gp=5e-4,
+            sigma_gp=0.1,
             sigma_goal_prior=1e-4,
-            sigma_coll=5e-6,
-            delta=0.1,
-            trust_region=False,
-            method='inverse',
+            sigma_coll=1e-5,
+            delta=1e-3,
+            trust_region=True,
+            method='cholesky',
             tensor_args=self.tensor_args,
         )
         return params
