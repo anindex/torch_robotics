@@ -231,7 +231,7 @@ class PandaEnvBase(EnvBase):
             delta=0.1,
             trust_region=False,
             method='cholesky',
-            tensor_args=self.tensor_args,
+            tensor_args=self.tensor_args
         )
         return params
 
@@ -260,7 +260,8 @@ class PandaEnvBase(EnvBase):
             delta=0.01,
             trust_region=False,
             method='cholesky',
-            tensor_args=self.tensor_args,        )
+            tensor_args=self.tensor_args
+        )
         return params
 
     def render(self, ax=None):

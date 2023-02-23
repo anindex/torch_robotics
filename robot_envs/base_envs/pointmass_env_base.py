@@ -73,9 +73,9 @@ class PointMassEnvBase(EnvBase):
 
         ################################################################################################
         # Guides diffusion
-        self.guide_scale_collision_avoidance = 3e-2
-        self.guide_scale_smoothness_finite_diff_velocity = 1e-2
-        self.guide_scale_gp_prior = 1e-2
+        self.guide_scale_collision_avoidance = 1 * 3e-2
+        self.guide_scale_smoothness_finite_diff_velocity = 1 * 1e-1
+        self.guide_scale_gp_prior = 1 * 1e-2
 
     def compute_cost_collision_internal(self, q, field_type='occupancy', **kwargs):
         b = 1
