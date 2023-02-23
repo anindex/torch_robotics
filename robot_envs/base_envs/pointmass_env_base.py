@@ -128,7 +128,7 @@ class PointMassEnvBase(EnvBase):
         params = dict(
             env=self,
             n_iters=10000,
-            max_best_cost_iters=1000,
+            max_best_cost_iters=500,
             cost_eps=1e-2,
             step_size=0.01,
             n_radius=0.1,
@@ -189,7 +189,7 @@ class PointMassEnvBase(EnvBase):
             sigma_gp=0.1,
             sigma_goal_prior=1e-4,
             sigma_coll=1e-5,
-            delta=1e-3,
+            delta=1e-2,
             trust_region=True,
             method='cholesky',
             tensor_args=self.tensor_args,
