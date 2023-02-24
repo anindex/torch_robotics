@@ -103,9 +103,9 @@ class PandaEnvBase(EnvBase):
 
         ################################################################################################
         # Guides diffusion
-        self.guide_scale_collision_avoidance = 1e-1
+        self.guide_scale_collision_avoidance = 5 * 1e-2
         self.guide_scale_smoothness_finite_diff_velocity = 1e-1
-        self.guide_scale_gp_prior = 1e-1
+        self.guide_scale_gp_prior = 5 * 1e-3
 
     def setup_obstacle_map(self):
         map_dim = [ceil((dim_bound[1] - dim_bound[0])/2.)*2 for dim_bound in self.work_space_bounds]
@@ -204,62 +204,6 @@ class PandaEnvBase(EnvBase):
             max_time=60.,
             goal_prob=0.2,
             n_pre_samples=50000,
-            tensor_args=self.tensor_args
-        )
-        return params
-
-    def get_sgpmp_params(self):
-        # SGPMP planner parameters
-        params = dict(
-            opt_iters=1000,
-            dt=0.02,
-            n_dof=self.q_n_dofs,
-            num_particles_per_goal=1,
-            num_samples=32,
-            temperature=1.,
-            step_size=1e-4,
-            sigma_start_init=1e-4,
-            sigma_goal_init=1e-4,
-            sigma_gp_init=0.4,
-            sigma_start_sample=1e-4,
-            sigma_goal_sample=1e-4,
-            sigma_gp_sample=0.2,
-            sigma_start=1e-4,
-            sigma_gp=5e-4,
-            sigma_goal_prior=1e-4,
-            sigma_coll=5e-6,
-            delta=0.1,
-            trust_region=False,
-            method='cholesky',
-            tensor_args=self.tensor_args
-        )
-        return params
-
-    def get_gpmp_params(self):
-        # GPMP planner parameters
-        params = dict(
-            # opt_iters=200,
-            opt_iters=500,
-            dt=0.02,
-            n_dof=self.q_n_dofs,
-            num_particles_per_goal=1,
-            num_samples=64,
-            temperature=1.,
-            # step_size=1e-3,
-            step_size=5e-3,
-            sigma_start_init=1e-4,
-            sigma_goal_init=1e-4,
-            sigma_gp_init=0.2,
-            sigma_start_sample=1e-4,
-            sigma_goal_sample=1e-4,
-            sigma_gp_sample=0.2,
-            sigma_start=1e-4,
-            sigma_gp=0.1,
-            sigma_goal_prior=1e-4,
-            sigma_coll=1e-5,
-            delta=1e-2,
-            trust_region=True,
-            method='cholesky',
             tensor_args=self.tensor_args
         )
         return params
