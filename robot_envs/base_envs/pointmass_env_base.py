@@ -18,7 +18,7 @@ class PointMassEnvBase(EnvBase):
                  obst_primitives_l=None,
                  work_space_dim=2,
                  work_space_bounds=((-1., 1.), (-1., 1.), (-1., 1.)),
-                 obstacle_buffer=0.03,
+                 obstacle_buffer=0.05,
                  self_buffer=0.0005,
                  tensor_args=None
                  ):

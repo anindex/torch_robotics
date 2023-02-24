@@ -29,7 +29,7 @@ class PandaEnvBase(EnvBase):
                  name='panda_simple_env',
                  obst_primitives_l=None,
                  work_space_bounds=((-1.25, 1.25), (-1.25, 1.25), (0, 1.5)),
-                 obstacle_buffer=0.01,
+                 obstacle_buffer=0.005,
                  self_buffer=0.0005,
                  compute_robot_collision_from_occupancy_grid=False,
                  tensor_args=None
