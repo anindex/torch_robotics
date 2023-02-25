@@ -128,7 +128,7 @@ class PointMassEnvBase(EnvBase):
         params = dict(
             env=self,
             n_iters=10000,
-            max_best_cost_iters=500,
+            max_best_cost_iters=1000,
             cost_eps=1e-2,
             step_size=0.01,
             n_radius=0.1,
