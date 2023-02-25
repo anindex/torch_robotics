@@ -218,6 +218,10 @@ class PandaEnvBase(EnvBase):
         ax.set_ylim3d(*self.work_space_bounds[1])
         ax.set_zlim3d(*self.work_space_bounds[2])
 
+        ax.set_xlabel('x')
+        ax.set_ylabel('y')
+        ax.set_zlabel('z')
+
     def render_trajectories(self, ax=None, traj_l=None, color='orange', plot_only_one=False, **kwargs):
         # plot path
         if traj_l is not None:
