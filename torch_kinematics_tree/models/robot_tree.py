@@ -59,6 +59,7 @@ import numpy as np
 from torch_kinematics_tree.models.rigid_body import DifferentiableRigidBody
 from torch_kinematics_tree.models.utils import URDFRobotModel, MJCFRobotModel
 from torch_kinematics_tree.geometrics.spatial_vector import MotionVec
+from torch_kinematics_tree.geometrics.utils import SE3_distance
 
 
 def convert_link_dict_to_tensor(link_dict, link_list):
@@ -292,6 +293,49 @@ class DifferentiableTree(torch.nn.Module):
         return (
             ee_pos, ee_rot, lin_jac, ang_jac,
         )
+
+    def inverse_kinematics(self, H_target, link_name='ee_link',  batch_size=1, max_iters=1000, lr=1e-2, eps=1e-4, q0=None):
+        """
+        Solve IK using Adam optimizer
+        Args:
+            H_target: tagret SE3 matrix [batch_size x 4 x 4]
+            num_iters: number of iterations
+            eps: threshold for stopping the iteration
+            q0: initial guess for the joint angles
+
+        Returns: joint angles
+
+        """
+        # series of checks
+        if H_target.ndim == 2:
+            H_target = H_target.unsqueeze(0)
+
+        # uniform random in joint limits
+        if q0 is None:
+            lower, upper, _, _ = self.get_joint_limit_array()
+            lower = torch.from_numpy(lower).float().to(self._device)
+            upper = torch.from_numpy(upper).float().to(self._device)
+            q0 = torch.rand(batch_size, self._n_dofs, device=self._device)
+            q0 = q0 * (upper - lower) + lower
+        else:
+            assert q0.shape[0] == batch_size
+            assert q0.shape[1] == self._n_dofs
+
+        # Adam optimizer
+        q = q0.clone().requires_grad_(True)
+        optimizer = torch.optim.Adam([q], lr=lr)
+        for i in range(max_iters):
+            optimizer.zero_grad()
+            H = self.compute_forward_kinematics_all_links(q, return_dict=True)[link_name].get_transform_matrix()
+            err = SE3_distance(H, H_target, w_pos=1., w_rot=1.).sum()
+            err.backward()
+            optimizer.step()
+            if err.mean() < eps:
+                print(f'IK converged in {i} iterations')
+                break
+        if i == max_iters - 1:
+            print(f'IK did not converge! Error: {err.mean()}')
+        return q
 
     def get_joint_limits(self) -> List[Dict[str, torch.Tensor]]:
         """
