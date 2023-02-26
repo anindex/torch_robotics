@@ -198,15 +198,15 @@ class PandaEnvBase(EnvBase):
         # RRT planner parameters
         params = dict(
             env=self,
-            n_iters=20000,
+            n_iters=50000,
             max_best_cost_iters=1000,
             cost_eps=1e-2,
             step_size=np.pi/16,
             n_radius=np.pi/2,
-            n_knn=5,
-            max_time=60.,
+            n_knn=10,
+            max_time=30.,
             goal_prob=0.2,
-            n_pre_samples=50000,
+            n_pre_samples=10000,
             tensor_args=self.tensor_args
         )
         return params

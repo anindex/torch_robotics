@@ -127,13 +127,13 @@ class PointMassEnvBase(EnvBase):
         # RRT planner parameters
         params = dict(
             env=self,
-            n_iters=10000,
+            n_iters=50000,
             max_best_cost_iters=1000,
             cost_eps=1e-2,
             step_size=0.01,
             n_radius=0.1,
             n_knn=10,
-            max_time=60.,
+            max_time=30.,
             goal_prob=0.2,
             n_pre_samples=10000,
             tensor_args=self.tensor_args
