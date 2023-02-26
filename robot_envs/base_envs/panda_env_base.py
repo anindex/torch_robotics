@@ -1,3 +1,4 @@
+import os
 import time
 from math import ceil
 
@@ -80,6 +81,7 @@ class PandaEnvBase(EnvBase):
         self.diff_panda = DifferentiableFrankaPanda(gripper=False, device=self.tensor_args['device'])
         self.link_names_for_collision_checking = ['panda_link1', 'panda_link3', 'panda_link4', 'panda_link5',
                                                   'panda_link7', 'panda_link8', 'ee_link']
+        self.link_name_ee = 'ee_link'
 
         # Robot collision model
         self.obstacle_buffer = obstacle_buffer
@@ -105,7 +107,8 @@ class PandaEnvBase(EnvBase):
         # Guides diffusion
         self.guide_scale_collision_avoidance = 5 * 1e-2
         self.guide_scale_smoothness_finite_diff_velocity = 1e-1
-        self.guide_scale_gp_prior = 5 * 1e-3
+        self.guide_scale_gp_prior = 8 * 1e-3
+        self.guide_scale_se3_orientation_goal = 1 * 1e-2
 
     def setup_obstacle_map(self):
         map_dim = [ceil((dim_bound[1] - dim_bound[0])/2.)*2 for dim_bound in self.work_space_bounds]
@@ -236,13 +239,21 @@ class PandaEnvBase(EnvBase):
                 if plot_only_one:
                     break
 
-    def render_physics(self, traj=None, **kwargs):
+    def render_physics(self, traj=None, path_video_file=None, **kwargs):
         if traj is not None:
             traj = to_numpy(traj)
             self.panda_bullet_env.reset(robot_q=traj[0], **kwargs)
+            if path_video_file is not None:
+                id = self.panda_bullet_env.client_id.startStateLogging(
+                        self.panda_bullet_env.client_id.STATE_LOGGING_VIDEO_MP4,
+                        path_video_file
+                    )
             for t in range(traj.shape[0] - 1):
                 action = np.concatenate((traj[t], np.zeros(5)))
                 self.panda_bullet_env.step(action)
+
+            if path_video_file is not None:
+                self.panda_bullet_env.client_id.stopStateLogging(id)
 
 
 if __name__ == "__main__":

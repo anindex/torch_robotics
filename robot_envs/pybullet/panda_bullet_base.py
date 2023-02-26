@@ -296,7 +296,7 @@ class PandaEnvPyBulletBase(object):
             target[:3, -1],
             target[:3, -1] + rot_vec,
             lineColorRGB=[0, 1, 0],
-            lineWidth=10,
+            lineWidth=3,
             lifeTime=0,
         )
         self.target.load2client(self.client_id, color=[0, 1, 0, 1.])
