@@ -30,7 +30,7 @@ class PandaEnvBase(EnvBase):
                  name='panda_simple_env',
                  obst_primitives_l=None,
                  work_space_bounds=((-1.25, 1.25), (-1.25, 1.25), (0, 1.5)),
-                 obstacle_buffer=0.005,
+                 obstacle_buffer=0.01,
                  self_buffer=0.0005,
                  compute_robot_collision_from_occupancy_grid=False,
                  tensor_args=None
@@ -206,7 +206,7 @@ class PandaEnvBase(EnvBase):
             n_knn=10,
             max_time=30.,
             goal_prob=0.2,
-            n_pre_samples=10000,
+            n_pre_samples=50000,
             tensor_args=self.tensor_args
         )
         return params

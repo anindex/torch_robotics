@@ -18,7 +18,7 @@ class PointMassEnvBase(EnvBase):
                  obst_primitives_l=None,
                  work_space_dim=2,
                  work_space_bounds=((-1., 1.), (-1., 1.), (-1., 1.)),
-                 obstacle_buffer=0.05,
+                 obstacle_buffer=0.01,
                  self_buffer=0.0005,
                  tensor_args=None
                  ):
@@ -131,11 +131,11 @@ class PointMassEnvBase(EnvBase):
             max_best_cost_iters=1000,
             cost_eps=1e-2,
             step_size=0.01,
-            n_radius=0.1,
+            n_radius=0.3,
             n_knn=10,
-            max_time=30.,
+            max_time=60.,
             goal_prob=0.2,
-            n_pre_samples=10000,
+            n_pre_samples=50000,
             tensor_args=self.tensor_args
         )
         return params
