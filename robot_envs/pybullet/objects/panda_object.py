@@ -6,8 +6,8 @@ import pybullet as p
 from robot_envs.pybullet.objects.core_object import BodyCore
 from torch_kinematics_tree.utils.files import get_robot_path
 
-GAIN_P = 0.1
-GAIN_D = 1.0
+GAIN_P = 0.5
+GAIN_D = 0.2
 F_MAX = 250
 QLIMITS = 2.96
 
@@ -53,9 +53,14 @@ class Panda(BodyCore):
         self.resetController()
         self.setTargetPositions(joint_positions)
 
-    def reset(self):
+    def reset(self, q=None):
         super(Panda, self).reset()
-        self.joint_positions = self.initial_joint_positions
+        if q is not None:
+            if len(q) == 7:
+                q = q.tolist() + self.initial_joint_positions[-2:]
+            self.joint_positions = q
+        else:
+            self.joint_positions = self.initial_joint_positions
         return self.getJointStates()
 
     def load2client(self, client_id):

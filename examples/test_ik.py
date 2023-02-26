@@ -15,7 +15,8 @@ from torch_kinematics_tree.geometrics.spatial_vector import (
 
 if __name__ == "__main__":
     batch_size = 10
-    device = 'cuda'
+    # device = 'cuda'
+    device = 'cpu'
     tensor_args = dict(device=device, dtype=torch.float32)
 
     target_pos = np.array([0.3, 0.3, 0.3])
@@ -28,7 +29,7 @@ if __name__ == "__main__":
     panda = DifferentiableFrankaPanda(gripper=False, device=device)
     
     time_start = time.time()
-    q_ik = panda.inverse_kinematics(target_H, link_name='ee_link', batch_size=batch_size, max_iters=1000, lr=1e-1, eps=1e-4)
+    q_ik = panda.inverse_kinematics(target_H, link_name='ee_link', batch_size=batch_size, max_iters=2000, lr=1e-1, eps=1e-4)
     time_end = time.time()
     print(f"Computational Time: {time_end - time_start}")
 

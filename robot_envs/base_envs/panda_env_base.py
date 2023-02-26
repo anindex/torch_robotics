@@ -239,11 +239,10 @@ class PandaEnvBase(EnvBase):
     def render_physics(self, traj=None, **kwargs):
         if traj is not None:
             traj = to_numpy(traj)
-            self.panda_bullet_env.reset()
+            self.panda_bullet_env.reset(robot_q=traj[0], **kwargs)
             for t in range(traj.shape[0] - 1):
                 action = np.concatenate((traj[t], np.zeros(5)))
                 self.panda_bullet_env.step(action)
-                time.sleep(0.5)
 
 
 if __name__ == "__main__":
@@ -264,11 +263,6 @@ if __name__ == "__main__":
              [0.2, 0.2, 0.2]
              ],
             tensor_args=tensor_args
-        ),
-        InfiniteCylinderField(
-            [[1, 1, 1]],
-            [0.3],
-            tensor_args=tensor_args
         )
     ]
 
@@ -287,5 +281,7 @@ if __name__ == "__main__":
     env.render_trajectories(ax, [path])
     plt.show()
 
-    # env.render_physics(path)
+    target = env.diff_panda.compute_forward_kinematics_link_list(path[-1].unsqueeze(0), link_list=['ee_link']).squeeze()
+    target = to_numpy(target)
+    env.render_physics(path, target_EE=target)
 

@@ -15,6 +15,8 @@ import pybullet_utils.bullet_client as bc
 import torch
 
 from robot_envs.pybullet.objects import Box, Panda, Sphere
+from robot_envs.pybullet.objects.box_object import BoxBullet
+from robot_envs.pybullet.objects.sphere_object import SphereBullet
 from robot_envs.pybullet.utils import (
     random_init_dynamic_sphere_simple,
     random_init_static_sphere_simple,
@@ -22,32 +24,13 @@ from robot_envs.pybullet.utils import (
 )
 from torch_planning_objectives.fields.primitive_distance_fields import SphereField, BoxField
 
-BOX_SCALE = 0.3
-BOX_CENTER = 0.5
-BOX_POSITION = {
-    "NE": [BOX_CENTER, BOX_CENTER, 0.0],
-    "NW": [-BOX_CENTER, BOX_CENTER, 0.0],
-    "SE": [BOX_CENTER, -BOX_CENTER, 0.0],
-    "SW": [-BOX_CENTER, -BOX_CENTER, 0.0],
-}
-
-SPHERE_OFFSET = np.array(
-    [BOX_CENTER - BOX_SCALE, BOX_CENTER - BOX_SCALE, BOX_CENTER * BOX_SCALE + 0.1]
-)
-SPHERE_SPACE = {"MIN": np.array([0.4, 0.4, 0.7]), "MAX": np.array([0.6, 0.6, 0.9])}
-SPHERE_SCALE = {
-    "MIN": 0.08,
-    "MAX": 0.1,
-}
-SPHERE_VELOCITY = {
-    "MIN": 0.0,
-    "MAX": 0.1,
-}
 
 
 class PandaEnvPyBulletBase(object):
     def __init__(
-        self, render: bool = False, goal_offset: float = 0.08, **kwargs
+        self, render: bool = False, goal_offset: float = 0.08,
+            obst_primitives_l = None,
+            **kwargs
     ) -> None:
         self._seed = kwargs.get("seed", None)
 
@@ -59,7 +42,7 @@ class PandaEnvPyBulletBase(object):
         self.t_step = 0
         self._t_start = time.time()
         self._t_H = kwargs.get("horizon", 10000)
-        self._frequency = kwargs.get("frequency", 10)
+        self._frequency = kwargs.get("frequency", 1000)
         self.realtime = kwargs.get("realtime", False)
 
         self.a_t = None
@@ -74,16 +57,10 @@ class PandaEnvPyBulletBase(object):
         self._done = False
 
         # Obstacles
-        self.obst_primitives_l = kwargs.get("obst_primitives_l", None)
+        self.obst_primitives_l = obst_primitives_l
 
-        self.num_obst = kwargs.get("num_obst", 2)
         self.max_obs_dist = kwargs.get("max_obs_dist", 0.0)
         self.max_floor_dist = kwargs.get("max_floor_dist", 0.0)
-        # Define the motion of the spheres:
-        #   (0) Static;
-        #   (1) Dynamic
-        #   (2) partly static partly dynamics
-        self.motion_obstacles = kwargs.get("motion_obstacles", 0)
 
         self._buffer_goal_counter = 1
         self._max_buffer_len = int(kwargs.get("buffer_length", 1000))
@@ -138,7 +115,7 @@ class PandaEnvPyBulletBase(object):
         else:
             return self.t_step < self._t_H
 
-    def reset(self, seed: int = None):
+    def reset(self, robot_q=None, target_EE=None, seed: int = None, **kwargs):
         # Init Physics server
         if not self._physics_server_initialized:
             self._init_physics_server()
@@ -148,100 +125,9 @@ class PandaEnvPyBulletBase(object):
         self.seed(seed=seed)
 
         # Reset Panda
-        self.panda.reset()
+        self.panda.reset(robot_q)
 
-        # Reset the role of Boxes and start / goal position
-        # z_offset = np.array([0.0, 0.0, 0.08])
-        # setattr(self, "shift", np.random.randint(0, 4))
-        # setattr(self, "order", np.random.randint(0, 2))
-        # if self.order == 0:
-        #     array = [0, 1, -1, -1]
-        # else:
-        #     array = [1, 0, -1, -1]
-        # box_roles = np.roll(array, self.shift)
-        # for box, role in zip(self.boxes, box_roles):
-        #     box.reset(role=role)
-        #     if role == 0:
-        #         s_T1 = box.base_position + z_offset
-        #     elif role == 1:
-        #         s_T2 = box.base_position + z_offset
-        # self._s_T = [s_T1, s_T2]
-
-        # Reset the roles, positions and possible velocities of #num_obs Spheres.
-        # if self.motion_obstacles == 0:
-        #     sphere_roles = np.zeros(self.num_obst)
-        # elif self.motion_obstacles == 1:
-        #     sphere_roles = np.ones(self.num_obst)
-        # else:
-        #     sphere_roles = np.random.randint(0, 2, size=self.num_obst)
-        #
-        # for sphere, role in zip(self.spheres, sphere_roles):
-        #     if role == 0:
-        #         _, base_position = random_init_static_sphere_simple(
-        #             scale_min=SPHERE_SCALE["MIN"],
-        #             scale_max=SPHERE_SCALE["MAX"],
-        #             base_position_min=np.array(
-        #                 [
-        #                     BOX_CENTER - 0.6 * BOX_SCALE,
-        #                     -np.abs(BOX_CENTER - 0.5 * BOX_SCALE),
-        #                     0.05,
-        #                 ]
-        #             ),
-        #             base_position_max=np.array(
-        #                 [
-        #                     BOX_CENTER + 0.6 * BOX_SCALE,
-        #                     np.abs(BOX_CENTER - 0.5 * BOX_SCALE),
-        #                     0.5,
-        #                 ]
-        #             ),
-        #             shift_order=[self.shift, self.order],
-        #         )
-        #         sphere.init_base_position = base_position
-        #         sphere.init_base_linear_velocity = np.array([0.0, 0.0, 0.0])
-        #     else:
-        #         (
-        #             _,
-        #             base_position,
-        #             base_linear_velocity,
-        #         ) = random_init_dynamic_sphere_simple(
-        #             scale_min=SPHERE_SCALE["MIN"],
-        #             scale_max=SPHERE_SCALE["MAX"],
-        #             base_position_min=np.array(
-        #                 [
-        #                     BOX_CENTER - 0.6 * BOX_SCALE,
-        #                     -np.abs(BOX_CENTER - 0.5 * BOX_SCALE),
-        #                     0.05,
-        #                 ]
-        #             ),
-        #             base_position_max=np.array(
-        #                 [
-        #                     BOX_CENTER + 0.6 * BOX_SCALE,
-        #                     np.abs(BOX_CENTER - 0.5 * BOX_SCALE),
-        #                     0.5,
-        #                 ]
-        #             ),
-        #             base_linear_velocity_min=np.array(
-        #                 [
-        #                     SPHERE_VELOCITY["MIN"],
-        #                     SPHERE_VELOCITY["MIN"],
-        #                     SPHERE_VELOCITY["MIN"],
-        #                 ]
-        #             ),
-        #             base_linear_velocity_max=np.array(
-        #                 [
-        #                     SPHERE_VELOCITY["MAX"] / 4,
-        #                     SPHERE_VELOCITY["MAX"] / 2,
-        #                     SPHERE_VELOCITY["MAX"],
-        #                 ]
-        #             ),
-        #             shift_order=[self.shift, self.order],
-        #         )
-        #         sphere.init_base_position = base_position
-        #         sphere.init_base_linear_velocity = base_linear_velocity
-        #     sphere.reset(role=role)
-
-        # Get obstacle_information
-        obs_state = self._state_obstacles()
+        self._init_target_EE(target_EE)
 
         # Reset env variables
         self._goal_idx = 0
@@ -251,7 +137,7 @@ class PandaEnvPyBulletBase(object):
         self.t_step = 0
         self._t_start = time.time()
 
-        self.s_t = [np.array(self.panda.getJointStates()).reshape((1, 1, -1)), obs_state]
+        self.s_t = np.array(self.panda.getJointStates()).reshape((1, 1, -1))
 
         self._init_buffer()
         return self.s_t
@@ -263,47 +149,14 @@ class PandaEnvPyBulletBase(object):
         if a_t is None:
             a_t = np.array(self.panda.q)
         self.panda.setTargetPositions(a_t.squeeze())
-        # Update Obstacle
-        for sphere in self.spheres:
-            if sphere.role == 1:
-                base_position = self.client_id.getBasePositionAndOrientation(sphere.id)[
-                    0
-                ]
-                base_linear_velocity = self.client_id.getBaseVelocity(sphere.id)[0]
 
-                (
-                    base_position_new,
-                    base_linear_velocity_new,
-                ) = update_linear_velocity_sphere_simple(
-                    scale=sphere.scale,
-                    base_position=base_position,
-                    base_linear_velocity=base_linear_velocity,
-                    base_position_min=np.array(
-                        [
-                            BOX_CENTER - 0.6 * BOX_SCALE,
-                            -np.abs(BOX_CENTER - 0.5 * BOX_SCALE),
-                            0.05,
-                        ]
-                    ),
-                    base_position_max=np.array(
-                        [
-                            BOX_CENTER + 0.6 * BOX_SCALE,
-                            np.abs(BOX_CENTER - 0.5 * BOX_SCALE),
-                            0.5,
-                        ]
-                    ),
-                    shift_order=[self.shift, self.order],
-                )
+        for _ in range(self._frequency):
+            self.client_id.stepSimulation()
+        # Wait dt for visualization
+        # time.sleep(1 / self._frequency)
 
-                sphere.base_position = base_position_new
-                sphere.base_linear_velocity = base_linear_velocity_new
 
-        [self.client_id.stepSimulation() for _ in range(self._frequency)]
-
-        self.s_t = [
-            np.array(self.panda.getJointStates()).reshape(1, 1, -1).copy(),
-            self._state_obstacles().copy(),
-        ]
+        self.s_t = np.array(self.panda.getJointStates()).reshape(1, 1, -1).copy()
         self.a_t = a_t.copy()
         self.is_contact = False
 
@@ -375,9 +228,6 @@ class PandaEnvPyBulletBase(object):
         self.panda.load2client(self.client_id)
         self._obstacles = dict()
         self._init_obstacles()
-        # self._init_box()
-        # self._init_spheres()
-        self._init_target()
         self._physics_server_initialized = True
 
     def _init_client(self):
@@ -411,17 +261,17 @@ class PandaEnvPyBulletBase(object):
         spheres = []
         for obstacle_primitive in self.obst_primitives_l:
             if isinstance(obstacle_primitive, BoxField):
-                for center, size in zip(obstacle_primitive.centers, obstacle_primitive.sizes):
+                for center, half_size in zip(obstacle_primitive.centers, obstacle_primitive.half_sizes):
                     boxes.append(
-                        Box(base_position=center.tolist(), scale=1.)
+                        BoxBullet(base_position=center.tolist(), half_sizes=half_size, scale=1.)
                     )
 
             if isinstance(obstacle_primitive, SphereField):
                 for center, radius in zip(obstacle_primitive.centers, obstacle_primitive.radii):
                     spheres.append(
-                        Sphere(
+                        SphereBullet(
                             base_position=center.tolist(),
-                            base_linear_velocity=np.array([0.0, 0.0, 0.0]),
+                            radius=radius,
                             scale=1.0,
                         )
                     )
@@ -431,12 +281,12 @@ class PandaEnvPyBulletBase(object):
         [sphere.load2client(self.client_id) for sphere in spheres]
         self._obstacles.update({"spheres": spheres})
 
-    def _init_target(self, target=None):
+    def _init_target_EE(self, target=None):
         if target is None:
             return
-        self.target = Sphere(
+        self.target = SphereBullet(
             base_position=target[:3, -1],
-            base_linear_velocity=np.array([0.0, 0.0, 0.0]),
+            radius=0.02,
             scale=1.0,
         )
         rot_mat = target[:3, :3]
@@ -446,101 +296,10 @@ class PandaEnvPyBulletBase(object):
             target[:3, -1],
             target[:3, -1] + rot_vec,
             lineColorRGB=[0, 1, 0],
-            lineWidth=5,
+            lineWidth=10,
             lifeTime=0,
         )
         self.target.load2client(self.client_id, color=[0, 1, 0, 1.])
-
-    def _init_box(self):
-        boxes = [
-            Box(base_position=BOX_POSITION[keys], scale=BOX_SCALE)
-            for keys in ["NE", "NW", "SW", "SE"]
-        ]
-        [box.load2client(self.client_id) for box in boxes]
-        self._obstacles.update({"boxes": boxes})
-
-    def _init_spheres(self):
-        if self.motion_obstacles == 0:
-            roles = np.zeros(self.num_obst)
-        elif self.motion_obstacles == 1:
-            roles = np.ones(self.num_obst)
-        else:
-            roles = np.random.randint(0, 2, size=self.num_obst)
-
-        spheres = []
-        for role in roles:
-            if role == 0:
-                scale, base_position = random_init_static_sphere_simple(
-                    scale_min=SPHERE_SCALE["MIN"],
-                    scale_max=SPHERE_SCALE["MAX"],
-                    base_position_min=np.array(
-                        [
-                            BOX_CENTER - 0.6 * BOX_SCALE,
-                            -np.abs(BOX_CENTER - 0.5 * BOX_SCALE),
-                            0.05,
-                        ]
-                    ),
-                    base_position_max=np.array(
-                        [
-                            BOX_CENTER + 0.6 * BOX_SCALE,
-                            np.abs(BOX_CENTER - 0.5 * BOX_SCALE),
-                            0.5,
-                        ]
-                    ),
-                )
-                spheres.append(
-                    Sphere(
-                        base_position=base_position,
-                        base_linear_velocity=np.array([0.0, 0.0, 0.0]),
-                        scale=scale,
-                    )
-                )
-            else:
-                (
-                    scale,
-                    base_position,
-                    base_linear_velocity,
-                ) = random_init_dynamic_sphere_simple(
-                    scale_min=SPHERE_SCALE["MIN"],
-                    scale_max=SPHERE_SCALE["MAX"],
-                    base_position_min=np.array(
-                        [
-                            BOX_CENTER - 0.6 * BOX_SCALE,
-                            -np.abs(BOX_CENTER - 0.5 * BOX_SCALE),
-                            0.05,
-                        ]
-                    ),
-                    base_position_max=np.array(
-                        [
-                            BOX_CENTER + 0.6 * BOX_SCALE,
-                            np.abs(BOX_CENTER - 0.5 * BOX_SCALE),
-                            0.5,
-                        ]
-                    ),
-                    base_linear_velocity_min=np.array(
-                        [
-                            SPHERE_VELOCITY["MIN"],
-                            SPHERE_VELOCITY["MIN"],
-                            SPHERE_VELOCITY["MIN"],
-                        ]
-                    ),
-                    base_linear_velocity_max=np.array(
-                        [
-                            SPHERE_VELOCITY["MAX"] / 4,
-                            SPHERE_VELOCITY["MAX"],
-                            SPHERE_VELOCITY["MAX"],
-                        ]
-                    ),
-                )
-                spheres.append(
-                    Sphere(
-                        base_position=base_position,
-                        base_linear_velocity=base_linear_velocity,
-                        scale=scale,
-                    )
-                )
-        [sphere.load2client(self.client_id) for sphere in spheres]
-        self._obstacles.update({"spheres": spheres})
 
     def _init_buffer(self) -> None:
         if getattr(self, "buffer_idx", None):
@@ -557,9 +316,9 @@ class PandaEnvPyBulletBase(object):
         if self.t_step == 1:
             self._buffer[self._buffer_idx].update(
                 {
-                    "s_robot": self.s_t[0].copy(),
+                    "s_robot": self.s_t.copy(),
                     "a_robot": self.a_t.copy(),
-                    "s_obs": self.s_t[1].copy(),
+                    # "s_obs": self.s_t[1].copy(),
                     # "s_goal": self.s_T.copy(),
                     "is_contact": copy(self.is_contact),
                     "goal_reached": copy(self.goal_reached),
@@ -571,9 +330,9 @@ class PandaEnvPyBulletBase(object):
         if self.t_step % 50 == 0:
             self._buffer[self._buffer_idx].update(
                 {
-                    "s_robot": self.s_t[0].copy(),
+                    "s_robot": self.s_t.copy(),
                     "a_robot": self.a_t.copy(),
-                    "s_obs": self.s_t[1].copy(),
+                    # "s_obs": self.s_t[1].copy(),
                     # "s_goal": self.s_T.copy(),
                     "is_contact": copy(self.is_contact),
                     "goal_reached": copy(self.goal_reached),
@@ -589,9 +348,9 @@ class PandaEnvPyBulletBase(object):
         ):
             self._buffer[self._buffer_idx].update(
                 {
-                    "s_robot": self.s_t[0],
+                    "s_robot": self.s_t,
                     "a_robot": self.a_t,
-                    "s_obs": self.s_t[1],
+                    # "s_obs": self.s_t[1],
                     "s_goal": self.s_T,
                     "is_contact": copy(self.is_contact),
                     "goal_reached": copy(self.goal_reached),
@@ -616,69 +375,6 @@ class PandaEnvPyBulletBase(object):
 
         costs = -gain / (dist2goal + eps)
         return np.where(self.is_contact, np.ones_like(costs) * 1e2, costs)
-
-    # def _state_obstacles(self) -> np.ndarray:
-    #     boxes_state = np.concatenate(
-    #         (
-    #             np.array(
-    #                 [
-    #                     self.client_id.getBasePositionAndOrientation(box.id)[0]
-    #                     for box in self.boxes
-    #                 ]
-    #             ),
-    #             np.array(
-    #                 [self.client_id.getBaseVelocity(box.id)[0] for box in self.boxes]
-    #             ),
-    #             np.array([box.scale for box in self.boxes])[:, None],
-    #         ),
-    #         axis=-1,
-    #     )[None, :]
-    #     if not any(self.spheres):
-    #         return boxes_state
-    #     else:
-    #         spheres_state = np.concatenate(
-    #             (
-    #                 np.array(
-    #                     [
-    #                         self.client_id.getBasePositionAndOrientation(sphere.id)[0]
-    #                         for sphere in self.spheres
-    #                     ]
-    #                 ),
-    #                 np.array(
-    #                     [
-    #                         self.client_id.getBaseVelocity(sphere.id)[0]
-    #                         for sphere in self.spheres
-    #                     ]
-    #                 ),
-    #                 np.array([sphere.scale for sphere in self.spheres])[:, None],
-    #             ),
-    #             axis=-1,
-    #         )[None, :]
-    #         obs_state = np.concatenate((boxes_state, spheres_state), axis=1)
-    #         return obs_state
-
-    def _state_obstacles(self) -> np.ndarray:
-        spheres_state = np.concatenate(
-            (
-                np.array(
-                    [
-                        self.client_id.getBasePositionAndOrientation(sphere.id)[0]
-                        for sphere in self.spheres
-                    ]
-                ),
-                np.array(
-                    [
-                        self.client_id.getBaseVelocity(sphere.id)[0]
-                        for sphere in self.spheres
-                    ]
-                ),
-                np.array([sphere.scale for sphere in self.spheres])[:, None],
-            ),
-            axis=-1,
-        )[None, :]
-        # obs_state = np.concatenate((boxes_state, spheres_state), axis=1)
-        obs_state = spheres_state
-        return obs_state
 
 
 if __name__ == '__main__':
@@ -713,6 +409,8 @@ if __name__ == '__main__':
         obst_primitives_l=obst_primitives_l,
         render=True
     )
-    env.reset()
+    target = np.eye(4)
+    target[:3, -1] = np.array([1, 1, 1])
+    env.reset(target_EE=target)
     while True:
         env.step()
