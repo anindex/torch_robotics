@@ -115,6 +115,7 @@ class PandaEnvBase(EnvBase):
         self.guide_scale_smoothness_finite_diff_velocity_cvae = 1e-1
         self.guide_scale_gp_prior_cvae = 5 * 1e-3
         self.guide_scale_se3_orientation_goal_cvae = 1 * 1e-2
+        self.guide_scale_state_des_cvae = 5 * 1e-2
 
 
     def setup_obstacle_map(self):
