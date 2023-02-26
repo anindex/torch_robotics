@@ -6,8 +6,8 @@ import pybullet as p
 from robot_envs.pybullet.objects.core_object import BodyCore
 from torch_kinematics_tree.utils.files import get_robot_path
 
-GAIN_P = 0.2
-GAIN_D = 0.5
+GAIN_P = 0.1
+GAIN_D = 1.0
 F_MAX = 250
 QLIMITS = 2.96
 
