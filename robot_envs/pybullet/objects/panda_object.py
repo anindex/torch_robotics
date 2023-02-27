@@ -64,7 +64,7 @@ class Panda(BodyCore):
         return self.getJointStates()
 
     def load2client(self, client_id):
-        path = (get_robot_path() / 'franka_description' / 'robots' / 'panda.urdf').as_posix()
+        path = (get_robot_path() / 'franka_description' / 'panda.urdf').as_posix()
         self.id = client_id.loadURDF(
             path,
             useFixedBase=True,
