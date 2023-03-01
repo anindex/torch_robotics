@@ -160,7 +160,7 @@ class PointMassEnvBase(EnvBase):
             ax.set_yticks([])
 
         for axis in ['top', 'bottom', 'left', 'right']:
-            ax.spines[axis].set_linewidth(3)
+            ax.spines[axis].set_linewidth(1.5)
 
         if self.work_space_dim == 3:
             ax.set_zlim(*self.work_space_bounds[2])

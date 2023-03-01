@@ -12,9 +12,9 @@ def plot_trajectories(ax, trajs, color='red', plot_markers=False, label='', plot
             start_state = traj[0]
             goal_state = traj[-1]
             if ax.name == '3d':
-                ax.plot3D(traj[:, 0], traj[:, 1], traj[:, 2], marker='o', markersize=markersize, color=color, zorder=20, linewidth=linewidth)
-                ax.scatter3D(start_state[0], start_state[1], start_state[2], color='g', marker='o', zorder=20, s=s)
-                ax.scatter3D(goal_state[0], goal_state[1], goal_state[2], color='r', marker='o', zorder=20, s=s)
+                ax.plot3D(traj[:, 0], traj[:, 1], traj[:, 2], marker='o', markersize=markersize, color=color, zorder=1, linewidth=linewidth)
+                ax.scatter3D(start_state[0], start_state[1], start_state[2], color='g', marker='o', zorder=1, s=s)
+                ax.scatter3D(goal_state[0], goal_state[1], goal_state[2], color='r', marker='o', zorder=1, s=s)
             else:
                 ax.plot(traj[:, 0], traj[:, 1], marker='o', markersize=markersize, color=color, zorder=20, linewidth=linewidth)
                 ax.scatter(start_state[0], start_state[1],  color='g', marker='o', s=s, zorder=20)

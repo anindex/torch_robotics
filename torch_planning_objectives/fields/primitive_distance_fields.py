@@ -159,9 +159,10 @@ class SphereField(PolytopeField):
                 x = radius * (np.cos(u) * np.sin(v))
                 y = radius * (np.sin(u) * np.sin(v))
                 z = radius * np.cos(v)
-                ax.plot_surface(x + center[0], y + center[1], z + center[2], cmap='gray', alpha=0.75)
+                ax.plot_surface(x + center[0], y + center[1], z + center[2], cmap='gray', alpha=1)
             else:
-                ax.add_patch(plt.Circle((center[0], center[1]), radius, color='gray', alpha=0.75))
+                circle = plt.Circle((center[0], center[1]), radius, color='gray', linewidth=0, alpha=1)
+                ax.add_patch(circle)
 
 
 class BoxField(PolytopeField):
@@ -244,12 +245,12 @@ class BoxField(PolytopeField):
             for center, size in zip(self.centers, self.sizes):
                 cx, cy, cz = to_numpy(center)
                 a, b, c = to_numpy(size)
-                ax.plot_surface(cx + x * a, cy + y * b, cz + z * c, cmap='gray', alpha=0.75)
+                ax.plot_surface(cx + x * a, cy + y * b, cz + z * c, cmap='gray', alpha=0.25)
         else:
             for center, size in zip(self.centers, self.sizes):
                 cx, cy = to_numpy(center)
                 a, b = to_numpy(size)
-                rectangle = plt.Rectangle((cx-a/2, cy-b/2), a, b, color='gray', alpha=0.75)
+                rectangle = plt.Rectangle((cx-a/2, cy-b/2), a, b, color='gray', linewidth=0, alpha=1)
                 ax.add_patch(rectangle)
 
 
