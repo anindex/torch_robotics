@@ -145,16 +145,30 @@ class PointMassEnvBase(EnvBase):
         )
         return params
 
-    def render(self, ax=None):
+    def render(self, ax=None, remove_labels=True, remove_ticks=True):
         # plot obstacles
         for obst_primitive in self.obst_primitives_l:
             obst_primitive.draw(ax)
 
         ax.set_xlim(*self.work_space_bounds[0])
         ax.set_ylim(*self.work_space_bounds[1])
+        if remove_labels:
+            ax.set_xlabel('')
+            ax.set_ylabel('')
+        if remove_ticks:
+            ax.set_xticks([])
+            ax.set_yticks([])
+
+        for axis in ['top', 'bottom', 'left', 'right']:
+            ax.spines[axis].set_linewidth(3)
+
         if self.work_space_dim == 3:
             ax.set_zlim(*self.work_space_bounds[2])
             ax.view_init(azim=0, elev=90)
+            if remove_labels:
+                ax.set_zlabel('')
+            if remove_ticks:
+                ax.set_zticks([])
 
     def render_trajectories(self, ax=None, trajs=None, **kwargs):
         plot_trajectories(ax, trajs, **kwargs)
