@@ -119,6 +119,9 @@ class Frame(object):
             self._rot @ (point).unsqueeze(-1)).squeeze(-1) + self._trans
         return new_point
 
+    def get_euler(self) -> torch.Tensor:
+        return torch.atan2(self._rot[:, 2, 1], self._rot[:, 2, 2]), torch.asin(-self._rot[:, 2, 0]), torch.atan2(self._rot[:, 1, 0], self._rot[:, 0, 0])
+
     @property
     def rotation(self) -> torch.Tensor:
         return self._rot
@@ -126,3 +129,11 @@ class Frame(object):
     @property
     def translation(self) -> torch.Tensor:
         return self._trans
+
+
+if __name__ == '__main__':
+    # test Frame
+    frame = Frame()
+    print(frame.get_transform_matrix())
+    print(frame.get_quaternion())
+    print(frame.get_euler())
