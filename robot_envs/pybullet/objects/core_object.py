@@ -25,6 +25,9 @@ class BodyCore(ABC):
 
         self.id = None  # To be filled by Bullet client
 
+        self.visual_id = None
+        self.collision_id = None
+
     @property
     def base_orientation(self):
         return self._base_orientation
@@ -49,7 +52,7 @@ class BodyCore(ABC):
                 self.id, self._base_position, self.base_orientation
             )
 
-    def reset(self):
+    def reset(self, **kwargs):
         self.base_orientation = self.init_base_orientation
         self.base_position = self.init_base_position
 

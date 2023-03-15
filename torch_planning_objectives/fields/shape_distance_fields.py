@@ -138,7 +138,7 @@ class MultiLineSegment(Shape):
         for i in range(1, vertices.shape[0]):
             self.segments.append(LineSegment(p1=vertices[i-1], p2=vertices[i]))
         self.buff = torch.tensor(
-                [self.buffer] * vertices.shape[0], **self.tensor_args
+                [self.buffer] * (vertices.shape[0]-1), **self.tensor_args
             )
         if widths is not None:
             self.widths = torch.tensor(widths, **self.tensor_args)
@@ -177,8 +177,11 @@ class MultiLineSegment(Shape):
         -------
 
         """
+        raise NotImplementedError
+        # TODO: compute distance does not return the SIGNED distance.
         dists = self.compute_distance(X)
-        sdf = (self.buff[None, :] - dists).max(-1)[0]
+        sdf = dists - self.buff[None, :]
+        sdf = sdf.min(-1)[0]
         return sdf
 
     def get_rbf(self, X):
@@ -212,7 +215,7 @@ class MultiLineSegment(Shape):
         Z = self.get_rbf(grid.reshape((-1, 2))).reshape((res, res))
 
         # plt.imshow(Z.cpu().numpy(), cmap='viridis', origin='lower')
-        cs = plt.contourf(X.cpu().numpy(), Y.cpu().numpy(), Z.cpu().numpy(), 10, cmap=plt.cm.binary, origin='lower')
+        cs = plt.contourf(X.cpu().numpy(), Y.cpu().numpy(), Z.cpu().numpy(), 50, cmap=plt.cm.binary, origin='lower')
         plt.colorbar()
         ax.xlim = xy_lim
         ax.ylim = xy_lim
@@ -252,9 +255,9 @@ class MultiSphere(Shape):
         if self.centers is None or self.radii is None:
             return torch.zeros(batch_dim, **self.tensor_args)
         if self.obst_type == 'sdf':
-            costs = self.get_sdf(X)
+            costs = self.get_sdf(X, **kwargs)
         elif self.obst_type == 'rbf':
-            costs = self.get_rbf(X)
+            costs = self.get_rbf(X, **kwargs)
         else:
             raise NotImplementedError
         return costs.reshape(batch_dim)
@@ -270,11 +273,13 @@ class MultiSphere(Shape):
         -------
 
         """
-        dists = torch.linalg.norm(X[:, None] - self.centers[None, :], dim=-1)
-        sdf = (self.radii[None, :] + self.buff[None, :] - dists).max(-1)[0]
+        dists_to_centers = torch.linalg.norm(X[:, None] - self.centers[None, :], dim=-1)
+        # sdf is the minimum over sdf of all circles https://jasmcole.com/2019/10/03/signed-distance-fields/
+        sdf = dists_to_centers - (self.radii[None, :] + self.buff[None, :])
+        sdf = sdf.min(-1)[0]
         return sdf
 
-    def get_rbf(self, X):
+    def get_rbf(self, X, **kwargs):
         """
         Parameters
         ----------
@@ -301,11 +306,11 @@ class MultiSphere(Shape):
         y = torch.linspace(xy_lim[0], xy_lim[1], res)
         X, Y = torch.meshgrid(x, y)
         grid = torch.stack((X, Y), dim=-1)
-        # Z = self.get_sdf(grid.reshape((-1, 2))).reshape((res, res))
-        Z = self.get_rbf(grid.reshape((-1, 2))).reshape((res, res))
+        Z = self.get_sdf(grid.reshape((-1, 2))).reshape((res, res))
+        # Z = self.get_rbf(grid.reshape((-1, 2))).reshape((res, res))
 
         # plt.imshow(Z.cpu().numpy(), cmap='viridis', origin='lower')
-        cs = plt.contourf(X.cpu().numpy(), Y.cpu().numpy(), Z.cpu().numpy(), 10, cmap=plt.cm.binary, origin='lower')
+        cs = plt.contourf(X.cpu().numpy(), Y.cpu().numpy(), Z.cpu().numpy(), 50, cmap=plt.cm.binary, origin='lower')
         plt.colorbar()
         ax.xlim = xy_lim
         ax.ylim = xy_lim
@@ -380,8 +385,10 @@ class Box3D(Shape):
         -------
 
         """
+        raise NotImplementedError
         dists = self.compute_distance(X)
-        sdf = (self.box_buffer - dists).max(-1)[0]
+        sdf = dists - self.box_buffer
+        sdf = sdf.min(-1)[0]
         return sdf
 
     def get_rbf(self, X):
@@ -420,7 +427,9 @@ if __name__ == '__main__':
         [3, 3]
     ])
     radii = np.array([
-        0.1, 0.2, 0.3
+        0.1,
+        0.2,
+        0.3
     ])
     shape = MultiSphere()
     shape.set_obst(centers=centers, radii=radii)

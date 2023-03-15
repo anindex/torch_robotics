@@ -1,7 +1,8 @@
 from math import ceil
 import random
 import matplotlib.pyplot as plt
-from .obst_map import ObstacleRectangle, ObstacleCircle
+
+from torch_planning_objectives.fields.primitive_distance_fields import BoxField, SphereField
 
 
 def round_up(n, decimals=0):
@@ -9,22 +10,24 @@ def round_up(n, decimals=0):
     return ceil(n * multiplier) / multiplier
 
 
-def random_rect(xlim=(0, 0), ylim=(0, 0), width=2, height=2):
+def random_center(center_lims):
+    return [random.uniform(lim_inf, lim_sup) for (lim_inf, lim_sup) in center_lims]
+
+
+def random_rect(center_lims, shape_dims):
     """
     Generates an rectangular obstacle object, with random location and dimensions.
     """
-    cx = random.uniform(xlim[0], xlim[1])
-    cy = random.uniform(ylim[0], ylim[1])
-    return ObstacleRectangle(cx, cy, width, height)
+    center = random_center(center_lims)
+    return BoxField([center], [shape_dims])
 
 
-def random_circle(xlim=(0,0), ylim=(0,0), radius=2):
+def random_circle(center_lims, radius):
     """
     Generates a circle obstacle object, with random location and dimensions.
     """
-    cx = random.uniform(xlim[0], xlim[1])
-    cy = random.uniform(ylim[0], ylim[1])
-    return ObstacleCircle(cx, cy, radius)
+    center = random_center(center_lims)
+    return SphereField([center], [radius])
 
 
 def save_map_image(obst_map=None,start_pts=None,goal_pts=None,dir='.'):

@@ -62,3 +62,63 @@ class Sphere(DynamicBodyCore):
         )
         setattr(self, "client_id", client_id)
         return self.id
+
+
+class SphereBullet(BodyCore):
+    def __init__(
+        self,
+        base_position: Union[np.ndarray, list],
+        radius: float,
+        scale: float = 0.3,
+    ) -> None:
+        super(SphereBullet, self).__init__(
+            base_position=base_position,
+            base_orientation=[0.0, 0.0, 0.0, 1.0],
+            scale=scale,
+        )
+        self._role = None
+
+        self._radius = radius
+
+    @property
+    def role(self) -> Union[None, int]:
+        return self._role
+
+    @role.setter
+    def role(self, value: int) -> None:
+        self._role = value
+
+    def reset(self, role: Union[None, int] = None):
+        super().reset()
+        self.role = role
+        if self.role is not None and hasattr(self, "client_id"):
+            [
+                self.client_id.changeVisualShape(
+                    self.id,
+                    i,
+                    rgbaColor=SPHERE_COLOR[SPHERE_ROLES[self.role]],
+                )
+                for i in range(-1, 4)
+            ]
+
+    def load2client(self, client_id, color=[1, 1, 1, 1]):
+        setattr(self, "client_id", client_id)
+
+        self.collision_id = client_id.createCollisionShape(
+            shapeType=client_id.GEOM_SPHERE,
+            radius=self._radius
+        )
+
+        self.visual_id = client_id.createVisualShape(
+            shapeType=client_id.GEOM_SPHERE,
+            radius=self._radius,
+            rgbaColor=color
+        )
+
+        self.id = client_id.createMultiBody(
+            baseCollisionShapeIndex=self.collision_id,
+            baseVisualShapeIndex=self.visual_id,
+            basePosition=self.base_position,
+        )
+
+        return self.id

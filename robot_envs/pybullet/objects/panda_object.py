@@ -53,13 +53,18 @@ class Panda(BodyCore):
         self.resetController()
         self.setTargetPositions(joint_positions)
 
-    def reset(self):
+    def reset(self, q=None):
         super(Panda, self).reset()
-        self.joint_positions = self.initial_joint_positions
+        if q is not None:
+            if len(q) == 7:
+                q = q.tolist() + self.initial_joint_positions[-2:]
+            self.joint_positions = q
+        else:
+            self.joint_positions = self.initial_joint_positions
         return self.getJointStates()
 
     def load2client(self, client_id):
-        path = (get_robot_path() / 'franka_description' / 'robots' / 'panda.urdf').as_posix()
+        path = (get_robot_path() / 'franka_description' / 'panda.urdf').as_posix()
         self.id = client_id.loadURDF(
             path,
             useFixedBase=True,

@@ -12,7 +12,13 @@ from torch_planning_objectives.fields.utils.distance import find_link_distance, 
 
 
 class DistanceField(ABC):
-    def __init__(self, ):
+    def __init__(self, tensor_args=None):
+        self.tensor_args = tensor_args
+
+    def distances(self):
+        pass
+
+    def compute_collision(self):
         pass
 
     @abstractmethod
@@ -25,7 +31,258 @@ class DistanceField(ABC):
 
     @abstractmethod
     def zero_grad(self):
-        pass 
+        pass
+
+
+class EmbodimentDistanceFieldBase(DistanceField):
+
+    def __init__(self, field_type='rbf', clamp_sdf=True, num_interpolate=0,
+                 link_interpolate_range=[2, 7], **kwargs):
+        super().__init__(**kwargs)
+        self.num_interpolate = num_interpolate
+        self.link_interpolate_range = link_interpolate_range
+        self.field_type = field_type
+        self.clamp_sdf = clamp_sdf
+
+    def interpolate_links(self, link_pos):
+        if self.num_interpolate > 0:
+            link_dim = link_pos.shape[:-1]
+            alpha = torch.linspace(0, 1, self.num_interpolate + 2).type_as(link_pos)[1:self.num_interpolate + 1]
+            alpha = alpha.view(tuple([1] * len(link_dim) + [-1, 1]))  # 1 x 1 x 1 x ... x num_interpolate x 1
+            X = link_pos[..., self.link_interpolate_range[0]:self.link_interpolate_range[1] + 1, :].unsqueeze(-2)  # batch_dim x num_interp_link x 1 x 3
+            X_diff = torch.diff(X, dim=-3)  # batch_dim x (num_interp_link - 1) x 1 x 3
+            X_interp = X[..., :-1, :, :] + X_diff * alpha  # batch_dim x (num_interp_link - 1) x num_interpolate x 3
+            link_pos = torch.cat([link_pos, X_interp.flatten(-3, -2)], dim=-2)  # batch_dim x (num_link + (num_interp_link - 1) * num_interpolate) x 3
+        return link_pos
+
+
+
+class EmbodimentDistanceField(EmbodimentDistanceFieldBase):
+
+    def __init__(self, self_margin=0.005, obst_margin=0.03, **kwargs):
+        super().__init__(**kwargs)
+        self.self_margin = self_margin
+        self.obst_margin = obst_margin
+
+    def self_distances(self, link_pos, **kwargs):  # position tensor
+        dist_mat = torch.linalg.norm(link_pos.unsqueeze(-2) - link_pos.unsqueeze(-3), dim=-1)  # batch_dim x links x links
+        # select lower triangular
+        lower_indices = torch.tril_indices(dist_mat.shape[-1], dist_mat.shape[-1], offset=-1).unbind()
+        distances = dist_mat[..., lower_indices[0], lower_indices[1]]  # batch_dim x (links * (links - 1) / 2)
+        return distances
+
+    def compute_self_collision(self, link_pos, margin=None, **kwargs):  # position tensor
+        if margin is None:
+            margin = self.self_margin
+        distances = self.self_distances(link_pos, **kwargs)  # batch_dim x links x links
+        any_self_collision = torch.any(distances < margin, dim=-1)
+        return any_self_collision
+
+    def compute_self_cost(self, link_pos, field_type=None, margin=None, **kwargs):  # position tensor
+        if field_type is None:
+            field_type = self.field_type
+        if margin is None:
+            margin = self.self_margin
+        if field_type == 'rbf':
+            return torch.exp(
+                torch.square(link_pos.unsqueeze(-2) - link_pos.unsqueeze(-3)).sum(-1) / (-margin ** 2 * 2)).sum(
+                (-1, -2))
+        elif field_type == 'sdf':  # this computes the negative cost from the DISTANCE FUNCTION
+            margin_minus_sdf = -(self.self_distances(link_pos, **kwargs) - margin).min(-1)[0]
+            if self.clamp_sdf:
+                return torch.relu(margin_minus_sdf)
+            return margin_minus_sdf
+        elif field_type == 'occupancy':
+            return self.compute_self_collision(link_pos, **kwargs)
+            # distances = self.self_distances(link_pos, **kwargs)  # batch_dim x (links * (links - 1) / 2)
+            # return (distances < margin).sum(-1)
+        else:
+            raise NotImplementedError('field_type {} not implemented'.format(field_type))
+
+    def obstacle_distances(self, link_pos, df_list=None, **kwargs):
+        if df_list is None:
+            return 1e10  # or infinity
+        link_dim = link_pos.shape[:-1]
+        link_pos = link_pos.reshape(-1, link_pos.shape[-1])  # flatten batch_dim and links
+        dfs = [df.compute_signed_distance(link_pos).view(link_dim) for df in df_list]  # df() returns batch_dim x links
+        return torch.stack(dfs, dim=-2)  # batch_dim x num_sdfs x links
+
+    def compute_obstacle_collision(self, link_pos, df_list, margin=None, **kwargs):  # position tensor
+        if margin is None:
+            margin = self.obst_margin
+        distances = self.obstacle_distances(link_pos, df_list, **kwargs).min(-1)[0].min(-1)[0]  # batch_dim
+        any_collision = distances < margin
+        return any_collision
+
+    def compute_obstacle_cost(self, link_pos, df_list=None, field_type=None, margin=None, **kwargs):
+        if df_list is None:
+            return 0
+        if field_type is None:
+            field_type = self.field_type
+        if margin is None:
+            margin = self.obst_margin
+        if field_type == 'rbf':
+            return torch.exp(
+                torch.square(self.obstacle_distances(link_pos, df_list, **kwargs)) / (-margin ** 2 * 2)).sum((-1, -2))
+        elif field_type == 'sdf':  # this computes the negative cost from the SIGNED DISTANCE FUNCTION
+            margin_minus_sdf = -(self.obstacle_distances(link_pos, df_list, **kwargs) - margin).min(-1)[0].min(-1)[0]
+            if self.clamp_sdf:
+                return torch.relu(margin_minus_sdf)
+            return margin_minus_sdf
+        elif field_type == 'occupancy':
+            return self.compute_obstacle_collision(link_pos, df_list, margin=margin, **kwargs)
+            # return (self.obstacle_distances(link_pos, df_list, **kwargs) < margin).sum((-1, -2))
+        else:
+            raise NotImplementedError('field_type {} not implemented'.format(field_type))
+
+    def compute_distance(self, link_pos, df_list=None, **kwargs):  # position tensor
+        link_pos = self.interpolate_links(link_pos)
+
+        self_distances = self.self_distances(link_pos, **kwargs).min(-1)[0]  # batch_dim
+        obstacle_distances = self.obstacle_distances(link_pos, df_list, **kwargs).min(-1)[0].min(-1)[0]  # batch_dim
+        return self_distances, obstacle_distances
+
+    def compute_cost(self, link_pos, df_list=None, **kwargs):
+        # position tensor # batch_dim x num_links x 3
+        link_pos = self.interpolate_links(link_pos)
+
+        self_cost = self.compute_self_cost(link_pos, **kwargs)
+        obstacle_cost = self.compute_obstacle_cost(link_pos, df_list, **kwargs)
+        return self_cost, obstacle_cost
+
+    def zero_grad(self):
+        raise NotImplementedError
+
+
+class BorderDistanceField(EmbodimentDistanceFieldBase):
+
+    def __init__(self, work_space_bounds_min=None, work_space_bounds_max=None,
+                 obst_margin=0.03, **kwargs):
+        super().__init__(**kwargs)
+        self.work_space_bounds_min = work_space_bounds_min
+        self.work_space_bounds_max = work_space_bounds_max
+        self.obst_margin = obst_margin
+
+    def obstacle_distances(self, link_pos, **kwargs):
+        signed_distances_bounds_min = link_pos - self.work_space_bounds_min
+        signed_distances_bounds_min = torch.sign(signed_distances_bounds_min) * torch.abs(signed_distances_bounds_min)
+        signed_distances_bounds_max = self.work_space_bounds_max - link_pos
+        signed_distances_bounds_max = torch.sign(signed_distances_bounds_max) * torch.abs(signed_distances_bounds_max)
+        signed_distances_bounds = torch.cat((signed_distances_bounds_min, signed_distances_bounds_max), dim=-1)
+        return signed_distances_bounds
+
+    def compute_obstacle_collision(self, link_pos, margin=None, **kwargs):  # position tensor
+        if margin is None:
+            margin = self.obst_margin
+        signed_distances_bounds = self.obstacle_distances(link_pos)
+        signed_distances_bounds = signed_distances_bounds.min(-1)[0].min(-1)[0]
+        any_collision = signed_distances_bounds < margin
+        return any_collision
+
+    def compute_obstacle_cost(self, link_pos, field_type=None, margin=None, **kwargs):
+        if field_type is None:
+            field_type = self.field_type
+        if margin is None:
+            margin = self.obst_margin
+        if field_type == 'rbf':
+            return torch.exp(
+                torch.square(self.obstacle_distances(link_pos, **kwargs)) / (-margin ** 2 * 2)).sum((-1, -2))
+        elif field_type == 'sdf':  # this computes the negative cost from the SIGNED DISTANCE FUNCTION
+            margin_minus_sdf = -(self.obstacle_distances(link_pos, **kwargs) - margin).min(-1)[0].min(-1)[0]
+            if self.clamp_sdf:
+                return torch.relu(margin_minus_sdf)
+            return margin_minus_sdf
+        elif field_type == 'occupancy':
+            return self.compute_obstacle_collision(link_pos, **kwargs)
+            # return (self.obstacle_distances(link_pos, **kwargs) < margin).sum((-1, -2))
+        else:
+            raise NotImplementedError('field_type {} not implemented'.format(field_type))
+
+    def compute_distance(self, link_pos, **kwargs):  # position tensor
+        link_pos = self.interpolate_links(link_pos)
+
+        obstacle_distances = self.obstacle_distances(link_pos, **kwargs).min(-1)[0].min(-1)[0]  # batch_dim
+        return obstacle_distances
+
+    def compute_cost(self, link_pos, **kwargs):
+        # position tensor # batch_dim x num_links x 3
+        link_pos = self.interpolate_links(link_pos)
+
+        obstacle_cost = self.compute_obstacle_cost(link_pos, **kwargs)
+        return obstacle_cost
+
+    def zero_grad(self):
+        raise NotImplementedError
+
+
+
+
+class FloorDistanceField(DistanceField):
+
+    def __init__(self, margin=0.05, **kwargs):
+        super().__init__(**kwargs)
+        self.margin = margin
+
+    def distances(self, link_tensor):
+        link_pos = link_tensor[..., :3, -1]
+        return link_pos[..., 2]  # z axis
+
+    def compute_collision(self, link_tensor, floor_min=None):
+        collisions = torch.zeros(link_tensor.shape[:2]).to(**self.tensor_args)  # batch, trajectory
+        if floor_min is None:
+            return collisions
+        distances = self.distances(link_tensor)
+        floor_collisions = distances < floor_min
+        any_floor_collisions = torch.any(floor_collisions, dim=-1)
+        return any_floor_collisions
+
+    def compute_distance(self, link_tensor):
+        distances = self.distances(link_tensor)
+        return distances.mean(-1)  # z axis
+
+    def compute_cost(self, link_tensor, **kwargs):
+        return torch.exp(-0.5 * torch.square(link_tensor[..., 2, -1].mean(-1)) / self.margin ** 2)
+
+    def zero_grad(self):
+        raise NotImplementedError
+
+
+class BorderDistanceFieldOLD(DistanceField):
+
+    def __init__(self, target_H, w_pos=1., w_rot=1., square=True, **kwargs):
+        super().__init__(**kwargs)
+        self.target_H = target_H
+        self.square = square
+        self.w_pos = w_pos
+        self.w_rot = w_rot
+
+    def update_target(self, target_H):
+        self.target_H = target_H
+
+    def distances(self, link_tensor):
+        link_pos = link_tensor[..., :3, -1]
+        return link_pos
+
+    def compute_collision(self, link_tensor, task_space_min=None, task_space_max=None):
+        collisions = torch.zeros(link_tensor.shape[:2]).to(**self.tensor_args)  # batch, trajectory
+        if task_space_min is None and task_space_max is None:
+            return collisions
+        distances = self.distances(link_tensor)
+        collisions = torch.logical_or(distances < task_space_min, distances > task_space_max)
+        any_collisions = torch.any(torch.any(collisions, dim=-1), dim=-1)
+        return any_collisions
+
+    def compute_distance(self, link_tensor):
+        raise NotImplementedError
+        distances = self.distances(link_tensor)
+        return distances.mean(-1)  # z axis
+
+    def compute_cost(self, link_tensor, **kwargs):
+        raise NotImplementedError
+        return torch.exp(-0.5 * torch.square(link_tensor[..., 2, -1].mean(-1)) / self.margin ** 2)
+
+    def zero_grad(self):
+        raise NotImplementedError
 
 
 class SphereDistanceField(DistanceField):
@@ -33,15 +290,16 @@ class SphereDistanceField(DistanceField):
         All points are stored in the world reference frame, obtained by using update_pose calls.
     """
 
-    def __init__(self, robot_collision_params, batch_size=1, device='cpu'):
+    def __init__(self, robot_collision_params, batch_size=1, **kwargs):
         """ Initialize with robot collision parameters, look at franka_reacher.py for an example.
         Args:
             robot_collision_params (Dict): collision model parameters
             batch_size (int, optional): Batch size of parallel sdf computation. Defaults to 1.
             tensor_args (dict, optional): compute device and data type. Defaults to {'device':"cpu", 'dtype':torch.float32}.
-        """        
+        """
+        super().__init__(**kwargs)
+
         self.batch_dim = [batch_size, ]
-        self.device = device
 
         self._link_spheres = None
         self._batch_link_spheres = None
@@ -58,7 +316,7 @@ class SphereDistanceField(DistanceField):
         """Load robot collision model, called from constructor
         Args:
             robot_collision_params (Dict): loaded from yml file
-        """        
+        """
         self.robot_links = robot_collision_params['link_objs']
 
         # load collision file:
@@ -71,24 +329,25 @@ class SphereDistanceField(DistanceField):
 
         for j_idx, j in enumerate(self.robot_links):
             n_spheres = len(coll_params[j])
-            link_spheres = torch.zeros((n_spheres, 4), device=self.device)
+            link_spheres = torch.zeros((n_spheres, 4)).to(**self.tensor_args)
             for i in range(n_spheres):
-                link_spheres[i, :] = tensor_sphere(coll_params[j][i][:3], coll_params[j][i][3], device=self.device, tensor=link_spheres[i])
+                link_spheres[i, :] = tensor_sphere(coll_params[j][i][:3], coll_params[j][i][3], tensor=link_spheres[i]).to(**self.tensor_args)
             self._link_spheres.append(link_spheres)
 
     def build_batch_features(self, clone_objs=False, batch_dim=None):
-        """clones poses/object instances for computing across batch. Use this once per batch size change to avoid re-initialization over repeated calls.
+        """clones poses/object instances for computing across batch.
+        Use this once per batch size change to avoid re-initialization over repeated calls.
         Args:
             clone_objs (bool, optional): clones objects. Defaults to False.
             batch_size ([type], optional): batch_size to clone. Defaults to None.
         """
-
-        if(batch_dim is not None):
+        if batch_dim is not None:
             self.batch_dim = batch_dim
-        if(clone_objs):
+        if clone_objs:
             self._batch_link_spheres = []
             for i in range(len(self._link_spheres)):
-                _batch_link_i = self._link_spheres[i].view(tuple([1] * len(self.batch_dim) + list(self._link_spheres[i].shape)))
+                _batch_link_i = self._link_spheres[i].view(
+                    tuple([1] * len(self.batch_dim) + list(self._link_spheres[i].shape)))
                 _batch_link_i = _batch_link_i.repeat(tuple(self.batch_dim + [1, 1]))
                 self._batch_link_spheres.append(_batch_link_i)
         self.w_batch_link_spheres = copy.deepcopy(self._batch_link_spheres)
@@ -99,11 +358,12 @@ class SphereDistanceField(DistanceField):
         links_pos: bxnx3
         links_rot: bxnx3x3
         '''
-
         for i in range(len(self.robot_links)):
             link_H = links_dict[self.robot_links[i]].get_transform_matrix()
             link_pos, link_rot = link_H[..., :-1, -1], link_H[..., :3, :3]
-            self.w_batch_link_spheres[i][..., :3] = transform_point(self._batch_link_spheres[i][..., :3], link_rot, link_pos.unsqueeze(-2))
+            self.w_batch_link_spheres[i][..., :3] = transform_point(
+                self._batch_link_spheres[i][..., :3], link_rot, link_pos.unsqueeze(-2)
+            )
 
     def check_collisions(self, obstacle_spheres=None):
         """Analytic method to compute signed distance between links.
@@ -112,12 +372,12 @@ class SphereDistanceField(DistanceField):
             link_rot ([type]): link rotation as batch [b, 3, 3]
         Returns:
             [tensor]: signed distance [b, 1]
-        """        
+        """
         n_links = len(self.w_batch_link_spheres)
         if self.self_dist is None:
             self.self_dist = torch.zeros(self.batch_dim + [n_links, n_links], device=self.device) - 100.0
         if self.obst_dist is None:
-            self.obst_dist = torch.zeros(self.batch_dim + [n_links,], device=self.device) - 100.0
+            self.obst_dist = torch.zeros(self.batch_dim + [n_links, ], device=self.device) - 100.0
         dist = self.self_dist
         dist = find_link_distance(self.w_batch_link_spheres, dist)
         total_dist = dist.max(1)[0]
@@ -130,7 +390,7 @@ class SphereDistanceField(DistanceField):
     def compute_distance(self, links_dict, obstacle_spheres=None):
         self.update_batch_robot_collision_objs(links_dict)
         return self.check_collisions(obstacle_spheres).max(1)[0]
-    
+
     def compute_cost(self, links_dict, obstacle_spheres=None):
         signed_dist = self.compute_distance(links_dict, obstacle_spheres=obstacle_spheres)
         return torch.exp(signed_dist / self.margin)
@@ -139,6 +399,7 @@ class SphereDistanceField(DistanceField):
         return self.w_batch_link_spheres
 
     def zero_grad(self):
+        raise NotImplementedError
         self.self_dist.detach_()
         self.self_dist.grad = None
         self.obst_dist.detach_()
@@ -152,12 +413,29 @@ class SphereDistanceField(DistanceField):
 
 class LinkDistanceField(DistanceField):
 
-    def __init__(self, field_type='rbf', clamp_sdf=False, num_interpolate=0, link_interpolate_range=[5, 7], device='cpu'):
+    def __init__(self, field_type='rbf', clamp_sdf=False, num_interpolate=0, link_interpolate_range=[5, 7],
+                 **kwargs):
+        super().__init__(**kwargs)
         self.field_type = field_type
         self.clamp_sdf = clamp_sdf
         self.num_interpolate = num_interpolate
         self.link_interpolate_range = link_interpolate_range
-        self.device = device
+
+    def distances(self, link_tensor, obstacle_spheres):
+        link_pos = link_tensor[..., :3, -1]
+        link_pos = link_pos.unsqueeze(-2)
+        obstacle_spheres = obstacle_spheres.unsqueeze(0).unsqueeze(0)
+        centers = obstacle_spheres[..., :3]
+        radii = obstacle_spheres[..., 3]
+        return torch.linalg.norm(link_pos - centers, dim=-1) - radii
+
+    def compute_collision(self, link_tensor, obstacle_spheres=None, buffer=0.02):  # position tensor
+        collisions = torch.zeros(link_tensor.shape[:2]).to(**self.tensor_args)  # batch, trajectory
+        if obstacle_spheres is None:
+            return collisions
+        distances = self.distances(link_tensor, obstacle_spheres)
+        collisions = torch.any(torch.any(distances < buffer, dim=-1), dim=-1)
+        return collisions
 
     def compute_distance(self, link_tensor, obstacle_spheres=None, **kwargs):
         if obstacle_spheres is None:
@@ -192,123 +470,30 @@ class LinkDistanceField(DistanceField):
             return (torch.linalg.norm(link_tensor - obstacle_spheres[..., :3], dim=-1) < obstacle_spheres[..., 3]).sum((-1, -2))
 
     def zero_grad(self):
-        pass
-
-
-class EmbodimentDistanceField(DistanceField):
-
-    def __init__(self, self_margin=0.005, obst_margin=0.03, field_type='rbf', num_interpolate=0, link_interpolate_range=[2, 7], **kwargs):
-        super().__init__(**kwargs)
-        self.num_interpolate = num_interpolate
-        self.link_interpolate_range = link_interpolate_range
-        self.self_margin = self_margin
-        self.obst_margin = obst_margin
-        self.field_type = field_type
-
-    def self_distances(self, link_pos, **kwargs):  # position tensor
-        dist_mat = torch.linalg.norm(link_pos.unsqueeze(-2) - link_pos.unsqueeze(-3), dim=-1)  # batch_dim x links x links
-        # select lower triangular
-        lower_indices = torch.tril_indices(dist_mat.shape[-1], dist_mat.shape[-1], offset=-1).unbind()
-        distances = dist_mat[:, lower_indices[0], lower_indices[1]]  # batch_dim x (links * (links - 1) / 2)
-        return distances
-
-    def compute_self_cost(self, link_pos, field_type=None, margin=None, **kwargs):  # position tensor
-        if field_type is None:
-            field_type = self.field_type
-        if margin is None:
-            margin = self.self_margin
-        if field_type == 'rbf':
-            return torch.exp(torch.square(link_pos.unsqueeze(-2) - link_pos.unsqueeze(-3)).sum(-1) / (-margin**2 * 2)).sum((-1, -2))
-        elif field_type == 'sdf':  # this computes the negative cost from the DISTANCE FUNCTION
-            return -(self.self_distances(link_pos, **kwargs) - margin).min(-1)[0]
-        elif field_type == 'occupancy':
-            distances = self.self_distances(link_pos, **kwargs)  # batch_dim x links x links
-            return (distances < margin).sum(-1)
-        else:
-            raise NotImplementedError('field_type {} not implemented'.format(field_type))
-
-    def compute_self_collision(self, link_pos, margin=None, **kwargs):  # position tensor
-        if margin is None:
-            margin = self.self_margin
-        distances = self.self_distances(link_pos, **kwargs)  # batch_dim x links x links
-        any_self_collision = torch.any(distances < margin, dim=-1)
-        return any_self_collision
-
-    def obstacle_distances(self, link_pos, df_list=None, **kwargs):
-        if df_list is None:
-            return 1e10   # or infinity
-        link_dim = link_pos.shape[:-1]
-        link_pos = link_pos.reshape(-1, link_pos.shape[-1])  # flatten batch_dim and links
-        dfs = [df.compute_distance(link_pos).view(link_dim) for df in df_list]  # df() returns batch_dim x links
-        return torch.stack(dfs, dim=-2)  # batch_dim x num_sdfs x links
-
-    def compute_obstacle_collision(self, link_pos, margin=None, **kwargs):  # position tensor
-        if margin is None:
-            margin = self.obst_margin
-        distances = self.obstacle_distances(link_pos, **kwargs).min(-1)[0].min(-1)[0]  # batch_dim
-        any_collision = distances < margin
-        return any_collision
-    
-    def compute_obstacle_cost(self, link_pos, df_list=None, field_type=None, margin=None, **kwargs):
-        if df_list is None:
-            return 0
-        if field_type is None:
-            field_type = self.field_type
-        if margin is None:
-            margin = self.obst_margin
-        if field_type == 'rbf':
-            return torch.exp(torch.square(self.obstacle_distances(link_pos, df_list, **kwargs)) / (-margin**2 * 2)).sum((-1, -2))
-        elif field_type == 'sdf':  # this computes the negative cost from the DISTANCE FUNCTION
-            return -(self.obstacle_distances(link_pos, df_list, **kwargs) - margin).min(-1)[0].min(-1)[0]
-        elif field_type == 'occupancy':
-            return (self.obstacle_distances(link_pos, df_list, **kwargs) < margin).sum((-1, -2))
-        else:
-            raise NotImplementedError('field_type {} not implemented'.format(field_type))
-
-    def interpolate_links(self, link_pos):
-        link_dim = link_pos.shape[:-1]
-        alpha = torch.linspace(0, 1, self.num_interpolate + 2).type_as(link_pos)[1:self.num_interpolate + 1]
-        alpha = alpha.view(tuple([1] * len(link_dim) + [-1, 1]))  # 1 x 1 x 1 x ... x num_interpolate x 1
-        X = link_pos[..., self.link_interpolate_range[0]:self.link_interpolate_range[1] + 1, :].unsqueeze(-2)  # batch_dim x num_interp_link x 1 x 3
-        X_diff = torch.diff(X, dim=-3)  # batch_dim x (num_interp_link - 1) x 1 x 3
-        X_interp = X[..., :-1, :, :] + X_diff * alpha  # batch_dim x (num_interp_link - 1) x num_interpolate x 3
-        return torch.cat([link_pos, X_interp.flatten(-3, -2)], dim=-2)  # batch_dim x (num_link + (num_interp_link - 1) * num_interpolate) x 3
-
-    def compute_distance(self, link_pos, df_list=None, unique_pos=True, **kwargs):  # position tensor
-        if unique_pos:   # remove duplicate positions from the URDF
-            link_pos = link_pos.unique(dim=-2)
-        if self.num_interpolate > 0:
-            link_pos = self.interpolate_links(link_pos)
-        
-        self_distances = self.self_distances(link_pos, **kwargs).min(-1)[0]  # batch_dim
-        obstacle_distances = self.obstacle_distances(link_pos, df_list, **kwargs).min(-1)[0].min(-1)[0]  # batch_dim
-        return self_distances, obstacle_distances
-
-    def compute_cost(self, link_pos, df_list=None, unique_pos=True, **kwargs):  # position tensor # batch_dim x num_links x 3
-        if unique_pos:    # remove duplicate positions from the URDF
-            link_pos = link_pos.unique(dim=-2)
-        if self.num_interpolate > 0:
-            link_pos = self.interpolate_links(link_pos)
-
-        self_cost = self.compute_self_cost(link_pos, **kwargs)
-        obstacle_cost = self.compute_obstacle_cost(link_pos, df_list, **kwargs)
-        return self_cost, obstacle_cost
-
-    def zero_grad(self):
-        pass
+        raise NotImplementedError
 
 
 class LinkSelfDistanceField(DistanceField):
 
-    def __init__(self, margin=0.03, num_interpolate=0, link_interpolate_range=[5, 7], device='cpu'):
+    def __init__(self, margin=0.03, num_interpolate=0, link_interpolate_range=[5, 7], **kwargs):
+        super().__init__(**kwargs)
         self.num_interpolate = num_interpolate
         self.link_interpolate_range = link_interpolate_range
         self.margin = margin
-        self.device = device
+
+    def distances(self, link_tensor):
+        link_pos = link_tensor[..., :3, -1]
+        return torch.linalg.norm(link_pos.unsqueeze(-2) - link_pos.unsqueeze(-3), dim=-1)
+
+    def compute_collision(self, link_tensor, buffer=0.05):  # position tensor
+        distances = self.distances(link_tensor)
+        self_collisions = torch.tril(distances < buffer, diagonal=-2)
+        any_self_collision = torch.any(torch.any(self_collisions, dim=-1), dim=-1)
+        return any_self_collision
 
     def compute_distance(self, link_tensor):  # position tensor
-        link_tensor = link_tensor[..., :3, -1]
-        return torch.linalg.norm(link_tensor.unsqueeze(-2) - link_tensor.unsqueeze(-3), dim=-1).sum((-1, -2))
+        distances = self.distances(link_tensor)
+        return distances.sum((-1, -2))
 
     def compute_cost(self, link_tensor, **kwargs):   # position tensor
         link_tensor = link_tensor[..., :3, -1]
@@ -323,39 +508,24 @@ class LinkSelfDistanceField(DistanceField):
         return torch.exp(torch.square(link_tensor.unsqueeze(-2) - link_tensor.unsqueeze(-3)).sum(-1) / (-self.margin**2 * 2)).sum((-1, -2))
 
     def zero_grad(self):
-        pass
-
-
-class FloorDistanceField(DistanceField):
-
-    def __init__(self, margin=0.05, device='cpu'):
-        self.margin = margin
-        self.device = device
-
-    def compute_distance(self, link_tensor):  # position tensor
-        return link_tensor[..., 2, -1].mean(-1)   # z axis
-
-    def compute_cost(self, link_tensor, **kwargs):  # position tensor
-        return torch.exp(-0.5 * torch.square(link_tensor[..., 2, -1].mean(-1)) / self.margin**2)
-
-    def zero_grad(self):
-        pass
+        raise NotImplementedError
 
 
 class EESE3DistanceField(DistanceField):
 
-    def __init__(self, target_H, w_pos=1., w_rot=1., square=True, device='cpu'):
+    def __init__(self, target_H, w_pos=1., w_rot=1., square=True, **kwargs):
+        super().__init__(**kwargs)
         self.target_H = target_H
         self.square = square
         self.w_pos = w_pos
         self.w_rot = w_rot
-        self.device = device
-    
+
     def update_target(self, target_H):
         self.target_H = target_H
 
     def compute_distance(self, link_tensor):  # position tensor
-        return SE3_distance(link_tensor[..., -1, :, :], self.target_H, w_pos=self.w_pos, w_rot=self.w_rot)   # get EE as last link
+        return SE3_distance(link_tensor[..., -1, :, :], self.target_H, w_pos=self.w_pos,
+                            w_rot=self.w_rot)  # get EE as last link
 
     def compute_cost(self, link_tensor, **kwargs):  # position tensor
         dist = self.compute_distance(link_tensor).squeeze()
@@ -364,12 +534,13 @@ class EESE3DistanceField(DistanceField):
         return dist
 
     def zero_grad(self):
-        pass
+        raise NotImplementedError
 
 
 class SkeletonSE3DistanceField(DistanceField):
 
-    def __init__(self, target_H=None, w_pos=1., w_rot=1., link_list=None, square=True, device='cpu'):
+    def __init__(self, target_H=None, w_pos=1., w_rot=1., link_list=None, square=True, **kwargs):
+        super().__init__(**kwargs)
         self.target_H = target_H
         self.w_pos = w_pos
         self.w_rot = w_rot
@@ -377,7 +548,6 @@ class SkeletonSE3DistanceField(DistanceField):
         self.link_list = link_list
         self.link_weights = None
         self.link_weights_ts = None
-        self.device = device
 
     def set_link_weights(self, weight_dict):
         assert all(link in self.link_list for link in weight_dict)
@@ -423,8 +593,7 @@ class SkeletonSE3DistanceField(DistanceField):
         return dist
 
     def zero_grad(self):
-        pass
-
+        raise NotImplementedError
 
 
 class MeshDistanceField(DistanceField):
@@ -488,7 +657,7 @@ class MeshDistanceField(DistanceField):
             return (torch.linalg.norm(link_tensor - vertices[..., :3], dim=-1) < self.margin[..., 3]).sum((-1, -2))
 
     def zero_grad(self):
-        pass
+        raise NotImplementedError
 
 
 

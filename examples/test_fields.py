@@ -1,7 +1,7 @@
 import time
 from torch_kinematics_tree.models.robots import DifferentiableFrankaPanda
 from torch_planning_objectives.fields.distance_fields import EmbodimentDistanceField
-from torch_planning_objectives.fields.primitive_distance_fields import MultiSpheres
+from torch_planning_objectives.fields.primitive_distance_fields import SphereField
 import torch
 
 
@@ -9,7 +9,7 @@ if __name__ == "__main__":
     batch_size = 10
     device = 'cpu'
     tensor_args = dict(device=device, dtype=torch.float32)
-    df = MultiSpheres(
+    df = SphereField(
         centers=[[1., 1., 1.], [0., 0., 2.], [0., 0., 3.]],
         radii=[0.5, 0.5, 0.5],
         tensor_args=tensor_args
@@ -33,6 +33,6 @@ if __name__ == "__main__":
     self_dist, obst_dist = field.compute_distance(link_pos, [df])
     self_cost, obst_cost = field.compute_cost(link_pos, [df])
     time_end = time.time()
+    print(f"Computational Time: {time_end - time_start}")
     print(self_dist, obst_dist)
     print(self_cost, obst_cost)
-    print(f"Computational Time: {time_end - time_start}")

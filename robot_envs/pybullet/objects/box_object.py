@@ -16,7 +16,8 @@ BOX_COLOR = {
 
 class Box(BodyCore):
     def __init__(
-        self, base_position: Union[np.ndarray, list], scale: float = 1.0
+        self, base_position: Union[np.ndarray, list],
+            scale: float = 1.0
     ) -> None:
         super(Box, self).__init__(
             base_position=base_position,
@@ -57,3 +58,62 @@ class Box(BodyCore):
         )
         setattr(self, "client_id", client_id)
         return self.id
+
+
+class BoxBullet(BodyCore):
+    def __init__(
+        self, base_position: Union[np.ndarray, list],
+            half_sizes: Union[np.ndarray, list] = None,
+            scale: float = 1.0
+    ) -> None:
+        super(BoxBullet, self).__init__(
+            base_position=base_position,
+            base_orientation=[0.0, 0.0, 0.0, 1.0],
+            scale=scale,
+        )
+        self._role = None
+        self._half_sizes = half_sizes
+
+    @property
+    def role(self) -> Union[None, int]:
+        return self._role
+
+    @role.setter
+    def role(self, value: int) -> None:
+        self._role = value
+
+    def reset(self, role: Union[None, int] = None):
+        super().reset()
+        self.role = role
+        if self.role is not None and hasattr(self, "client_id"):
+            [
+                self.client_id.changeVisualShape(
+                    self.id,
+                    i,
+                    rgbaColor=BOX_COLOR[BOX_ROLES[self.role]],
+                )
+                for i in range(-1, 4)
+            ]
+
+    def load2client(self, client_id):
+        setattr(self, "client_id", client_id)
+
+        self.collision_id = client_id.createCollisionShape(
+            shapeType=client_id.GEOM_BOX,
+            halfExtents=self._half_sizes
+        )
+
+        self.visual_id = client_id.createVisualShape(
+            shapeType=client_id.GEOM_BOX,
+            halfExtents=self._half_sizes,
+            rgbaColor=[1, 1, 1, 1]
+        )
+
+        self.id = client_id.createMultiBody(
+            baseCollisionShapeIndex=self.collision_id,
+            baseVisualShapeIndex=self.visual_id,
+            basePosition=self.base_position,
+        )
+
+        return self.id
+
