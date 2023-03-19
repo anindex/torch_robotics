@@ -29,11 +29,13 @@ class PandaEnvBase(EnvBase):
     def __init__(self,
                  name='panda_simple_env',
                  obst_primitives_l=None,
+                 obst_primitives_extra_index_l=None,
                  work_space_bounds=((-1.25, 1.25), (-1.25, 1.25), (0, 1.5)),
                  obstacle_buffer=0.01,
                  self_buffer=0.0005,
                  compute_robot_collision_from_occupancy_grid=False,
-                 tensor_args=None
+                 tensor_args=None,
+                 **kwargs
                  ):
         ################################################################################################
         # Robot pybullet
@@ -48,6 +50,7 @@ class PandaEnvBase(EnvBase):
         # Physics Environment
         self.panda_bullet_env = PandaEnvPyBulletBase(
             obst_primitives_l=obst_primitives_l,
+            obst_primitives_extra_index_l=obst_primitives_extra_index_l,
             render=True
         )
 

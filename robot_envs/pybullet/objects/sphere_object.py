@@ -70,6 +70,8 @@ class SphereBullet(BodyCore):
         base_position: Union[np.ndarray, list],
         radius: float,
         scale: float = 0.3,
+        color=[1, 1, 1, 1],
+        **kwargs
     ) -> None:
         super(SphereBullet, self).__init__(
             base_position=base_position,
@@ -79,6 +81,8 @@ class SphereBullet(BodyCore):
         self._role = None
 
         self._radius = radius
+
+        self.color = color
 
     @property
     def role(self) -> Union[None, int]:
@@ -101,7 +105,7 @@ class SphereBullet(BodyCore):
                 for i in range(-1, 4)
             ]
 
-    def load2client(self, client_id, color=[1, 1, 1, 1]):
+    def load2client(self, client_id):
         setattr(self, "client_id", client_id)
 
         self.collision_id = client_id.createCollisionShape(
@@ -112,7 +116,7 @@ class SphereBullet(BodyCore):
         self.visual_id = client_id.createVisualShape(
             shapeType=client_id.GEOM_SPHERE,
             radius=self._radius,
-            rgbaColor=color
+            rgbaColor=self.color
         )
 
         self.id = client_id.createMultiBody(

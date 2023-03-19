@@ -16,6 +16,7 @@ class PointMassEnvBase(EnvBase):
                  q_min=(-1, -1),
                  q_max=(1, 1),
                  obst_primitives_l=None,
+                 obst_primitives_extra_l=None,
                  work_space_dim=2,
                  work_space_bounds=((-1., 1.), (-1., 1.), (-1., 1.)),
                  obstacle_buffer=0.01,
@@ -52,6 +53,7 @@ class PointMassEnvBase(EnvBase):
         ################################################################################################
         # Obstacles
         self.obst_primitives_l = obst_primitives_l
+        self.obst_primitives_extra_l = obst_primitives_extra_l
 
         ################################################################################################
         # Collisions
@@ -149,6 +151,10 @@ class PointMassEnvBase(EnvBase):
         # plot obstacles
         for obst_primitive in self.obst_primitives_l:
             obst_primitive.draw(ax)
+
+        if self.obst_primitives_extra_l is not None:
+            for obst_primitive in self.obst_primitives_extra_l:
+                obst_primitive.draw(ax, color='red')
 
         ax.set_xlim(*self.work_space_bounds[0])
         ax.set_ylim(*self.work_space_bounds[1])

@@ -30,6 +30,7 @@ class PandaEnvPyBulletBase(object):
     def __init__(
         self, render: bool = False, goal_offset: float = 0.08,
             obst_primitives_l = None,
+            obst_primitives_extra_index_l=None,
             **kwargs
     ) -> None:
         self._seed = kwargs.get("seed", None)
@@ -58,6 +59,7 @@ class PandaEnvPyBulletBase(object):
 
         # Obstacles
         self.obst_primitives_l = obst_primitives_l
+        self.obst_primitives_extra_index_l = obst_primitives_extra_index_l
 
         self.max_obs_dist = kwargs.get("max_obs_dist", 0.0)
         self.max_floor_dist = kwargs.get("max_floor_dist", 0.0)
@@ -261,18 +263,28 @@ class PandaEnvPyBulletBase(object):
         spheres = []
         for obstacle_primitive in self.obst_primitives_l:
             if isinstance(obstacle_primitive, BoxField):
-                for center, half_size in zip(obstacle_primitive.centers, obstacle_primitive.half_sizes):
+                for i, (center, half_size) in enumerate(zip(obstacle_primitive.centers, obstacle_primitive.half_sizes)):
+                    extra_option = {}
+                    if self.obst_primitives_extra_index_l is not None:
+                        if i in self.obst_primitives_extra_index_l:
+                            extra_option = {'color': [1, 0, 0, 1]}
                     boxes.append(
-                        BoxBullet(base_position=center.tolist(), half_sizes=half_size, scale=1.)
+                        BoxBullet(base_position=center.tolist(), half_sizes=half_size, scale=1.,
+                                  **extra_option)
                     )
 
             if isinstance(obstacle_primitive, SphereField):
-                for center, radius in zip(obstacle_primitive.centers, obstacle_primitive.radii):
+                for i, (center, radius) in enumerate(zip(obstacle_primitive.centers, obstacle_primitive.radii)):
+                    extra_option = {}
+                    if self.obst_primitives_extra_index_l is not None:
+                        if i in self.obst_primitives_extra_index_l:
+                            extra_option = {'color': [1, 0, 0, 1]}
                     spheres.append(
                         SphereBullet(
                             base_position=center.tolist(),
                             radius=radius,
                             scale=1.0,
+                            **extra_option
                         )
                     )
 
@@ -288,6 +300,7 @@ class PandaEnvPyBulletBase(object):
             base_position=target[:3, -1],
             radius=0.02,
             scale=1.0,
+            color=[0, 1, 0, 1.]
         )
         rot_mat = target[:3, :3]
         vec = np.array([0, 0, 0.1])
@@ -299,7 +312,7 @@ class PandaEnvPyBulletBase(object):
             lineWidth=3,
             lifeTime=0,
         )
-        self.target.load2client(self.client_id, color=[0, 1, 0, 1.])
+        self.target.load2client(self.client_id)
 
     def _init_buffer(self) -> None:
         if getattr(self, "buffer_idx", None):

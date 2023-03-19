@@ -64,7 +64,9 @@ class BoxBullet(BodyCore):
     def __init__(
         self, base_position: Union[np.ndarray, list],
             half_sizes: Union[np.ndarray, list] = None,
-            scale: float = 1.0
+            scale: float = 1.0,
+            color=[1, 1, 1, 1],
+            **kwargs
     ) -> None:
         super(BoxBullet, self).__init__(
             base_position=base_position,
@@ -73,6 +75,8 @@ class BoxBullet(BodyCore):
         )
         self._role = None
         self._half_sizes = half_sizes
+
+        self.color = color
 
     @property
     def role(self) -> Union[None, int]:
@@ -106,7 +110,7 @@ class BoxBullet(BodyCore):
         self.visual_id = client_id.createVisualShape(
             shapeType=client_id.GEOM_BOX,
             halfExtents=self._half_sizes,
-            rgbaColor=[1, 1, 1, 1]
+            rgbaColor=self.color
         )
 
         self.id = client_id.createMultiBody(

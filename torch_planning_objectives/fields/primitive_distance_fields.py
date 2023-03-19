@@ -55,7 +55,7 @@ class PolytopeField(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def draw(self, ax):
+    def draw(self, ax, **kwargs):
         raise NotImplementedError
 
 
@@ -150,7 +150,7 @@ class SphereField(PolytopeField):
         # Check if point p is inside the discretized sphere
         return np.linalg.norm(p - center) <= radius
 
-    def draw(self, ax):
+    def draw(self, ax, color='gray'):
         for center, radius in zip(self.centers, self.radii):
             center = to_numpy(center)
             radius = to_numpy(radius)
@@ -159,9 +159,9 @@ class SphereField(PolytopeField):
                 x = radius * (np.cos(u) * np.sin(v))
                 y = radius * (np.sin(u) * np.sin(v))
                 z = radius * np.cos(v)
-                ax.plot_surface(x + center[0], y + center[1], z + center[2], cmap='gray', alpha=1)
+                ax.plot_surface(x + center[0], y + center[1], z + center[2], cmap=color, alpha=1)
             else:
-                circle = plt.Circle((center[0], center[1]), radius, color='gray', linewidth=0, alpha=1)
+                circle = plt.Circle((center[0], center[1]), radius, color=color, linewidth=0, alpha=1)
                 ax.add_patch(circle)
 
 
@@ -231,7 +231,7 @@ class BoxField(PolytopeField):
                 ] += 1
         return obst_map
 
-    def draw(self, ax):
+    def draw(self, ax, color='gray'):
         def get_cube():
             phi = np.arange(1, 10, 2) * np.pi / 4
             Phi, Theta = np.meshgrid(phi, phi)
@@ -245,12 +245,12 @@ class BoxField(PolytopeField):
             for center, size in zip(self.centers, self.sizes):
                 cx, cy, cz = to_numpy(center)
                 a, b, c = to_numpy(size)
-                ax.plot_surface(cx + x * a, cy + y * b, cz + z * c, cmap='gray', alpha=0.25)
+                ax.plot_surface(cx + x * a, cy + y * b, cz + z * c, cmap=color, alpha=0.25)
         else:
             for center, size in zip(self.centers, self.sizes):
                 cx, cy = to_numpy(center)
                 a, b = to_numpy(size)
-                rectangle = plt.Rectangle((cx-a/2, cy-b/2), a, b, color='gray', linewidth=0, alpha=1)
+                rectangle = plt.Rectangle((cx-a/2, cy-b/2), a, b, color=color, linewidth=0, alpha=1)
                 ax.add_patch(rectangle)
 
 
