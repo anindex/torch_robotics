@@ -16,6 +16,6 @@ setup(name='torch_robotics',
       description='Full Differentiable Kinematics Tree Implementation constructed from URDF or MJCF',
       author='An Thai Le',
       author_email='an@robot-learning.de',
-      packages=['torch_kinematics_tree', 'torch_planning_objectives', 'robot_envs'],
+      packages=['torch_kinematics_tree', 'torch_planning_objectives', 'robot_envs', 'torch_utils'],
       install_requires=requires_list,
       )
