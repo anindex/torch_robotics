@@ -6,7 +6,6 @@ import json
 import torch
 import numpy as np
 import torch.distributions as D
-import matplotlib.pyplot as plt
 from torch_kinematics_tree.geometrics.utils import MinMaxScaler, euclidean_distance
 
 
@@ -49,7 +48,21 @@ class Skeleton():
         for u, v in self.skeleton.edges():
             u_pos, v_pos = torch.tensor(self.node_pos[u], device=self.device), torch.tensor(self.node_pos[v], device=self.device)
             self.skeleton[u][v][0]['length'] = self.distance_func(u_pos, v_pos).squeeze().cpu().item()
-    
+
+    def compute_adjacency_matrix(self, weight='length'):
+        A = nx.adjacency_matrix(self.skeleton, weight=weight)
+        A = A.todense()
+        return A
+
+    def get_edges(self, weighted=False):
+        edges = np.array(list(self.skeleton.edges()))
+        if weighted:
+            weights = [[self.skeleton[u][v][0]['length']] for u, v in edges]
+        else:
+            weights = [[1.0]] * len(edges)
+        weights = np.array(weights)
+        return edges, weights
+
     def update_node_pose(self, node_dict):
         nx.set_node_attributes(self.skeleton, node_dict)
         self.node_pos = nx.get_node_attributes(self.skeleton, 'pose')
