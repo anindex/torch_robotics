@@ -433,3 +433,39 @@ class CapsuleField(PolytopeField):
     def __repr__(self):
         return f"Capsule(center={self.center}, radius={self.radius}, height={self.height})"
 
+
+class SceneField(PolytopeField):
+
+    def __init__(self, fields, tensor_args=None):
+        """
+        Parameters
+        ----------
+            fields : list of PolytopeField
+                List of polytope fields.
+        """
+        super().__init__(tensor_args=tensor_args)
+        self.fields = fields
+
+    def compute_signed_distance(self, x):
+        """
+        Returns the signed distance at x.
+        Parameters
+        ----------
+            x : torch array
+        """
+        return torch.min(torch.stack([field.compute_signed_distance(x) for field in self.fields], dim=-1), dim=-1)[0]
+    
+    def draw(self, ax):
+        for field in self.fields:
+            field.draw(ax)
+    
+    def add_to_map(self, obst_map):
+        for field in self.fields:
+            field.add_to_map(obst_map)
+
+    def zero_grad(self):
+        for field in self.fields:
+            field.zero_grad()
+
+    def __repr__(self):
+        return f"Scene(fields={self.fields})"
