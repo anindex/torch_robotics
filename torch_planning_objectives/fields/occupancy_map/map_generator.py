@@ -55,7 +55,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 
-from experiment_launcher.utils import fix_random_seed
 from torch_planning_objectives.fields.obst_map import ObstacleMap
 from torch_planning_objectives.fields.shape_distance_fields import MultiSphere
 from torch_planning_objectives.fields.occupancy_map.obst_utils import random_rect, random_circle
@@ -274,6 +273,7 @@ def get_sphere_field_from_list(obst_list, field_type='rbf', tensor_args=None):
 
 
 if __name__ == "__main__":
+    from experiment_launcher.utils import fix_random_seed
     fix_random_seed(1)
 
     import sys
