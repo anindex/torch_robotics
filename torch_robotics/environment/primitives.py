@@ -39,7 +39,7 @@ class PrimitiveShapeField(ABC):
 
     def obstacle_collision_check(self, obst_map):
         valid = True
-        obst_map_test = self.add_to_map(deepcopy(obst_map))
+        obst_map_test = self.add_to_occupancy_map(deepcopy(obst_map))
         if np.any(obst_map_test.map > 1):
             valid = False
         return valid
@@ -47,7 +47,7 @@ class PrimitiveShapeField(ABC):
     def point_collision_check(self, obst_map, pts):
         valid = True
         if pts is not None:
-            obst_map_test = self.add_to_map(np.copy(obst_map))
+            obst_map_test = self.add_to_occupancy_map(np.copy(obst_map))
             for pt in pts:
                 if obst_map_test[ceil(pt[0]), ceil(pt[1])] >= 1:
                     valid = False
@@ -55,7 +55,7 @@ class PrimitiveShapeField(ABC):
         return valid
 
     @abstractmethod
-    def add_to_map(self, obst_map):
+    def add_to_occupancy_map(self, obst_map):
         # Adds obstacle to an occupancy grid
         raise NotImplementedError
 
@@ -91,7 +91,7 @@ class MultiSphereField(PrimitiveShapeField):
         self.centers.grad = None
         self.radii.grad = None
 
-    def add_to_map(self, obst_map):
+    def add_to_occupancy_map(self, obst_map):
         # Adds obstacle to occupancy map
         for center, radius in zip(self.centers, self.radii):
             n_dim = len(center)
@@ -193,7 +193,7 @@ class MultiBoxField(PrimitiveShapeField):
         self.sizes.grad = None
         self.half_sizes.grad = None
 
-    def add_to_map(self, obst_map):
+    def add_to_occupancy_map(self, obst_map):
         for center, size in zip(self.centers, self.sizes):
             n_dim = len(center)
             width = size[0]
@@ -275,7 +275,7 @@ class MultiInfiniteCylinderField(PrimitiveShapeField):
         self.centers.grad = None
         self.radii.grad = None
 
-    def add_to_map(self, obst_map):
+    def add_to_occupancy_map(self, obst_map):
         raise NotImplementedError
 
     def draw(self, ax):
@@ -330,7 +330,7 @@ class MultiCylinderField(MultiInfiniteCylinderField):
         super().zero_grad()
         self.heights.grad = None
 
-    def add_to_map(self, obst_map):
+    def add_to_occupancy_map(self, obst_map):
         raise NotImplementedError
 
 
@@ -428,9 +428,9 @@ class ObjectField(PrimitiveShapeField):
         for field in self.fields:
             field.draw(ax)
 
-    def add_to_map(self, obst_map):
+    def add_to_occupancy_map(self, obst_map):
         for field in self.fields:
-            field.add_to_map(obst_map)
+            field.add_to_occupancy_map(obst_map)
 
     def zero_grad(self):
         for field in self.fields:

@@ -73,7 +73,7 @@ def build_obstacle_map(
     ## Make occupancy grid
     obst_map = ObstacleMap(map_dim, cell_size, tensor_args=tensor_args)
     for obst in obst_list:
-        obst.add_to_map(obst_map)
+        obst.add_to_occupancy_map(obst_map)
 
     obst_map.convert_map()
 
@@ -124,7 +124,7 @@ def generate_obstacle_map(
     obst_map = ObstacleMap(map_dim, cell_size, tensor_args=tensor_args)
     num_fixed = len(obst_list)
     for obst in obst_list:
-        obst.add_to_map(obst_map)
+        obst.add_to_occupancy_map(obst_map)
 
     ## Add random obstacles
     obst_list = copy.deepcopy(obst_list)
@@ -147,7 +147,7 @@ def generate_obstacle_map(
 
                 if valid:
                     # Add to Map
-                    obst.add_to_map(obst_map)
+                    obst.add_to_occupancy_map(obst_map)
                     # Add to list
                     obst_list.append(obst)
                     break
