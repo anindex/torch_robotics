@@ -6,27 +6,32 @@ import numpy as np
 import torch
 from matplotlib import pyplot as plt
 
-from torch_kinematics_tree.geometrics.utils import to_torch, to_numpy
+from torch_robotics.torch_utils.torch_utils import DEFAULT_TORCH_ARGS, to_torch, to_numpy
 
 
-class PolytopeField(ABC):
+class PrimitiveShapeField(ABC):
     """
-    Polytope represents workspace objects in N-D.
+    Represents a primitive object in N-D.
     """
 
-    def __init__(self, tensor_args=None):
+    def __init__(self, dim=3, tensor_args=None):
+        self.dim = dim
         if tensor_args is None:
-            tensor_args = {'device': 'cpu', 'dtype': torch.float32}
+            tensor_args = DEFAULT_TORCH_ARGS
         self.tensor_args = tensor_args
 
-    @abstractmethod
     def compute_signed_distance(self, x):
         """
         Returns the signed distance at x.
         Parameters
         ----------
-            x : torch array
+            x : torch array (batch, horizon, dim)
         """
+        assert x.ndim == 3
+        return self.compute_signed_distance_impl(x)
+
+    @abstractmethod
+    def compute_signed_distance_impl(self, x):
         raise NotImplementedError()
 
     def zero_grad(self):
@@ -59,8 +64,8 @@ class PolytopeField(ABC):
         raise NotImplementedError
 
 
-class SphereField(PolytopeField):
-    
+class MultiSphereField(PrimitiveShapeField):
+
     def __init__(self, centers, radii, tensor_args=None):
         """
         Parameters
@@ -70,20 +75,14 @@ class SphereField(PolytopeField):
             radii : numpy array
                 Radii of the spheres.
         """
-        super().__init__(tensor_args=tensor_args)
+        super().__init__(dim=centers.shape[-1], tensor_args=tensor_args)
         self.centers = to_torch(centers, **self.tensor_args)
         self.radii = to_torch(radii, **self.tensor_args)
 
     def __repr__(self):
         return f"Sphere(centers={self.centers}, radii={self.radii})"
 
-    def compute_signed_distance(self, x):
-        """
-        Returns the signed distance at x.
-        Parameters
-        ----------
-            x : torch array
-        """
+    def compute_signed_distance_impl(self, x):
         distance_to_centers = torch.norm(x.unsqueeze(-2) - self.centers.unsqueeze(0), dim=-1)
         sdfs = distance_to_centers - self.radii.unsqueeze(0)
         return torch.min(sdfs, dim=-1)[0]
@@ -165,7 +164,7 @@ class SphereField(PolytopeField):
                 ax.add_patch(circle)
 
 
-class BoxField(PolytopeField):
+class MultiBoxField(PrimitiveShapeField):
 
     def __init__(self, centers, sizes, tensor_args=None):
         """
@@ -176,7 +175,7 @@ class BoxField(PolytopeField):
             sizes: numpy array
                 Sizes of the boxes.
         """
-        super().__init__(tensor_args=tensor_args)
+        super().__init__(dim=centers.shape[-1], tensor_args=tensor_args)
         self.centers = to_torch(centers, **self.tensor_args)
         self.sizes = to_torch(sizes, **self.tensor_args)
         self.half_sizes = self.sizes / 2
@@ -184,13 +183,7 @@ class BoxField(PolytopeField):
     def __repr__(self):
         return f"Box(centers={self.centers}, sizes={self.sizes})"
 
-    def compute_signed_distance(self, x):
-        """
-        Returns the signed distance at x.
-        Parameters
-        ----------
-            x : torch array
-        """
+    def compute_signed_distance_impl(self, x):
         distance_to_centers = torch.abs(x.unsqueeze(-2) - self.centers.unsqueeze(0))
         sdfs = torch.max(distance_to_centers - self.half_sizes.unsqueeze(0), dim=-1)[0]
         return torch.min(sdfs, dim=-1)[0]
@@ -250,12 +243,11 @@ class BoxField(PolytopeField):
             for center, size in zip(self.centers, self.sizes):
                 cx, cy = to_numpy(center)
                 a, b = to_numpy(size)
-                rectangle = plt.Rectangle((cx-a/2, cy-b/2), a, b, color='gray', linewidth=0, alpha=1)
+                rectangle = plt.Rectangle((cx - a / 2, cy - b / 2), a, b, color='gray', linewidth=0, alpha=1)
                 ax.add_patch(rectangle)
 
 
-
-class InfiniteCylinderField(PolytopeField):
+class MultiInfiniteCylinderField(PrimitiveShapeField):
 
     def __init__(self, centers, radii, tensor_args=None):
         """
@@ -266,20 +258,14 @@ class InfiniteCylinderField(PolytopeField):
             radii : numpy array
                 Radii of the cylinders.
         """
-        super().__init__(tensor_args=tensor_args)
+        super().__init__(dim=centers.shape[-1], tensor_args=tensor_args)
         self.centers = torch.tensor(centers, **self.tensor_args)
         self.radii = torch.tensor(radii, **self.tensor_args)
 
     def __repr__(self):
         return f"InfiniteCylinder(centers={self.centers}, radii={self.radii})"
 
-    def compute_signed_distance(self, x):
-        """
-        Returns the signed distance at x.
-        Parameters
-        ----------
-            x : torch array
-        """
+    def compute_signed_distance_impl(self, x):
         # treat it like a circle in 2d
         distance_to_centers_2d = torch.norm(x[..., :2].unsqueeze(-2) - self.centers.unsqueeze(0)[..., :2], dim=-1)
         sdfs = distance_to_centers_2d - self.radii.unsqueeze(0)
@@ -309,7 +295,7 @@ class InfiniteCylinderField(PolytopeField):
             ax.plot_surface(xc, yc, zc, cmap='gray', alpha=0.75)
 
 
-class CylinderField(InfiniteCylinderField):
+class MultiCylinderField(MultiInfiniteCylinderField):
 
     def __init__(self, centers, radii, heights, tensor_args=None):
         """
@@ -329,13 +315,7 @@ class CylinderField(InfiniteCylinderField):
     def __repr__(self):
         return f"Cylinder(centers={self.centers}, radii={self.radii}, heights={self.heights})"
 
-    def compute_signed_distance(self, x):
-        """
-        Returns the signed distance at x.
-        Parameters
-        ----------
-            x : torch array
-        """
+    def compute_signed_distance_impl(self, x):
         raise NotImplementedError
         x = x - self.center
         x_proj = x[:, :2]
@@ -354,9 +334,9 @@ class CylinderField(InfiniteCylinderField):
         raise NotImplementedError
 
 
-class EllipsoidField(PolytopeField):
+class MultiEllipsoidField(PrimitiveShapeField):
 
-    def __init__(self, center, radii, tensor_args=None):
+    def __init__(self, centers, radii, tensor_args=None):
         """
         Axis aligned ellipsoid.
         Parameters
@@ -366,17 +346,11 @@ class EllipsoidField(PolytopeField):
             radii : numpy array
                 Radii of the ellipsoid.
         """
-        super().__init__(tensor_args=tensor_args)
-        self.center = torch.tensor(center, **self.tensor_args)
+        super().__init__(dim=centers.shape[-1], tensor_args=tensor_args)
+        self.center = torch.tensor(centers, **self.tensor_args)
         self.radii = torch.tensor(radii, **self.tensor_args)
 
-    def compute_signed_distance(self, x):
-        """
-        Returns the signed distance at x.
-        Parameters
-        ----------
-            x : torch array
-        """
+    def compute_signed_distance_impl(self, x):
         return torch.norm((x - self.center) / self.radii, dim=-1) - 1
 
     def zero_grad(self):
@@ -387,31 +361,25 @@ class EllipsoidField(PolytopeField):
         return f"Ellipsoid(center={self.center}, radii={self.radii})"
 
 
-class CapsuleField(PolytopeField):
+class MultiCapsuleField(PrimitiveShapeField):
 
-    def __init__(self, center, radius, height, tensor_args=None):
+    def __init__(self, centers, radii, heights, tensor_args=None):
         """
         Parameters
         ----------
-            center : numpy array
+            centers : numpy array
                 Center of the capsule.
-            radius : float
+            radiii : float
                 Radius of the capsule.
-            height : float
+            heights : float
                 Height of the capsule.
         """
-        super().__init__(tensor_args=tensor_args)
-        self.center = torch.tensor(center, **self.tensor_args)
-        self.radius = torch.tensor(radius, **self.tensor_args)
-        self.height = torch.tensor(height, **self.tensor_args)
+        super().__init__(dim=centers.shape[-1], tensor_args=tensor_args)
+        self.center = torch.tensor(centers, **self.tensor_args)
+        self.radius = torch.tensor(radii, **self.tensor_args)
+        self.height = torch.tensor(heights, **self.tensor_args)
 
-    def compute_signed_distance(self, x):
-        """
-        Returns the signed distance at x.
-        Parameters
-        ----------
-            x : torch array
-        """
+    def compute_signed_distance_impl(self, x):
         x = x - self.center
         x_proj = x[:, :2]
         x_proj_norm = torch.norm(x_proj, dim=-1)
@@ -434,31 +402,32 @@ class CapsuleField(PolytopeField):
         return f"Capsule(center={self.center}, radius={self.radius}, height={self.height})"
 
 
-class SceneField(PolytopeField):
+########################################################################################################################
+class ObjectField(PrimitiveShapeField):
 
-    def __init__(self, fields, tensor_args=None):
+    def __init__(self, primitive_fields):
         """
         Parameters
         ----------
-            fields : list of PolytopeField
-                List of polytope fields.
+            primitive_fields : list of PrimitiveField fields.
         """
-        super().__init__(tensor_args=tensor_args)
-        self.fields = fields
+        assert primitive_fields is not None
+        super().__init__(dim=primitive_fields[0].dim, tensor_args=primitive_fields[0].tensor_args)
+        self.fields = primitive_fields
 
-    def compute_signed_distance(self, x):
-        """
-        Returns the signed distance at x.
-        Parameters
-        ----------
-            x : torch array
-        """
-        return torch.min(torch.stack([field.compute_signed_distance(x) for field in self.fields], dim=-1), dim=-1)[0]
-    
+    def __repr__(self):
+        return f"Scene(fields={self.fields})"
+
+    def compute_signed_distance_impl(self, x):
+        sdf_fields = []
+        for field in self.fields:
+            sdf_fields.append(field.compute_signed_distance_impl(x))
+        return torch.min(torch.stack(sdf_fields, dim=-1), dim=-1)[0]
+
     def draw(self, ax):
         for field in self.fields:
             field.draw(ax)
-    
+
     def add_to_map(self, obst_map):
         for field in self.fields:
             field.add_to_map(obst_map)
@@ -467,5 +436,38 @@ class SceneField(PolytopeField):
         for field in self.fields:
             field.zero_grad()
 
-    def __repr__(self):
-        return f"Scene(fields={self.fields})"
+
+if __name__ == '__main__':
+    tensor_args = DEFAULT_TORCH_ARGS
+    spheres = MultiSphereField(torch.zeros(2, **tensor_args).view(1, -1),
+                               torch.ones(1, **tensor_args).view(1, -1) * 0.3,
+                               tensor_args=tensor_args)
+
+    boxes = MultiBoxField(torch.zeros(2, **tensor_args).view(1, -1) + 0.5,
+                          torch.ones(2, **tensor_args).view(1, -1) * 0.3,
+                          tensor_args=tensor_args)
+
+    obj_field = ObjectField([spheres, boxes])
+    # obj_field = ObjectField([spheres])
+
+    # Render objects
+    fig, ax = plt.subplots()
+    ax.set_xlim(-1, 1)
+    ax.set_ylim(-1, 1)
+    obj_field.draw(ax)
+    plt.show()
+
+    # Render sdf
+    fig, ax = plt.subplots()
+    xs = torch.linspace(-1, 1, steps=200)
+    ys = torch.linspace(-1, 1, steps=200)
+    X, Y = torch.meshgrid(xs, ys, indexing='xy')
+    X_flat = torch.flatten(X)
+    Y_flat = torch.flatten(Y)
+    sdf = obj_field.compute_signed_distance(torch.stack((X_flat, Y_flat), dim=-1).view(-1, 1, 2))
+    sdf = sdf.reshape(X.shape)
+    ctf = ax.contourf(X, Y, sdf)
+    fig.colorbar(ctf, orientation='vertical')
+    ax.set_xlim(-1, 1)
+    ax.set_ylim(-1, 1)
+    plt.show()

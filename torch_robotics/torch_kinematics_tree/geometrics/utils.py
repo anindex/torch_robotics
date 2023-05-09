@@ -1,6 +1,7 @@
 import torch
 import numpy as np
 
+from torch_robotics.torch_utils.torch_utils import to_torch
 
 DEFAULT_ACOS_BOUND: float = 1.0 - 1e-4
 
@@ -320,16 +321,3 @@ def to_torch_2d_min(variable):
 
 def link_pos_from_link_tensor(link_tensor):
     return link_tensor[..., :3, 3]
-
-
-def to_torch(x, device='cpu', dtype=torch.float):
-    if torch.is_tensor(x):
-        return x.clone().to(device=device, dtype=dtype)
-    return torch.tensor(x, dtype=dtype, device=device)
-
-
-def to_numpy(x, dtype=np.float32):
-    if torch.is_tensor(x):
-        x = x.detach().cpu().numpy().astype(dtype)
-        return x
-    return np.array(x).astype(dtype)

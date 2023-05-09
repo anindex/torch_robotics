@@ -1,5 +1,4 @@
 # MIT License
-import matplotlib.pyplot as plt
 # Copyright (c) 2022 An Thai Le, João Carvalho
 
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -59,6 +58,9 @@ from torch_planning_objectives.fields.obst_map import ObstacleMap
 from torch_planning_objectives.fields.shape_distance_fields import MultiSphere
 from torch_planning_objectives.fields.occupancy_map.obst_utils import random_rect, random_circle
 import copy
+
+import matplotlib.pyplot as plt
+
 
 
 def build_obstacle_map(
