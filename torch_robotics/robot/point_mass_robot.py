@@ -8,14 +8,17 @@ class PointMassRobot(RobotBase):
                  **kwargs):
         super().__init__(**kwargs)
 
-    def fk_map(self, q):
+    def fk_map_impl(self, q):
         # There is no forward kinematics. Assume it's the identity.
         # Add task space dimension
         return q.unsqueeze(-2)
 
-    def render_trajectory(self, ax, traj=None, start_state=None, goal_state=None, **kwargs):
-        if traj is not None:
-            traj = to_numpy(traj)
+    def render(self, ax, q=None, color='blue', **kwargs):
+        ax.scatter(q[0], q[1], color=color)
+
+    def render_trajectory(self, ax, traj_q=None, start_state=None, goal_state=None, **kwargs):
+        if traj_q is not None:
+            traj = to_numpy(traj_q)
             ax.plot(traj[:, 0], traj[:, 1], 'b-', markersize=3)
         if start_state is not None:
             ax.plot(to_numpy(start_state[0]), to_numpy(start_state[1]), 'go', markersize=7)

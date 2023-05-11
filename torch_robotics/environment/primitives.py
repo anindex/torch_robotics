@@ -6,7 +6,7 @@ import numpy as np
 import torch
 from matplotlib import pyplot as plt
 
-from torch_robotics.torch_utils.torch_utils import DEFAULT_TORCH_ARGS, to_torch, to_numpy
+from torch_robotics.torch_utils.torch_utils import DEFAULT_TENSOR_ARGS, to_torch, to_numpy
 
 
 class PrimitiveShapeField(ABC):
@@ -17,7 +17,7 @@ class PrimitiveShapeField(ABC):
     def __init__(self, dim=3, tensor_args=None):
         self.dim = dim
         if tensor_args is None:
-            tensor_args = DEFAULT_TORCH_ARGS
+            tensor_args = DEFAULT_TENSOR_ARGS
         self.tensor_args = tensor_args
 
     def compute_signed_distance(self, x):
@@ -445,7 +445,7 @@ class ObjectField(PrimitiveShapeField):
 
 
 if __name__ == '__main__':
-    tensor_args = DEFAULT_TORCH_ARGS
+    tensor_args = DEFAULT_TENSOR_ARGS
     spheres = MultiSphereField(torch.zeros(2, **tensor_args).view(1, -1),
                                torch.ones(1, **tensor_args).view(1, -1) * 0.3,
                                tensor_args=tensor_args)

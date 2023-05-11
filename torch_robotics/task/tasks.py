@@ -5,13 +5,6 @@ import torch
 
 from torch_robotics.torch_planning_objectives.fields.distance_fields import EmbodimentDistanceField, \
     WorkspaceBoundariesDistanceField
-import sys
-from abc import ABC
-
-import torch
-
-from torch_robotics.torch_planning_objectives.fields.distance_fields import EmbodimentDistanceField, \
-    WorkspaceBoundariesDistanceField
 
 
 class Task(ABC):
@@ -30,7 +23,6 @@ class PlanningTask(Task):
             use_occupancy_map=False,
             cell_size=0.01,
             obstacle_buffer=0.01,
-            self_buffer=0.0005,
             **kwargs
     ):
         super().__init__(**kwargs)
@@ -48,10 +40,10 @@ class PlanningTask(Task):
         ################################################################################################
         # Collision fields
         self.obstacle_buffer = obstacle_buffer
-        self.self_buffer = self_buffer
         # collision field that groups the robot and objects
         self.df_collision_self_and_obstacles = EmbodimentDistanceField(
-            self_margin=self_buffer, obst_margin=obstacle_buffer,
+            obst_margin=obstacle_buffer,
+            self_margin=self.robot.self_collision_margin,
             num_interpolate=self.robot.num_interpolate,
             link_interpolate_range=self.robot.link_interpolate_range,
             tensor_args=self.tensor_args
@@ -149,16 +141,18 @@ class PlanningTask(Task):
 
             # workspace boundaries
             # configuration is not valid if any points in the task spaces is out of workspace boundaries
-            idxs_ws_boundaries = torch.argwhere(torch.all(torch.all(torch.logical_and(
+            idxs_ws_in_boundaries = torch.argwhere(torch.all(torch.all(torch.logical_and(
                 torch.greater_equal(x_pos, self.ws_min), torch.less_equal(x_pos, self.ws_max)), dim=-1),
                 dim=-1)).squeeze()  # I_ws
 
-            idxs_coll_free = idxs_coll_free[idxs_ws_boundaries].view(-1, 2)
+            idxs_coll_free = idxs_coll_free[idxs_ws_in_boundaries].view(-1, 2)
 
             # collision in task space
-            pos_x_in_ws = x_pos[idxs_coll_free[:, 0], idxs_coll_free[:, 1]]  # I_ws, x_dim
-            collisions_pos_x = self.env.occupancy_map.get_collisions(pos_x_in_ws, **kwargs)
-            idxs_taskspace = torch.argwhere(collisions_pos_x == 0).squeeze()
+            x_pos_in_ws = x_pos[idxs_ws_in_boundaries]  # I_ws, x_dim
+            collisions_pos_x = self.env.occupancy_map.get_collisions(x_pos_in_ws, **kwargs)
+            if len(collisions_pos_x.shape) == 1:
+                collisions_pos_x = collisions_pos_x.view(1, -1)
+            idxs_taskspace = torch.argwhere(torch.all(collisions_pos_x == 0, dim=-1)).squeeze()
 
             idxs_coll_free = idxs_coll_free[idxs_taskspace].view(-1, 2)
 

@@ -24,7 +24,7 @@ class PandaRobot(RobotBase):
         ]
         self.link_name_ee = 'ee_link'
 
-    def fk_map(self, q):
+    def fk_map_impl(self, q):
         b, h, d = q.shape
         q = einops.rearrange(q, 'b h d -> (b h) d')
 

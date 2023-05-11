@@ -9,6 +9,7 @@ class RobotBase(ABC):
     def __init__(
             self,
             q_limits=None,
+            self_collision_margin=0.001,
             num_interpolate=4,
             link_interpolate_range=[2, 7],
             tensor_args=None,
@@ -26,6 +27,7 @@ class RobotBase(ABC):
         self.q_n_dofs = len(self.q_min)
 
         # Collision field
+        self.self_collision_margin = self_collision_margin
         self.num_interpolate = num_interpolate
         self.link_interpolate_range = link_interpolate_range
 
@@ -46,10 +48,19 @@ class RobotBase(ABC):
     def distance_q(self, q1, q2):
         return torch.linalg.norm(q1 - q2, dim=-1)
 
-    @abc.abstractmethod
     def fk_map(self, q):
         # q: (..., q_dim)
         # return: (..., taskspaces, x_dim)
+        if q.ndim == 1:
+            q = q.unsqueeze(0)  # add batch dimension
+        return self.fk_map_impl(q)
+
+    @abc.abstractmethod
+    def fk_map_impl(self, q):
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def render(self, ax, **kwargs):
         raise NotImplementedError
 
     @abc.abstractmethod

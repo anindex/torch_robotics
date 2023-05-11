@@ -7,8 +7,8 @@ import trimesh
 
 from torch_robotics.torch_kinematics_tree.geometrics.utils import transform_point, SE3_distance
 from torch_robotics.torch_kinematics_tree.utils.files import get_configs_path
-from torch_robotics.torch_planning_objectives.fields.utils.distance import find_link_distance, find_obstacle_distance
-from torch_robotics.torch_planning_objectives.fields.utils.geom_types import tensor_sphere
+from torch_robotics.torch_planning_objectives.fields.old.utils.distance import find_link_distance, find_obstacle_distance
+from torch_robotics.torch_planning_objectives.fields.old.utils.geom_types import tensor_sphere
 
 
 class DistanceField(ABC):
@@ -104,7 +104,9 @@ class EmbodimentDistanceField(EmbodimentDistanceFieldBase):
             return 1e10  # or infinity
         link_dim = link_pos.shape[:-1]
         link_pos = link_pos.reshape(-1, link_pos.shape[-1])  # flatten batch_dim and links
-        dfs = [df.compute_signed_distance(link_pos).view(link_dim) for df in df_list]  # df() returns batch_dim x links
+        dfs = []
+        for df in df_list:
+            dfs.append(df.compute_signed_distance(link_pos).view(link_dim))  # df() returns batch_dim x links
         return torch.stack(dfs, dim=-2)  # batch_dim x num_sdfs x links
 
     def compute_obstacle_collision(self, link_pos, df_list, margin=None, **kwargs):  # position tensor
@@ -662,7 +664,6 @@ class MeshDistanceField(DistanceField):
 
 
 if __name__ == '__main__':
-    import matplotlib.pyplot as plt
     import time
     mesh_file = 'models/chair.obj'
     mesh = MeshDistanceField(mesh_file)

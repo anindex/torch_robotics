@@ -4,7 +4,7 @@ from abc import abstractmethod, ABC
 import numpy as np
 import torch
 
-from torch_robotics.environment.obst_map import OccupancyMap
+from torch_robotics.environment.occupancy_map import OccupancyMap
 
 
 class EnvBase(ABC):
@@ -14,6 +14,7 @@ class EnvBase(ABC):
                  limits=None,
                  obj_list=None,
                  tensor_args=None,
+                 **kwargs
                  ):
         self.tensor_args = tensor_args
 
@@ -63,6 +64,10 @@ class EnvBase(ABC):
     def render(self, ax=None):
         for obj in self.obj_list:
             obj.render(ax)
+
+        ax.set_xlim(self.limits[0][0], self.limits[1][0])
+        ax.set_ylim(self.limits[0][1], self.limits[1][1])
+        ax.set_aspect('equal')
 
         # if self.use_occupancy_map:
         #     res = self.occupancy_map.map.shape[0]

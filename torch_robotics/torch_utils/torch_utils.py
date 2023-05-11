@@ -4,7 +4,7 @@ import numpy as np
 import torch
 
 
-DEFAULT_TORCH_ARGS = {'device': 'cpu', 'dtype': torch.float32}
+DEFAULT_TENSOR_ARGS = {'device': 'cpu', 'dtype': torch.float32}
 
 def dict_to_device(ob, device):
     if isinstance(ob, collections.Mapping):

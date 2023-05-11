@@ -1,0 +1,38 @@
+import numpy as np
+import torch
+from matplotlib import pyplot as plt
+
+from torch_robotics.environment.env_base import EnvBase
+from torch_robotics.environment.primitives import MultiSphereField, ObjectField
+from torch_robotics.torch_utils.torch_utils import DEFAULT_TENSOR_ARGS
+
+
+class Planar2LinkEnv(EnvBase):
+
+    def __init__(self, tensor_args=None, **kwargs):
+        circles = np.array([
+            (0.2, 0.5, 0.3),
+            (0.3, 0.15, 0.1),
+            (0.5, 0.5, 0.1),
+            (0.3, -0.5, 0.2),
+            (-0.5, 0.5, 0.3),
+            (-0.5, -0.5, 0.3),
+        ])
+        spheres = MultiSphereField(circles[:, :2], circles[:, 2], tensor_args=tensor_args)
+        obj_field = ObjectField([spheres], 'planar2link-spheres')
+        obj_list = [obj_field]
+
+        super().__init__(
+            name=self.__class__.__name__,
+            limits=torch.tensor([[-1, -1], [1, 1]], **tensor_args),  # environment limits
+            obj_list=obj_list,
+            tensor_args=tensor_args,
+            **kwargs
+        )
+
+
+if __name__ == '__main__':
+    env = Planar2LinkEnv(tensor_args=DEFAULT_TENSOR_ARGS)
+    fig, ax = plt.subplots()
+    env.render(ax)
+    plt.show()
