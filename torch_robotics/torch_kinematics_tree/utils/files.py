@@ -1,11 +1,11 @@
-import torch_kinematics_tree
+import torch_robotics.torch_kinematics_tree
 from pathlib import Path
 import yaml
 
 
 # get paths
 def get_root_path():
-    path = Path(torch_kinematics_tree.__path__[0]).resolve() / '..'
+    path = Path(torch_robotics.torch_kinematics_tree.__path__[0]).resolve() / '..'
     return path
 
 

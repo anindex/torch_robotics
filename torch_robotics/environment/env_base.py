@@ -1,131 +1,78 @@
 import sys
-from abc import abstractmethod
+from abc import abstractmethod, ABC
 
+import numpy as np
 import torch
 
+from torch_robotics.environment.obst_map import OccupancyMap
 
-class EnvBase:
+
+class EnvBase(ABC):
 
     def __init__(self,
-                 name='2d',
-                 q_n_dofs=2,
-                 q_min=None,
-                 q_max=None,
-                 work_space_dim=2,
-                 tensor_args=None
+                 name='NameEnvBase',
+                 limits=None,
+                 obj_list=None,
+                 tensor_args=None,
                  ):
         self.tensor_args = tensor_args
 
-        ################################################################################################
         self.name = name
-        self.q_n_dofs = q_n_dofs
+
+        # Workspace
+        self.limits = limits
+        self.dim = len(limits[0])
 
         ################################################################################################
-        # Configuration space
-        assert q_min is not None and q_max is not None, "q_min and q_max cannot be None"
-        self.q_min = q_min.to(**self.tensor_args)
-        self.q_max = q_max.to(**self.tensor_args)
-        self.q_limits = [q_min, q_max]
-        self.q_distribution = torch.distributions.uniform.Uniform(self.q_min, self.q_max)
+        # Objects
+        self.obj_list = obj_list
+        self.simplify_primitives()
 
         ################################################################################################
-        # Work space
-        self.work_space_dim = work_space_dim
+        # Occupancy map
+        self.occupancy_map = None
+        self.cell_size = None
 
-        ################################################################################################
-        # Obstacle primitives distance fields
-        self.obst_primitives_l = None
+    def simplify_primitives(self):
+        return
+        # Groups primitives of the same type for faster batched computation
+        raise NotImplementedError
+
+    def build_occupancy_map(self, cell_size=None):
+        self.cell_size = cell_size
+        # Make occupancy grid
+        map_dim = torch.abs(self.limits[1] - self.limits[0])
+        occ_map = OccupancyMap(map_dim, self.cell_size, tensor_args=self.tensor_args)
+        for obj in self.obj_list:
+            obj.add_to_occupancy_map(occ_map)
+        occ_map.convert_map_to_torch()
+        self.occupancy_map = occ_map
 
     def add_obstacle_primitive(self, obst_primitive):
+        raise NotImplementedError
         self.obst_primitives_l.append(obst_primitive)
-
-    def sample_q(self, without_collision=True, **kwargs):
-        if without_collision:
-            return self.random_coll_free_q(**kwargs)
-        else:
-            return self.random_q(**kwargs)
-
-    def random_q(self, n_samples=1):
-        # Random position in configuration space
-        q_pos = self.q_distribution.sample((n_samples,))
-        return q_pos
-
-    def random_coll_free_q(self, n_samples=1, max_samples=1000):
-        # Random position in configuration space collision free
-        max_tries = 1000
-        reject = True
-        samples = torch.zeros((n_samples, self.q_n_dofs), **self.tensor_args)
-        idx_begin = 0
-        for i in range(max_tries):
-            qs = self.random_q(max_samples)
-            in_collision = self.compute_collision(qs).squeeze()
-            idxs_not_in_collision = torch.argwhere(in_collision == False).squeeze()
-            if idxs_not_in_collision.nelement() == 0:
-                # all points are in collision
-                continue
-            if idxs_not_in_collision.nelement() == 1:
-                idxs_not_in_collision = [idxs_not_in_collision]
-            idx_random = torch.randperm(len(idxs_not_in_collision))[:n_samples]
-            free_qs = qs[idxs_not_in_collision[idx_random]]
-            idx_end = min(idx_begin + free_qs.shape[0], samples.shape[0])
-            samples[idx_begin:idx_end] = free_qs[:idx_end - idx_begin]
-            idx_begin = idx_end
-            if idx_end >= n_samples:
-                reject = False
-                break
-
-        if reject:
-            sys.exit("Could not find a collision free configuration")
-
-        return samples.squeeze()
-
-    @abstractmethod
-    def _compute_collision(self, q, **kwargs):
-        raise NotImplementedError
-
-    def compute_collision(self, q, **kwargs):
-        q_pos = self.get_q_position(q)
-        return self._compute_collision(q_pos, **kwargs)
-
-    @abstractmethod
-    def _compute_collision_cost(self, q, **kwargs):
-        raise NotImplementedError
-
-    def compute_collision_cost(self, q, **kwargs):
-        q_pos = self.get_q_position(q)
-        return self._compute_collision_cost(q_pos, **kwargs)
-
-    def get_q_position(self, q):
-        return q[..., :self.q_n_dofs]
-
-    def get_q_velocity(self, q):
-        return q[..., self.q_n_dofs:2*self.q_n_dofs]
-
-    def get_q_acceleration(self, q):
-        raise NotImplementedError
+        self.simplify_primitives()
 
     def zero_grad(self):
-        for obstacle in self.obst_primitives_l:
+        for obj in self.obj_list:
             try:
-                obstacle.zero_grad()
+                obj.zero_grad()
             except:
                 raise NotImplementedError
 
-    @staticmethod
-    def distance_q(q1, q2):
-        return torch.linalg.norm(q1 - q2, dim=-1)
+    def render(self, ax=None):
+        for obj in self.obj_list:
+            obj.render(ax)
 
-    @abstractmethod
-    def render(self, **kwargs):
-        raise NotImplementedError
-
-    @abstractmethod
-    def render_trajectories(self, **kwargs):
-        raise NotImplementedError
-
-    @abstractmethod
-    def render_physics(self, traj=None, **kwargs):
-        pass
+        # if self.use_occupancy_map:
+        #     res = self.occupancy_map.map.shape[0]
+        #     x = np.linspace(self.limits[0][0], self.limits[1][0], res)
+        #     y = np.linspace(self.limits[0][1], self.limits[1][1], res)
+        #     map = self.occupancy_map.map
+        #     map[map > 1] = 1
+        #     ax.contourf(x, y, map, 2, cmap='Greys')
+        #     ax.set_aspect('equal')
+        #     ax.set_facecolor('white')
 
     def get_rrt_params(self):
         raise NotImplementedError

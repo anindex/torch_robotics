@@ -1,6 +1,5 @@
 import numpy as np
 
-from torch_robotics.environment.object import Object
 from torch_robotics.environment.primitives import MultiSphereField, ObjectField
 
 
@@ -25,6 +24,6 @@ def create_grid_spheres(rows=5, cols=5, heights=0, radius=0.1, distance_from_bor
     radii = np.ones(flats[0].shape[0]) * radius
 
     spheres = MultiSphereField(centers, radii, tensor_args=tensor_args)
-    obj_field = ObjectField([spheres])
-    obj_list = [Object(obj_field, 'grid-of-spheres')]
+    obj_field = ObjectField([spheres], 'grid-of-spheres')
+    obj_list = [obj_field]
     return obj_list

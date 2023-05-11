@@ -5,10 +5,10 @@ import copy
 import yaml
 import trimesh
 
-from torch_kinematics_tree.geometrics.utils import transform_point, SE3_distance
-from torch_kinematics_tree.utils.files import get_configs_path
-from torch_planning_objectives.fields.utils.geom_types import tensor_sphere
-from torch_planning_objectives.fields.utils.distance import find_link_distance, find_obstacle_distance
+from torch_robotics.torch_kinematics_tree.geometrics.utils import transform_point, SE3_distance
+from torch_robotics.torch_kinematics_tree.utils.files import get_configs_path
+from torch_robotics.torch_planning_objectives.fields.utils.distance import find_link_distance, find_obstacle_distance
+from torch_robotics.torch_planning_objectives.fields.utils.geom_types import tensor_sphere
 
 
 class DistanceField(ABC):
@@ -36,7 +36,7 @@ class DistanceField(ABC):
 
 class EmbodimentDistanceFieldBase(DistanceField):
 
-    def __init__(self, field_type='rbf', clamp_sdf=True, num_interpolate=0,
+    def __init__(self, field_type='sdf', clamp_sdf=True, num_interpolate=0,
                  link_interpolate_range=[2, 7], **kwargs):
         super().__init__(**kwargs)
         self.num_interpolate = num_interpolate
@@ -154,19 +154,19 @@ class EmbodimentDistanceField(EmbodimentDistanceFieldBase):
         raise NotImplementedError
 
 
-class BorderDistanceField(EmbodimentDistanceFieldBase):
+class WorkspaceBoundariesDistanceField(EmbodimentDistanceFieldBase):
 
-    def __init__(self, work_space_bounds_min=None, work_space_bounds_max=None,
+    def __init__(self, ws_bounds_min=None, ws_bounds_max=None,
                  obst_margin=0.03, **kwargs):
         super().__init__(**kwargs)
-        self.work_space_bounds_min = work_space_bounds_min
-        self.work_space_bounds_max = work_space_bounds_max
+        self.ws_min = ws_bounds_min
+        self.ws_max = ws_bounds_max
         self.obst_margin = obst_margin
 
     def obstacle_distances(self, link_pos, **kwargs):
-        signed_distances_bounds_min = link_pos - self.work_space_bounds_min
+        signed_distances_bounds_min = link_pos - self.ws_min
         signed_distances_bounds_min = torch.sign(signed_distances_bounds_min) * torch.abs(signed_distances_bounds_min)
-        signed_distances_bounds_max = self.work_space_bounds_max - link_pos
+        signed_distances_bounds_max = self.ws_max - link_pos
         signed_distances_bounds_max = torch.sign(signed_distances_bounds_max) * torch.abs(signed_distances_bounds_max)
         signed_distances_bounds = torch.cat((signed_distances_bounds_min, signed_distances_bounds_max), dim=-1)
         return signed_distances_bounds
@@ -413,7 +413,7 @@ class SphereDistanceField(DistanceField):
 
 class LinkDistanceField(DistanceField):
 
-    def __init__(self, field_type='rbf', clamp_sdf=False, num_interpolate=0, link_interpolate_range=[5, 7],
+    def __init__(self, field_type='sdf', clamp_sdf=False, num_interpolate=0, link_interpolate_range=[5, 7],
                  **kwargs):
         super().__init__(**kwargs)
         self.field_type = field_type
@@ -598,7 +598,7 @@ class SkeletonSE3DistanceField(DistanceField):
 
 class MeshDistanceField(DistanceField):
 
-    def __init__(self, mesh_file, margin=0.03, field_type='rbf', num_interpolate=0, link_interpolate_range=[], base_position=None, base_orientation=None, tensor_args=None) -> None:
+    def __init__(self, mesh_file, margin=0.03, field_type='sdf', num_interpolate=0, link_interpolate_range=[], base_position=None, base_orientation=None, tensor_args=None) -> None:
         if tensor_args is None:
             tensor_args = dict(device='cpu', dtype=torch.float32)
         self.tensor_args = tensor_args

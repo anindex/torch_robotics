@@ -1,5 +1,5 @@
 import torch
-from torch_kinematics_tree.geometrics.frame import Frame
+from torch_robotics.torch_kinematics_tree.geometrics.frame import Frame
 
 
 def tensor_circle(pt, radius, tensor=None, device='cpu'):

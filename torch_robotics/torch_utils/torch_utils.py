@@ -13,17 +13,29 @@ def dict_to_device(ob, device):
         return ob.to(device)
 
 
-def to_numpy(x, dtype=np.float32):
+def to_numpy(x, dtype=np.float32, clone=False):
     if torch.is_tensor(x):
         x = x.detach().cpu().numpy().astype(dtype)
         return x
+    if isinstance(x, np.ndarray):
+        return x.astype(dtype, copy=clone)
     return np.array(x).astype(dtype)
 
 
-def to_torch(x, device='cpu', dtype=torch.float, requires_grad=False):
+def to_torch(x, device='cpu', dtype=torch.float, requires_grad=False, clone=False):
     if torch.is_tensor(x):
-        return x.clone().to(device=device, dtype=dtype).requires_grad_(requires_grad)
+        if clone:
+            x = x.clone()
+        return x.to(device=device, dtype=dtype).requires_grad_(requires_grad)
     return torch.tensor(x, dtype=dtype, device=device, requires_grad=requires_grad)
+
+
+def to_torch_2d_min(variable):
+    tensor_var = to_torch(variable)
+    if len(tensor_var.shape) == 1:
+        return tensor_var.unsqueeze(0)
+    else:
+        return tensor_var
 
 
 def get_torch_device(device='cuda'):
@@ -111,4 +123,3 @@ def linspace(start: torch.Tensor, stop: torch.Tensor, num: int):
     out = start[None] + steps * (stop - start)[None]
 
     return out
-

@@ -75,7 +75,7 @@ def build_obstacle_map(
     for obst in obst_list:
         obst.add_to_occupancy_map(obst_map)
 
-    obst_map.convert_map()
+    obst_map.convert_map_to_torch()
 
     return obst_map
 
@@ -159,7 +159,7 @@ def generate_obstacle_map(
 
                 num_attempts += 1
 
-    obst_map.convert_map()
+    obst_map.convert_map_to_torch()
 
     return obst_map, obst_list
 
@@ -242,7 +242,7 @@ def generate_circle_map(
 
                 num_attempts += 1
 
-    obst_map.convert_map()
+    obst_map.convert_map_to_torch()
 
     ## Fit mapping model
     if map_type == 'direct':

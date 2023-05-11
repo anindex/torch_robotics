@@ -59,7 +59,7 @@ import numpy as np
 import torch
 
 
-class ObstacleMap:
+class OccupancyMap:
     """
     Generates an occupancy grid.
     """
@@ -93,7 +93,7 @@ class ObstacleMap:
         self.dims = self.map.shape
         self.lims = [(-self.cell_size * d/2, self.cell_size * d/2) for d in self.dims]
 
-    def convert_map(self):
+    def convert_map_to_torch(self):
         self.map_torch = torch.Tensor(self.map).to(**self.tensor_args)
         return self.map_torch
 
@@ -103,7 +103,7 @@ class ObstacleMap:
         returns sum of collision costs for the entire batch.
 
         :param weight: weight on obstacle cost, float tensor.
-        :param X: Tensor of trajectories, of shape (batch_size, traj_length, position_dim)
+        :param X: Tensor of trajectories, of shape (batch_size, horizon, task_spaces, position_dim)
         :return: collision cost on the trajectories
         """
 

@@ -1,7 +1,7 @@
 import torch
 import numpy as np
 
-from torch_robotics.torch_utils.torch_utils import to_torch
+from torch_robotics.torch_utils.torch_utils import to_torch, to_torch_2d_min
 
 DEFAULT_ACOS_BOUND: float = 1.0 - 1e-4
 
@@ -297,26 +297,18 @@ def exp_map_so3(omega, eps=1.0e-14):
     return exp_omegahat
 
 
-def rot_mat_to_euler(R) :
-    sy = torch.sqrt(R[0, 0] * R[0, 0] +  R[1, 0] * R[1, 0])
+def rot_mat_to_euler(R):
+    sy = torch.sqrt(R[0, 0] * R[0, 0] + R[1, 0] * R[1, 0])
     singular = sy < 1e-10
-    if  not singular :
+    if not singular:
         x = torch.atan2(R[2, 1] , R[2, 2])
         y = torch.atan2(-R[2, 0], sy)
         z = torch.atan2(R[1, 0], R[0, 0])
-    else :
+    else:
         x = torch.atan2(-R[1, 2], R[1, 1])
         y = torch.atan2(-R[2, 0], sy)
         z = 0
     return torch.tensor([x, y, z])
-
-
-def to_torch_2d_min(variable):
-    tensor_var = to_torch(variable)
-    if len(tensor_var.shape) == 1:
-        return tensor_var.unsqueeze(0)
-    else:
-        return tensor_var
 
 
 def link_pos_from_link_tensor(link_tensor):

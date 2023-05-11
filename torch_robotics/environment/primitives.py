@@ -25,9 +25,8 @@ class PrimitiveShapeField(ABC):
         Returns the signed distance at x.
         Parameters
         ----------
-            x : torch array (batch, horizon, dim)
+            x : torch array (batch, dim) or (batch, horizon, dim)
         """
-        assert x.ndim == 3
         return self.compute_signed_distance_impl(x)
 
     @abstractmethod
@@ -60,7 +59,7 @@ class PrimitiveShapeField(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def draw(self, ax):
+    def render(self, ax):
         raise NotImplementedError
 
 
@@ -149,7 +148,7 @@ class MultiSphereField(PrimitiveShapeField):
         # Check if point p is inside the discretized sphere
         return np.linalg.norm(p - center) <= radius
 
-    def draw(self, ax):
+    def render(self, ax):
         for center, radius in zip(self.centers, self.radii):
             center = to_numpy(center)
             radius = to_numpy(radius)
@@ -224,7 +223,7 @@ class MultiBoxField(PrimitiveShapeField):
                 ] += 1
         return obst_map
 
-    def draw(self, ax):
+    def render(self, ax):
         def get_cube():
             phi = np.arange(1, 10, 2) * np.pi / 4
             Phi, Theta = np.meshgrid(phi, phi)
@@ -278,7 +277,7 @@ class MultiInfiniteCylinderField(PrimitiveShapeField):
     def add_to_occupancy_map(self, obst_map):
         raise NotImplementedError
 
-    def draw(self, ax):
+    def render(self, ax):
         # https://stackoverflow.com/a/49311446
         def data_for_cylinder_along_z(center_x, center_y, radius, height_z):
             z = np.linspace(0, height_z, 50)
@@ -405,18 +404,26 @@ class MultiCapsuleField(PrimitiveShapeField):
 ########################################################################################################################
 class ObjectField(PrimitiveShapeField):
 
-    def __init__(self, primitive_fields):
+    def __init__(self, primitive_fields, name='object', pos=None, ori=None):
         """
-        Parameters
-        ----------
-            primitive_fields : list of PrimitiveField fields.
+        Holds an object made of primitives and manages its position and orientation in the environment.
         """
+        self.name = name
+
         assert primitive_fields is not None
         super().__init__(dim=primitive_fields[0].dim, tensor_args=primitive_fields[0].tensor_args)
         self.fields = primitive_fields
 
+        # position and orientation
+        assert (pos is None and ori is None) or (pos.ndims == 2 and ori.ndims == 2)
+        self.pos = torch.zeros((1, self.dim), **self.tensor_args) if pos is None else pos
+        self.ori = torch.tensor([1, 0, 0, 0], **self.tensor_args).view((1, -1)) if ori is None else ori  # quat - wxyz
+
     def __repr__(self):
         return f"Scene(fields={self.fields})"
+
+    def join_primitives(self):
+        raise NotImplementedError
 
     def compute_signed_distance_impl(self, x):
         sdf_fields = []
@@ -424,13 +431,13 @@ class ObjectField(PrimitiveShapeField):
             sdf_fields.append(field.compute_signed_distance_impl(x))
         return torch.min(torch.stack(sdf_fields, dim=-1), dim=-1)[0]
 
-    def draw(self, ax):
+    def render(self, ax):
         for field in self.fields:
-            field.draw(ax)
+            field.render(ax)
 
-    def add_to_occupancy_map(self, obst_map):
+    def add_to_occupancy_map(self, occ_map):
         for field in self.fields:
-            field.add_to_occupancy_map(obst_map)
+            field.add_to_occupancy_map(occ_map)
 
     def zero_grad(self):
         for field in self.fields:
@@ -454,7 +461,7 @@ if __name__ == '__main__':
     fig, ax = plt.subplots()
     ax.set_xlim(-1, 1)
     ax.set_ylim(-1, 1)
-    obj_field.draw(ax)
+    obj_field.render(ax)
     plt.show()
 
     # Render sdf
