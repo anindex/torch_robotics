@@ -54,13 +54,13 @@
 from typing import List, Dict, Optional
 
 import torch
-from torch_kinematics_tree.geometrics.spatial_vector import (
+from torch_robotics.torch_kinematics_tree.geometrics.spatial_vector import (
     MotionVec,
     z_rot,
     y_rot,
     x_rot,
 )
-from torch_kinematics_tree.geometrics.frame import Frame
+from torch_robotics.torch_kinematics_tree.geometrics.frame import Frame
 
 
 class DifferentiableRigidBody(torch.nn.Module):

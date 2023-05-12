@@ -1,8 +1,8 @@
 from __future__ import annotations
 from typing import Optional
 import torch
-from torch_kinematics_tree.geometrics.utils import cross_product, to_torch_2d_min
-from torch_kinematics_tree.geometrics.frame import Frame
+from torch_robotics.torch_kinematics_tree.geometrics.utils import cross_product, to_torch_2d_min
+from torch_robotics.torch_kinematics_tree.geometrics.frame import Frame
 
 
 def x_rot(angle):

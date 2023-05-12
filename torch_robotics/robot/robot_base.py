@@ -48,15 +48,15 @@ class RobotBase(ABC):
     def distance_q(self, q1, q2):
         return torch.linalg.norm(q1 - q2, dim=-1)
 
-    def fk_map(self, q):
+    def fk_map(self, q, **kwargs):
         # q: (..., q_dim)
         # return: (..., taskspaces, x_dim)
         if q.ndim == 1:
             q = q.unsqueeze(0)  # add batch dimension
-        return self.fk_map_impl(q)
+        return self.fk_map_impl(q, **kwargs)
 
     @abc.abstractmethod
-    def fk_map_impl(self, q):
+    def fk_map_impl(self, q, pos_only=False):
         raise NotImplementedError
 
     @abc.abstractmethod

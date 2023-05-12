@@ -36,7 +36,7 @@ class Planar2LinkRobot(RobotBase):
 
         return pos_end_link1, pos_end_link2
 
-    def fk_map_impl(self, q):
+    def fk_map_impl(self, q, pos_only=False):
         if q.ndim == 1:
             q = q.unsqueeze(0)  # add batch dimension
         points_along_links = 25
@@ -47,12 +47,15 @@ class Planar2LinkRobot(RobotBase):
         positions_link2 = positions_link2.swapaxes(-2, -1)
 
         x_pos = torch.cat((positions_link1, positions_link2), dim=-2)
-        return x_pos
+        if pos_only:
+            return x_pos
+        else:
+            raise NotImplementedError
 
     def render(self, ax, q=None, alpha=1.0, color='blue', linewidth=2.0, **kwargs):
         p1, p2 = self.end_link_positions(q)
         p1, p2 = p1.squeeze(), p2.squeeze()
-        l2 = torch.vstack((p1, p2))
+        l2 = to_numpy(torch.vstack((p1, p2)))
         p1, p2 = to_numpy(p1), to_numpy(p2)
         ax.plot([0, p1[0]], [0, p1[1]], color=color, linewidth=linewidth, alpha=alpha)
         ax.plot(l2[:, 0], l2[:, 1], color=color, linewidth=linewidth, alpha=alpha)

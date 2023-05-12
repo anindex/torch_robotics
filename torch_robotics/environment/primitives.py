@@ -130,14 +130,16 @@ class MultiSphereField(PrimitiveShapeField):
                             p = torch.tensor([(i - obst_map_origin_xi) * obst_map.cell_size,
                                               (j - obst_map_origin_yi) * obst_map.cell_size,
                                               (k - obst_map_origin_zi) * obst_map.cell_size
-                                              ])
+                                              ],
+                                             **self.tensor_args)
 
                             if self.is_inside(p, center, radius):
                                 obst_map.map[j, i, k] += 1
 
                     else:
                         p = torch.tensor([(i - obst_map_origin_xi) * obst_map.cell_size,
-                                          (j - obst_map_origin_yi) * obst_map.cell_size])
+                                          (j - obst_map_origin_yi) * obst_map.cell_size],
+                                         **self.tensor_args)
 
                         if self.is_inside(p, center, radius):
                             obst_map.map[j, i] += 1
@@ -146,7 +148,7 @@ class MultiSphereField(PrimitiveShapeField):
     @staticmethod
     def is_inside(p, center, radius):
         # Check if point p is inside the discretized sphere
-        return np.linalg.norm(p - center) <= radius
+        return torch.linalg.norm(p - center) <= radius
 
     def render(self, ax):
         for center, radius in zip(self.centers, self.radii):

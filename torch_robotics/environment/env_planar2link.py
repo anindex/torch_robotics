@@ -5,9 +5,10 @@ from matplotlib import pyplot as plt
 from torch_robotics.environment.env_base import EnvBase
 from torch_robotics.environment.primitives import MultiSphereField, ObjectField
 from torch_robotics.torch_utils.torch_utils import DEFAULT_TENSOR_ARGS
+from torch_robotics.visualizers.planning_visualizer import create_fig_and_axes
 
 
-class Planar2LinkEnv(EnvBase):
+class EnvPlanar2Link(EnvBase):
 
     def __init__(self, tensor_args=None, **kwargs):
         circles = np.array([
@@ -32,7 +33,7 @@ class Planar2LinkEnv(EnvBase):
 
 
 if __name__ == '__main__':
-    env = Planar2LinkEnv(tensor_args=DEFAULT_TENSOR_ARGS)
-    fig, ax = plt.subplots()
+    env = EnvPlanar2Link(tensor_args=DEFAULT_TENSOR_ARGS)
+    fig, ax = create_fig_and_axes(env.dim)
     env.render(ax)
     plt.show()

@@ -6,7 +6,7 @@ import json
 import torch
 import numpy as np
 import torch.distributions as D
-from torch_kinematics_tree.geometrics.utils import MinMaxScaler, euclidean_distance
+from torch_robotics.torch_kinematics_tree.geometrics.utils import MinMaxScaler, euclidean_distance
 
 
 class Skeleton():

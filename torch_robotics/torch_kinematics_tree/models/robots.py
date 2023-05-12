@@ -1,6 +1,6 @@
 from typing import Optional, List
-from torch_kinematics_tree.models.robot_tree import DifferentiableTree
-from torch_kinematics_tree.utils.files import get_robot_path
+from torch_robotics.torch_kinematics_tree.models.robot_tree import DifferentiableTree
+from torch_robotics.torch_kinematics_tree.utils.files import get_robot_path
 
 
 class DifferentiableKUKAiiwa(DifferentiableTree):

@@ -56,10 +56,10 @@ from dataclasses import dataclass
 
 import torch
 import numpy as np
-from torch_kinematics_tree.models.rigid_body import DifferentiableRigidBody
-from torch_kinematics_tree.models.utils import URDFRobotModel, MJCFRobotModel
-from torch_kinematics_tree.geometrics.spatial_vector import MotionVec
-from torch_kinematics_tree.geometrics.utils import SE3_distance
+from torch_robotics.torch_kinematics_tree.models.rigid_body import DifferentiableRigidBody
+from torch_robotics.torch_kinematics_tree.models.utils import URDFRobotModel, MJCFRobotModel
+from torch_robotics.torch_kinematics_tree.geometrics.spatial_vector import MotionVec
+from torch_robotics.torch_kinematics_tree.geometrics.utils import SE3_distance
 
 
 def convert_link_dict_to_tensor(link_dict, link_list):
@@ -372,7 +372,6 @@ class DifferentiableTree(torch.nn.Module):
         Returns: a list containing names for all links
 
         """
-
         link_names = []
         for i in range(len(self._bodies)):
             link_names.append(self._bodies[i].name)

@@ -1,6 +1,7 @@
 import sys
 from abc import ABC
 
+import einops
 import torch
 
 from torch_robotics.torch_planning_objectives.fields.distance_fields import EmbodimentDistanceField, \
@@ -137,7 +138,7 @@ class PlanningTask(Task):
             # Task space collisions
             # forward kinematics
             q_try = q[idxs_coll_free[:, 0], idxs_coll_free[:, 1]]  # I, q_dim
-            x_pos = self.robot.fk_map(q_try)  # I, taskspaces, x_dim
+            x_pos = self.robot.fk_map(q_try, pos_only=True)  # I, taskspaces, x_dim
 
             # workspace boundaries
             # configuration is not valid if any points in the task spaces is out of workspace boundaries
@@ -167,7 +168,10 @@ class PlanningTask(Task):
             # For distance fields
 
             # forward kinematics
-            x_pos = self.robot.fk_map(q)  # batch, horizon, taskspaces, x_dim
+            x_pos = self.robot.fk_map(q, pos_only=True)  # (batch horizon), taskspaces, x_dim
+
+            # reshape to batch, horizon, taskspaces, x_dim
+            x_pos = einops.rearrange(x_pos, '(b h) links d -> b h links d', b=b, h=h)
 
             ########################
             # Self collision and obstacle collision

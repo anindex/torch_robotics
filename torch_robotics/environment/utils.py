@@ -1,6 +1,6 @@
 import numpy as np
 
-from torch_robotics.environment.primitives import MultiSphereField, ObjectField
+from torch_robotics.environment.primitives import MultiSphereField, ObjectField, MultiBoxField
 
 
 def create_grid_spheres(rows=5, cols=5, heights=0, radius=0.1, distance_from_border=0.1, tensor_args=None):

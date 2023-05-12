@@ -5,6 +5,7 @@ import numpy as np
 import torch
 
 from torch_robotics.environment.occupancy_map import OccupancyMap
+from torch_robotics.torch_utils.torch_utils import to_numpy
 
 
 class EnvBase(ABC):
@@ -22,6 +23,7 @@ class EnvBase(ABC):
 
         # Workspace
         self.limits = limits
+        self.limits_np = to_numpy(limits)
         self.dim = len(limits[0])
 
         ################################################################################################
@@ -65,8 +67,10 @@ class EnvBase(ABC):
         for obj in self.obj_list:
             obj.render(ax)
 
-        ax.set_xlim(self.limits[0][0], self.limits[1][0])
-        ax.set_ylim(self.limits[0][1], self.limits[1][1])
+        ax.set_xlim(self.limits_np[0][0], self.limits_np[1][0])
+        ax.set_ylim(self.limits_np[0][1], self.limits_np[1][1])
+        if self.dim == 3:
+            ax.set_zlim(self.limits_np[0][2], self.limits_np[1][2])
         ax.set_aspect('equal')
 
         # if self.use_occupancy_map:
