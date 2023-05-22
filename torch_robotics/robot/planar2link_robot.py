@@ -61,11 +61,11 @@ class Planar2LinkRobot(RobotBase):
         ax.plot(l2[:, 0], l2[:, 1], color=color, linewidth=linewidth, alpha=alpha)
         ax.scatter(p2[0], p2[1], color='red', marker='o')
 
-    def render_trajectory(self, ax, q_traj=None, start_state=None, goal_state=None, **kwargs):
-        if q_traj is not None:
-            for q in q_traj:
+    def render_trajectories(self, ax, trajs=None, start_state=None, goal_state=None, colors=['gray'], **kwargs):
+        if trajs is not None:
+            for q, color in zip(trajs, colors):
                 q = q.view(1, -1)
-                self.render(ax, q, alpha=0.8, color='gray')
+                self.render(ax, q, alpha=0.8, color=color)
         if start_state is not None:
             self.render(ax, start_state.view(1, -1), alpha=1.0, color='blue')
         if goal_state is not None:

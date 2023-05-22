@@ -403,6 +403,15 @@ class MultiCapsuleField(PrimitiveShapeField):
         return f"Capsule(center={self.center}, radius={self.radius}, height={self.height})"
 
 
+class MeshField(PrimitiveShapeField):
+    """
+    Represents a mesh as a primitive shape.
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+
 ########################################################################################################################
 class ObjectField(PrimitiveShapeField):
 

@@ -34,18 +34,22 @@ class PandaRobot(RobotBase):
         self.link_name_ee = 'ee_link'
 
     def fk_map_impl(self, q, pos_only=False):
-        if len(q.shape) == 3:
-            b, h, d = q.shape
+        q_orig_shape = q.shape
+        if len(q_orig_shape) == 3:
+            b, h, d = q_orig_shape
             q = einops.rearrange(q, 'b h d -> (b h) d')
-        elif len(q.shape) == 2:
+        elif len(q_orig_shape) == 2:
             h = 1
-            b, d = q.shape
+            b, d = q_orig_shape
         else:
             raise NotImplementedError
 
         link_tensor = self.diff_panda.compute_forward_kinematics_link_list(
             q, link_list=self.link_names_for_collision_checking
         )
+
+        if len(q_orig_shape) == 3:
+            link_tensor = einops.rearrange(link_tensor, "(b h) t d1 d2 -> b h t d1 d2", b=b, h=h)
 
         if pos_only:
             link_pos = link_pos_from_link_tensor(link_tensor)  # (batch horizon), taskspaces, x_dim
@@ -57,11 +61,12 @@ class PandaRobot(RobotBase):
         skeleton = get_skeleton_from_model(self.diff_panda, q, self.diff_panda.get_link_names())
         skeleton.draw_skeleton(ax=ax, color=color)
 
-    def render_trajectory(self, ax, q_traj=None, start_state=None, goal_state=None, **kwargs):
-        if q_traj is not None:
-            for t in range(q_traj.shape[0] - 1):
-                skeleton = get_skeleton_from_model(self.diff_panda, q_traj[t], self.diff_panda.get_link_names())
-                skeleton.draw_skeleton(ax=ax, color='gray')
+    def render_trajectories(self, ax, trajs=None, start_state=None, goal_state=None, colors=['gray'], **kwargs):
+        if trajs is not None:
+            for traj, color in zip(trajs, colors):
+                for t in range(traj.shape[0] - 1):
+                    skeleton = get_skeleton_from_model(self.diff_panda, traj[t], self.diff_panda.get_link_names())
+                    skeleton.draw_skeleton(ax=ax, color=color)
             if start_state is not None:
                 start_skeleton = get_skeleton_from_model(self.diff_panda, start_state, self.diff_panda.get_link_names())
                 start_skeleton.draw_skeleton(ax=ax, color='blue')

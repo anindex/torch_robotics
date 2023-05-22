@@ -27,7 +27,7 @@ def to_torch(x, device='cpu', dtype=torch.float, requires_grad=False, clone=Fals
     if torch.is_tensor(x):
         if clone:
             x = x.clone()
-        return x.to(device=device, dtype=dtype).requires_grad_(requires_grad)
+        return x.to(device=device, dtype=dtype)
     return torch.tensor(x, dtype=dtype, device=device, requires_grad=requires_grad)
 
 
@@ -124,3 +124,18 @@ def linspace(start: torch.Tensor, stop: torch.Tensor, num: int):
     out = start[None] + steps * (stop - start)[None]
 
     return out
+
+
+# @torch.jit.script
+def batched_weighted_dot_prod(x: torch.Tensor, M: torch.Tensor, y: torch.Tensor, with_einsum: bool = False):
+    """
+    Computes batched version of weighted dot product (distance) x.T @ M @ x
+    """
+    assert x.ndim >= 2
+    if with_einsum:
+        My = M.unsqueeze(0) @ y
+        r = torch.einsum('...ij,...ij->...j', x, My)
+    else:
+        r = x.transpose(-2, -1) @ M.unsqueeze(0) @ x
+        r = r.diagonal(dim1=-2, dim2=-1)
+    return r

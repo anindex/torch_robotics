@@ -1,7 +1,11 @@
 import os
 
+import numpy as np
 from matplotlib import pyplot as plt
 from matplotlib.animation import FuncAnimation
+
+from torch_robotics.torch_utils.torch_utils import to_numpy
+import matplotlib.collections as mcoll
 
 
 def create_fig_and_axes(dim=2):
@@ -16,42 +20,211 @@ def create_fig_and_axes(dim=2):
 
 class PlanningVisualizer:
 
-    def __init__(self, env=None, robot=None, planner=None):
-        self.env = env
-        self.robot = robot
+    def __init__(self, task=None, planner=None):
+        self.task = task
+        self.env = self.task.env
+        self.robot = self.task.robot
         self.planner = planner
 
-    def render_trajectory(
-            self, traj, render_planner=False,
-            animate=False, video_filepath='movie_trajectory.mp4',
-            **kwargs
-    ):
-        fig, ax = create_fig_and_axes(dim=self.env.dim)
+        self.colors = {'collision': 'black', 'free': 'orange'}
+
+    def render_robot_trajectories(self, fig=None, ax=None, render_planner=False, trajs=None, **kwargs):
+        if fig is None or ax is None:
+            fig, ax = create_fig_and_axes(dim=self.env.dim)
 
         if render_planner:
             self.planner.render(ax)
         self.env.render(ax)
-        self.robot.render_trajectory(ax, traj, **kwargs)
-
-        if animate and traj is not None:
-            fig2, ax2 = create_fig_and_axes(dim=self.env.dim)
-            def animate_fn(i):
-                ax2.clear()
-                self.env.render(ax2)
-                q = traj[i].squeeze()
-                self.robot.render(ax2, q)
-
-            anim_time_in_sec = 5
-            str_create = "Creating animation"
-            print(f'{str_create}...')
-            ani = FuncAnimation(fig2, animate_fn,
-                                frames=len(traj),
-                                interval=anim_time_in_sec * 1000 / len(traj),
-                                repeat=False)
-            print(f'...finished {str_create}')
-
-            print('Saving video...')
-            ani.save(os.path.join(video_filepath), fps=int(len(traj) / anim_time_in_sec), dpi=90)
-            print('...finished Saving video')
-
+        if trajs is not None:
+            _, trajs_coll_idxs, _, trajs_free_idxs, _ = self.task.get_trajs_collision_and_free(trajs, return_indices=True)
+            kwargs['colors'] = []
+            for i in range(len(trajs_coll_idxs) + len(trajs_free_idxs)):
+                kwargs['colors'].append(self.colors['collision'] if i in trajs_coll_idxs else self.colors['free'])
+        self.robot.render_trajectories(ax, trajs=trajs, **kwargs)
         return fig, ax
+
+    def animate_robot_trajectories(
+            self, trajs=None, start_state=None, goal_state=None,
+            plot_trajs=False,
+            n_frames=10,
+            **kwargs
+    ):
+        if trajs is None:
+            return
+
+        assert trajs.ndim == 3
+        B, H, D = trajs.shape
+
+        idxs = np.round(np.linspace(0, H - 1, n_frames)).astype(int)
+        trajs_selection = trajs[:, idxs, :]
+
+        fig, ax = create_fig_and_axes(dim=self.env.dim)
+        def animate_fn(i):
+            ax.clear()
+            ax.set_title(f"step: {idxs[i]}/{H-1}")
+            if plot_trajs:
+                self.render_robot_trajectories(
+                    fig=fig, ax=ax, trajs=trajs, start_state=start_state, goal_state=goal_state, **kwargs
+                )
+            else:
+                self.env.render(ax)
+            q = trajs_selection[:, i, :]  # batch, q_dim
+            self.robot.render(ax, q=q, color=self.colors['collision'] if self.task.compute_collision(q) else self.colors['free'])
+            if start_state is not None:
+                self.robot.render(ax, start_state, color='green')
+            if goal_state is not None:
+                self.robot.render(ax, goal_state, color='red')
+
+        create_animation_video(fig, animate_fn, n_frames=n_frames, **kwargs)
+
+    def animate_opt_iters_robots(
+            self, trajs=None, start_state=None, goal_state=None,
+            n_frames=10,
+            **kwargs
+    ):
+        # trajs: steps, batch, horizon, q_dim
+        if trajs is None:
+            return
+
+        assert trajs.ndim == 4
+        S, B, H, D = trajs.shape
+
+        idxs = np.round(np.linspace(0, S - 1, n_frames)).astype(int)
+        trajs_selection = trajs[idxs]
+
+        fig, ax = create_fig_and_axes(dim=self.env.dim)
+        def animate_fn(i):
+            ax.clear()
+            ax.set_title(f"iter: {idxs[i]}/{S-1}")
+            self.render_robot_trajectories(
+                fig=fig, ax=ax, trajs=trajs_selection[i],  start_state=start_state, goal_state=goal_state, **kwargs
+            )
+            if start_state is not None:
+                self.robot.render(ax, start_state, color='green')
+            if goal_state is not None:
+                self.robot.render(ax, goal_state, color='red')
+
+        create_animation_video(fig, animate_fn, n_frames=n_frames, **kwargs)
+
+    def plot_joint_space_state_trajectories(
+            self,
+            fig=None, axs=None,
+            trajs=None,
+            pos_start_state=None, pos_goal_state=None,
+            vel_start_state=None, vel_goal_state=None,
+            **kwargs
+    ):
+        if trajs is None:
+            return
+        trajs_np = to_numpy(trajs)
+
+        assert trajs_np.ndim == 3
+        B, H, D = trajs_np.shape
+
+        # Separate trajectories in collision and free (not in collision)
+        trajs_coll, trajs_free = self.task.get_trajs_collision_and_free(trajs)
+
+        trajs_coll_pos_np = to_numpy([])
+        trajs_coll_vel_np = to_numpy([])
+        if trajs_coll is not None:
+            trajs_coll_pos_np = to_numpy(self.robot.get_position(trajs_coll))
+            trajs_coll_vel_np = to_numpy(self.robot.get_velocity(trajs_coll))
+
+        trajs_free_pos_np = to_numpy([])
+        trajs_free_vel_np = to_numpy([])
+        if trajs_free is not None:
+            trajs_free_pos_np = to_numpy(self.robot.get_position(trajs_free))
+            trajs_free_vel_np = to_numpy(self.robot.get_velocity(trajs_free))
+
+        if pos_start_state is not None:
+            pos_start_state = to_numpy(pos_start_state)
+        if vel_start_state is not None:
+            vel_start_state = to_numpy(vel_start_state)
+        if pos_goal_state is not None:
+            pos_goal_state = to_numpy(pos_goal_state)
+        if vel_goal_state is not None:
+            vel_goal_state = to_numpy(vel_goal_state)
+
+        if fig is None or axs is None:
+            fig, axs = plt.subplots(self.robot.q_dim, 2, squeeze=False)
+        axs[0, 0].set_title('Position')
+        axs[0, 1].set_title('Velocity')
+        axs[-1, 0].set_xlabel('Timesteps')
+        axs[-1, 1].set_xlabel('Timesteps')
+        timesteps = np.repeat(np.arange(H).reshape(1, -1), B, axis=0)
+        for i, ax in enumerate(axs):
+            for trajs_filtered, color in zip([(trajs_coll_pos_np, trajs_coll_vel_np), (trajs_free_pos_np, trajs_free_vel_np)],
+                                             ['black', 'orange']):
+                # Positions
+                if trajs_filtered[0].size > 0:
+                    plot_multiline(ax[0], timesteps, trajs_filtered[0][..., i], color=color)
+                # Velocities
+                if trajs_filtered[1].size > 0:
+                    plot_multiline(ax[1], timesteps, trajs_filtered[1][..., i], color=color)
+
+            # Start and goal
+            if pos_start_state is not None:
+                ax[0].scatter(0, pos_start_state[i], color='green')
+            if vel_start_state is not None:
+                ax[1].scatter(0, vel_start_state[i], color='green')
+            if pos_goal_state is not None:
+                ax[0].scatter(H-1, pos_goal_state[i], color='red')
+            if vel_goal_state is not None:
+                ax[1].scatter(H-1, vel_goal_state[i], color='red')
+            # Y label
+            ax[0].set_ylabel(f'q_{i}')
+            # Set limits
+            ax[0].set_ylim(self.robot.q_min_np[i], self.robot.q_max_np[i])
+
+        return fig, axs
+
+    def animate_opt_iters_joint_space_state(
+            self, trajs=None, n_frames=10, **kwargs
+    ):
+        # trajs: steps, batch, horizon, q_dim
+        if trajs is None:
+            return
+
+        assert trajs.ndim == 4
+        S, B, H, D = trajs.shape
+
+        idxs = np.round(np.linspace(0, S - 1, n_frames)).astype(int)
+        trajs_selection = trajs[idxs]
+
+        fig, axs = self.plot_joint_space_state_trajectories(trajs=trajs_selection[0], **kwargs)
+
+        def animate_fn(i):
+            [ax.clear() for ax in axs.ravel()]
+            fig.suptitle(f"iter: {idxs[i]}/{S-1}")
+            self.plot_joint_space_state_trajectories(
+                fig=fig, axs=axs,
+                trajs=trajs_selection[i], **kwargs
+            )
+
+        create_animation_video(fig, animate_fn, n_frames=n_frames, **kwargs)
+
+
+def create_animation_video(fig, animate_fn, anim_time=5, n_frames=100, video_filepath='video.mp4', **kwargs):
+    str_start = "Creating animation"
+    print(f'{str_start}...')
+    ani = FuncAnimation(
+        fig,
+        animate_fn,
+        frames=n_frames,
+        interval=anim_time * 1000 / n_frames,
+        repeat=False
+    )
+    print(f'...finished {str_start}')
+
+    str_start = "Saving video..."
+    print(f'{str_start}...')
+    ani.save(os.path.join(video_filepath), fps=max(1, int(n_frames / anim_time)), dpi=90)
+    print(f'...finished {str_start}')
+
+
+def plot_multiline(ax, X, Y, color='blue', **kwargs):
+    segments = np.stack((X, Y), axis=-1)
+    line_segments = mcoll.LineCollection(segments, colors=[color] * len(segments), linestyle='solid')
+    ax.add_collection(line_segments)
+    points = np.reshape(segments, (-1, 2))
+    ax.scatter(points[:, 0], points[:, 1], color=color, s=2 ** 2)

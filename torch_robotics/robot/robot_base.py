@@ -3,6 +3,8 @@ from abc import ABC
 
 import torch
 
+from torch_robotics.torch_utils.torch_utils import to_numpy
+
 
 class RobotBase(ABC):
 
@@ -23,8 +25,10 @@ class RobotBase(ABC):
         self.q_limits = q_limits
         self.q_min = q_limits[0]
         self.q_max = q_limits[1]
+        self.q_min_np = to_numpy(self.q_min)
+        self.q_max_np = to_numpy(self.q_max)
         self.q_distribution = torch.distributions.uniform.Uniform(self.q_min, self.q_max)
-        self.q_n_dofs = len(self.q_min)
+        self.q_dim = len(self.q_min)
 
         # Collision field
         self.self_collision_margin = self_collision_margin
@@ -37,10 +41,10 @@ class RobotBase(ABC):
         return q_pos
 
     def get_position(self, x):
-        return x[..., :self.q_n_dofs]
+        return x[..., :self.q_dim]
 
     def get_velocity(self, x):
-        return x[..., self.q_n_dofs:2*self.q_n_dofs]
+        return x[..., self.q_dim:2 * self.q_dim]
 
     def get_acceleration(self, x):
         raise NotImplementedError
@@ -64,5 +68,5 @@ class RobotBase(ABC):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def render_trajectory(self, ax, **kwargs):
+    def render_trajectories(self, ax, trajs=None, **kwargs):
         raise NotImplementedError

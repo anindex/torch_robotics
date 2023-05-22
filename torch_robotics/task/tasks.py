@@ -2,10 +2,12 @@ import sys
 from abc import ABC
 
 import einops
+import numpy as np
 import torch
 
-from torch_robotics.torch_planning_objectives.fields.distance_fields import EmbodimentDistanceField, \
-    WorkspaceBoundariesDistanceField
+from torch_robotics.torch_planning_objectives.fields.distance_fields import CollisionWorkspaceBoundariesDistanceField, \
+    CollisionSelfField, CollisionObjectDistanceField
+from torch_robotics.trajectory.utils import interpolate_traj_via_points
 
 
 class Task(ABC):
@@ -41,19 +43,29 @@ class PlanningTask(Task):
         ################################################################################################
         # Collision fields
         self.obstacle_buffer = obstacle_buffer
-        # collision field that groups the robot and objects
-        self.df_collision_self_and_obstacles = EmbodimentDistanceField(
-            obst_margin=obstacle_buffer,
-            self_margin=self.robot.self_collision_margin,
+        # collision field for self-collision
+        self.df_collision_self = CollisionSelfField(
             num_interpolate=self.robot.num_interpolate,
             link_interpolate_range=self.robot.link_interpolate_range,
+            margin=self.robot.self_collision_margin,
             tensor_args=self.tensor_args
         )
+
+        # collision field for objects
+        self.df_collision_objects = CollisionObjectDistanceField(
+            num_interpolate=self.robot.num_interpolate,
+            link_interpolate_range=self.robot.link_interpolate_range,
+            margin=obstacle_buffer,
+            tensor_args=self.tensor_args
+        )
+
         # collision field for workspace boundaries
-        self.df_collision_ws_boundaries = WorkspaceBoundariesDistanceField(
+        self.df_collision_ws_boundaries = CollisionWorkspaceBoundariesDistanceField(
+            num_interpolate=self.robot.num_interpolate,
+            link_interpolate_range=self.robot.link_interpolate_range,
+            margin=0.,
             ws_bounds_min=self.ws_min,
             ws_bounds_max=self.ws_max,
-            obst_margin=0.,
             tensor_args=self.tensor_args
         )
 
@@ -69,7 +81,7 @@ class PlanningTask(Task):
     def random_coll_free_q(self, n_samples=1, max_samples=1000, max_tries=1000):
         # Random position in configuration space not in collision
         reject = True
-        samples = torch.zeros((n_samples, self.robot.q_n_dofs), **self.tensor_args)
+        samples = torch.zeros((n_samples, self.robot.q_dim), **self.tensor_args)
         idx_begin = 0
         for i in range(max_tries):
             qs = self.robot.random_q(max_samples)
@@ -103,7 +115,7 @@ class PlanningTask(Task):
         return self._compute_collision_or_cost(q_pos, field_type='sdf', **kwargs)
 
     def _compute_collision_or_cost(self, q, field_type='occupancy', **kwargs):
-        # q.shape needs to be (batch, horizon, q_dim)
+        # q.shape needs to be reshaped to (batch, horizon, q_dim)
         q_original_shape = q.shape
         b = 1
         h = 1
@@ -168,24 +180,88 @@ class PlanningTask(Task):
             # For distance fields
 
             # forward kinematics
-            x_pos = self.robot.fk_map(q, pos_only=True)  # (batch horizon), taskspaces, x_dim
-
-            # reshape to batch, horizon, taskspaces, x_dim
-            x_pos = einops.rearrange(x_pos, '(b h) links d -> b h links d', b=b, h=h)
+            x_pos = self.robot.fk_map(q, pos_only=True)  # batch, horizon, taskspaces, x_dim
 
             ########################
-            # Self collision and obstacle collision
-            cost_collision_self, cost_collision_obstacle = self.df_collision_self_and_obstacles.compute_cost(
+            # Self collision
+            cost_collision_self = self.df_collision_self.compute_cost(
                 x_pos, df_list=self.env.obj_list, field_type=field_type)
 
-            ########################
+            # Object collision
+            cost_collision_objects = self.df_collision_objects.compute_cost(
+                x_pos, df_list=self.env.obj_list, field_type=field_type)
+
             # Workspace boundaries
             cost_collision_border = self.df_collision_ws_boundaries.compute_cost(
                 x_pos, field_type=field_type)
 
             if field_type == 'occupancy':
-                collisions = cost_collision_self | cost_collision_obstacle | cost_collision_border
+                collisions = cost_collision_self | cost_collision_objects | cost_collision_border
             else:
-                collisions = cost_collision_self + cost_collision_obstacle + cost_collision_border
+                collisions = cost_collision_self + cost_collision_objects + cost_collision_border
 
         return collisions
+
+    def get_trajs_collision_and_free(self, trajs, return_indices=False, margin=0.001, num_interpolation=5):
+        assert trajs.ndim == 3 or trajs.ndim == 4
+        N = 1
+        if trajs.ndim == 4:  # n_goals (or steps), batch of trajectories, length, dim
+            N, B, H, D = trajs.shape
+            trajs_new = einops.rearrange(trajs, 'N B H D -> (N B) H D')
+        else:
+            B, H, D = trajs.shape
+            trajs_new = trajs
+
+        # compute collisions on a finer interpolated trajectory
+        trajs_new = interpolate_traj_via_points(trajs_new, num_intepolation=num_interpolation)
+        trajs_waypoints_collisions = self.compute_collision(trajs_new, margin=margin)
+
+        if trajs.ndim == 4:
+            trajs_waypoints_collisions = einops.rearrange(trajs_waypoints_collisions, '(N B) H -> N B H', N=N, B=B)
+
+        trajs_free_idxs = torch.argwhere(torch.logical_not(trajs_waypoints_collisions).all(dim=-1))
+        trajs_coll_idxs = torch.argwhere(trajs_waypoints_collisions.any(dim=-1))
+
+        if trajs.ndim == 4:
+            trajs_free = trajs[trajs_free_idxs[:, 0], trajs_free_idxs[:, 1], ...]
+            if trajs_free.ndim == 2:
+                trajs_free = trajs_free.unsqueeze(0).unsqueeze(0)
+            trajs_coll = trajs[trajs_coll_idxs[:, 0], trajs_coll_idxs[:, 1], ...]
+            if trajs_coll.ndim == 2:
+                trajs_coll = trajs_coll.unsqueeze(0).unsqueeze(0)
+        else:
+            trajs_free = trajs[trajs_free_idxs.squeeze(), ...]
+            if trajs_free.ndim == 2:
+                trajs_free = trajs_free.unsqueeze(0)
+            trajs_coll = trajs[trajs_coll_idxs.squeeze(), ...]
+            if trajs_coll.ndim == 2:
+                trajs_coll = trajs_coll.unsqueeze(0)
+
+        if trajs_coll.nelement() == 0:
+            trajs_coll = None
+        if trajs_free.nelement() == 0:
+            trajs_free = None
+
+        if return_indices:
+            return trajs_coll, trajs_coll_idxs, trajs_free, trajs_free_idxs, trajs_waypoints_collisions
+        return trajs_coll, trajs_free
+
+    def compute_fraction_free_trajs(self, trajs, **kwargs):
+        # Compute the fractions of trajs that are collision free
+        _, trajs_coll_idxs, _, trajs_free_idxs, _ = self.get_trajs_collision_and_free(trajs, return_indices=True)
+        n_trajs_free = trajs_free_idxs.nelement()
+        n_trajs_coll = trajs_coll_idxs.nelement()
+        return n_trajs_free/(n_trajs_free + n_trajs_coll)
+
+    def compute_collision_intensity_trajs(self, trajs, **kwargs):
+        # Compute the fraction of waypoints that are in collision
+        _, _, _, _, trajs_waypoints_collisions = self.get_trajs_collision_and_free(trajs, return_indices=True)
+        return torch.count_nonzero(trajs_waypoints_collisions)/trajs_waypoints_collisions.nelement()
+
+    def compute_success_free_trajs(self, trajs, **kwargs):
+        # If at least one trajectory is collision free, then we consider success
+        _, trajs_free = self.get_trajs_collision_and_free(trajs)
+        if trajs_free is not None:
+            if trajs_free.nelement() >= 1:
+                return 1
+        return 0

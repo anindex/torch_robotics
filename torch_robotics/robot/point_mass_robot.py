@@ -1,5 +1,11 @@
+import matplotlib.pyplot as plt
+import numpy as np
+from mpl_toolkits.mplot3d.art3d import Line3DCollection
+
 from torch_robotics.robot.robot_base import RobotBase
 from torch_robotics.torch_utils.torch_utils import to_numpy
+
+import matplotlib.collections as mcoll
 
 
 class PointMassRobot(RobotBase):
@@ -19,15 +25,39 @@ class PointMassRobot(RobotBase):
     def render(self, ax, q=None, color='blue', **kwargs):
         if q is not None:
             q = to_numpy(q)
-            ax.scatter(*q, color=color)
-
-    def render_trajectory(self, ax, traj_q=None, start_state=None, goal_state=None, **kwargs):
-        if traj_q is not None:
-            traj_np = to_numpy(traj_q)
-            if self.q_n_dofs == 3:
-                ax.plot(traj_np[:, 0], traj_np[:, 1], traj_np[:, 2], 'b-', markersize=3)
+            if q.ndim == 1:
+                ax.scatter(*q, color=color, s=10**2, zorder=10)
+            elif q.ndim == 2:
+                if q.shape[-1] == 2:
+                    ax.scatter(q[:, 0], q[:, 1], color=color, s=10 ** 2, zorder=10)
+                elif q.shape[-1] == 3:
+                    ax.scatter(q[:, 0], q[:, 1], q[:, 2], color=color, s=10 ** 2, zorder=10)
+                else:
+                    raise NotImplementedError
             else:
-                ax.plot(traj_np[:, 0], traj_np[:, 1], 'b-', markersize=3)
+                raise NotImplementedError
+
+    def render_trajectories(self, ax, trajs=None, start_state=None, goal_state=None, colors=['blue'], **kwargs):
+        if trajs is not None:
+            trajs_np = to_numpy(trajs)
+            if self.q_dim == 3:
+                segments = np.array(list(zip(trajs_np[..., 0], trajs_np[..., 1], trajs_np[..., 2]))).swapaxes(1, 2)
+                line_segments = Line3DCollection(segments, colors=colors, linestyle='solid')
+                ax.add_collection(line_segments)
+                points = np.reshape(trajs_np, (-1, 3))
+                colors_scatter = []
+                for segment, color in zip(segments, colors):
+                    colors_scatter.extend([color]*segment.shape[0])
+                ax.scatter(points[:, 0], points[:, 1], points[:, 2], color=colors_scatter, s=2**2)
+            else:
+                segments = np.array(list(zip(trajs_np[..., 0], trajs_np[..., 1]))).swapaxes(1, 2)
+                line_segments = mcoll.LineCollection(segments, colors=colors, linestyle='solid')
+                ax.add_collection(line_segments)
+                points = np.reshape(trajs_np, (-1, 2))
+                colors_scatter = []
+                for segment, color in zip(segments, colors):
+                    colors_scatter.extend([color]*segment.shape[0])
+                ax.scatter(points[:, 0], points[:, 1], color=colors_scatter, s=2**2)
         if start_state is not None:
             start_state_np = to_numpy(start_state)
             if len(start_state_np) == 3:
