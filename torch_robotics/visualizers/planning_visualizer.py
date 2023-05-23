@@ -68,8 +68,14 @@ class PlanningVisualizer:
                 )
             else:
                 self.env.render(ax)
-            q = trajs_selection[:, i, :]  # batch, q_dim
-            self.robot.render(ax, q=q, color=self.colors['collision'] if self.task.compute_collision(q) else self.colors['free'])
+
+            # TODO - implement batched version
+            qs = trajs_selection[:, i, :]  # batch, q_dim
+            if qs.ndim == 1:
+                qs = qs.unsqueeze(0)  # interface (batch, q_dim)
+            for q in qs:
+                self.robot.render(ax, q=q, color=self.colors['collision'] if self.task.compute_collision(q) else self.colors['free'])
+
             if start_state is not None:
                 self.robot.render(ax, start_state, color='green')
             if goal_state is not None:
@@ -151,16 +157,15 @@ class PlanningVisualizer:
         axs[0, 1].set_title('Velocity')
         axs[-1, 0].set_xlabel('Timesteps')
         axs[-1, 1].set_xlabel('Timesteps')
-        timesteps = np.repeat(np.arange(H).reshape(1, -1), B, axis=0)
+        timesteps = np.arange(H).reshape(1, -1)
         for i, ax in enumerate(axs):
             for trajs_filtered, color in zip([(trajs_coll_pos_np, trajs_coll_vel_np), (trajs_free_pos_np, trajs_free_vel_np)],
                                              ['black', 'orange']):
-                # Positions
-                if trajs_filtered[0].size > 0:
-                    plot_multiline(ax[0], timesteps, trajs_filtered[0][..., i], color=color)
-                # Velocities
-                if trajs_filtered[1].size > 0:
-                    plot_multiline(ax[1], timesteps, trajs_filtered[1][..., i], color=color)
+                # Positions and velocities
+                for j, trajs_filtered_ in enumerate(trajs_filtered):
+                    if trajs_filtered_.size > 0:
+                        timesteps_ = np.repeat(timesteps, trajs_filtered_.shape[0], axis=0)
+                        plot_multiline(ax[j], timesteps_, trajs_filtered_[..., i], color=color)
 
             # Start and goal
             if pos_start_state is not None:
