@@ -312,4 +312,10 @@ def rot_mat_to_euler(R):
 
 
 def link_pos_from_link_tensor(link_tensor):
-    return link_tensor[..., :3, 3]
+    if link_tensor.shape[-1] == 3:
+        link_pos = link_tensor[..., :2, 2]
+    elif link_tensor.shape[-1] == 4:
+        link_pos = link_tensor[..., :3, 3]
+    else:
+        raise ValueError
+    return link_pos

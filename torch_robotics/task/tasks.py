@@ -53,6 +53,7 @@ class PlanningTask(Task):
 
         # collision field for objects
         self.df_collision_objects = CollisionObjectDistanceField(
+            df_obj_list_fn=self.env.get_obj_list,
             num_interpolate=self.robot.num_interpolate,
             link_interpolate_range=self.robot.link_interpolate_range,
             margin=obstacle_buffer,
@@ -68,6 +69,11 @@ class PlanningTask(Task):
             ws_bounds_max=self.ws_max,
             tensor_args=self.tensor_args
         )
+
+        self._collision_fields = [self.df_collision_self, self.df_collision_objects, self.df_collision_ws_boundaries]
+
+    def get_collision_fields(self):
+        return self._collision_fields
 
     def distance_q(self, q1, q2):
         return self.robot.distance_q(q1, q2)
@@ -184,16 +190,13 @@ class PlanningTask(Task):
 
             ########################
             # Self collision
-            cost_collision_self = self.df_collision_self.compute_cost(
-                x_pos, df_list=self.env.obj_list, field_type=field_type)
+            cost_collision_self = self.df_collision_self.compute_cost(x_pos, field_type=field_type)
 
             # Object collision
-            cost_collision_objects = self.df_collision_objects.compute_cost(
-                x_pos, df_list=self.env.obj_list, field_type=field_type)
+            cost_collision_objects = self.df_collision_objects.compute_cost(x_pos, field_type=field_type)
 
             # Workspace boundaries
-            cost_collision_border = self.df_collision_ws_boundaries.compute_cost(
-                x_pos, field_type=field_type)
+            cost_collision_border = self.df_collision_ws_boundaries.compute_cost(x_pos, field_type=field_type)
 
             if field_type == 'occupancy':
                 collisions = cost_collision_self | cost_collision_objects | cost_collision_border

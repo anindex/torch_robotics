@@ -36,6 +36,9 @@ class EnvBase(ABC):
         self.occupancy_map = None
         self.cell_size = None
 
+    def get_obj_list(self):
+        return self.obj_list
+
     def simplify_primitives(self):
         return
         # Groups primitives of the same type for faster batched computation

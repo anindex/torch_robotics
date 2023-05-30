@@ -29,7 +29,11 @@ class DistanceField(ABC):
 
     def compute_cost(self, link_tensor_pos, *args, **kwargs):
         link_orig_shape = link_tensor_pos.shape
-        if len(link_orig_shape) == 3:
+        if len(link_orig_shape) == 2:
+            h = 1
+            b, d = link_orig_shape
+            link_tensor_pos = einops.rearrange(link_tensor_pos, "b d -> b 1 d")  # add dimension of task space link
+        elif len(link_orig_shape) == 3:
             h = 1
             b, t, d = link_orig_shape
         elif len(link_orig_shape) == 4:  # batch, horizon, num_links, 3  # position tensor
@@ -61,11 +65,13 @@ class DistanceField(ABC):
 class EmbodimentDistanceFieldBase(DistanceField):
 
     def __init__(self,
+                 df_obj_list_fn=None,
                  num_interpolate=0, link_interpolate_range=[2, 7],
                  margin=0.001,
                  field_type='sdf', clamp_sdf=True,
                  **kwargs):
         super().__init__(**kwargs)
+        self.df_obj_list_fn = df_obj_list_fn
         self.num_interpolate = num_interpolate
         self.link_interpolate_range = link_interpolate_range
         self.margin = margin
@@ -108,13 +114,14 @@ class EmbodimentDistanceFieldBase(DistanceField):
         self_cost = self.compute_embodiment_cost(link_pos, **kwargs)
         return self_cost
 
-    def compute_distance(self, link_pos, df_list=None, **kwargs):
+    def compute_distance(self, link_pos, **kwargs):
         link_pos = self.interpolate_links(link_pos)
         self_distances = self.compute_embodiment_signed_distances(link_pos, **kwargs).min(-1)[0]  # batch_dim
         return self_distances
 
     def zero_grad(self):
-        raise NotImplementedError
+        pass
+        # raise NotImplementedError
 
     @abstractmethod
     def compute_embodiment_rbf_distances(self, *args, **kwargs):
@@ -140,8 +147,10 @@ class CollisionSelfField(EmbodimentDistanceFieldBase):
         return rbf_distance
 
     def compute_embodiment_signed_distances(self, link_pos, **kwargs):  # position tensor
-        if link_pos.shape[-2] == 1:  # if there is only one link, the self distance is infinite
-            return torch.ones(link_pos.shape[:-1], **self.tensor_args) * torch.inf
+        if link_pos.shape[-2] == 1:
+            # if there is only one link, the self distance is very large
+            # implementation guarantees gradient computation
+            return torch.abs(link_pos).sum(-1) * 1e6
         dist_mat = torch.linalg.norm(link_pos.unsqueeze(-2) - link_pos.unsqueeze(-3), dim=-1)  # batch_dim x links x links
         # select lower triangular
         lower_indices = torch.tril_indices(dist_mat.shape[-1], dist_mat.shape[-1], offset=-1).unbind()
@@ -182,13 +191,14 @@ class CollisionObjectDistanceField(CollisionObjectBase):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-    def object_signed_distances(self, link_pos, df_list=None, **kwargs):
-        if df_list is None:
+    def object_signed_distances(self, link_pos, **kwargs):
+        if self.df_obj_list_fn is None:
             return torch.inf
+        df_obj_list = self.df_obj_list_fn()
         link_dim = link_pos.shape[:-1]
         link_pos = link_pos.reshape(-1, link_pos.shape[-1])  # flatten batch_dim and links
         dfs = []
-        for df in df_list:
+        for df in df_obj_list:
             dfs.append(df.compute_signed_distance(link_pos).view(link_dim))  # df() returns batch_dim x links
         return torch.stack(dfs, dim=-2)  # batch_dim x num_sdfs x links
 

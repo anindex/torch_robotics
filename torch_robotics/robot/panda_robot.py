@@ -55,7 +55,7 @@ class PandaRobot(RobotBase):
             link_pos = link_pos_from_link_tensor(link_tensor)  # (batch horizon), taskspaces, x_dim
             return link_pos
         else:
-            raise NotImplementedError
+            return link_tensor
 
     def render(self, ax, q=None, color='blue', **kwargs):
         skeleton = get_skeleton_from_model(self.diff_panda, q, self.diff_panda.get_link_names())

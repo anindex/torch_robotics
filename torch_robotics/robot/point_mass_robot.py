@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
+import torch
 from mpl_toolkits.mplot3d.art3d import Line3DCollection
 
 from torch_robotics.robot.robot_base import RobotBase
@@ -20,7 +21,10 @@ class PointMassRobot(RobotBase):
         if pos_only:
             return q.unsqueeze(-2)
         else:
-            raise NotImplementedError
+            # no rotation
+            H = torch.eye(self.q_dim + 1, **self.tensor_args).unsqueeze(0).unsqueeze(-3).repeat(*q.shape[:-1], 1, 1, 1)
+            H[..., :self.q_dim, self.q_dim] = q.unsqueeze(-2)
+            return H
 
     def render(self, ax, q=None, color='blue', **kwargs):
         if q is not None:
