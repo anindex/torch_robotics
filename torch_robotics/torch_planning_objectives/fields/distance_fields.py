@@ -150,7 +150,7 @@ class CollisionSelfField(EmbodimentDistanceFieldBase):
         if link_pos.shape[-2] == 1:
             # if there is only one link, the self distance is very large
             # implementation guarantees gradient computation
-            return torch.abs(link_pos).sum(-1) * 1e6
+            return torch.abs(link_pos).sum(-1) * 1e9
         dist_mat = torch.linalg.norm(link_pos.unsqueeze(-2) - link_pos.unsqueeze(-3), dim=-1)  # batch_dim x links x links
         # select lower triangular
         lower_indices = torch.tril_indices(dist_mat.shape[-1], dist_mat.shape[-1], offset=-1).unbind()
