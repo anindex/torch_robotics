@@ -74,7 +74,10 @@ class PlanningVisualizer:
             if qs.ndim == 1:
                 qs = qs.unsqueeze(0)  # interface (batch, q_dim)
             for q in qs:
-                self.robot.render(ax, q=q, color=self.colors['collision'] if self.task.compute_collision(q) else self.colors['free'])
+                self.robot.render(
+                    ax, q=q,
+                    color=self.colors['collision'] if self.task.compute_collision(q, margin=0.0) else self.colors['free']
+                )
 
             if start_state is not None:
                 self.robot.render(ax, start_state, color='green')

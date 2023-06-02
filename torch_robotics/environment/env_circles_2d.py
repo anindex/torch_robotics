@@ -54,6 +54,25 @@ class GridCircles2D(EnvBase):
         )
         return params
 
+    def get_sgpmp_params(self):
+        params = dict(
+            opt_iters=100,
+            num_samples=64,
+            sigma_start=1e-5,
+            sigma_gp=1e-2,
+            sigma_goal_prior=1e-5,
+            sigma_coll=1e-5,
+            step_size=5e-1,
+            sigma_start_init=1e-4,
+            sigma_goal_init=1e-4,
+            sigma_gp_init=0.2,
+            sigma_start_sample=1e-4,
+            sigma_goal_sample=1e-4,
+            sigma_gp_sample=0.2,
+            temperature=1.,
+        )
+        return params
+
 
 if __name__ == '__main__':
     env = GridCircles2D(tensor_args=DEFAULT_TENSOR_ARGS)

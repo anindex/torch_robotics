@@ -1,3 +1,4 @@
+import numpy as np
 import torch
 from matplotlib import pyplot as plt
 
@@ -43,6 +44,38 @@ class EnvSpheres3D(EnvBase):
             **kwargs
         )
 
+    def get_gpmp_params(self):
+        params = dict(
+            opt_iters=100,
+            num_samples=64,
+            sigma_start=1e-3,
+            sigma_gp=1e-1,
+            sigma_goal_prior=1e-3,
+            sigma_coll=1e-4,
+            step_size=5e-1,
+            sigma_start_init=1e-4,
+            sigma_goal_init=1e-4,
+            sigma_gp_init=0.1,
+            sigma_start_sample=1e-3,
+            sigma_goal_sample=1e-3,
+            sigma_gp_sample=5e-2,
+            solver_params={
+                'delta': 1e-2,
+                'trust_region': True,
+                'method': 'cholesky',
+            },
+        )
+        return params
+
+    def get_rrt_connect_params(self):
+        params = dict(
+            n_iters=10000,
+            step_size=torch.pi/80,
+            n_radius=torch.pi/4,
+            n_pre_samples=50000,
+            max_time=15
+        )
+        return params
 
 if __name__ == '__main__':
     env = EnvSpheres3D(tensor_args=DEFAULT_TENSOR_ARGS)
