@@ -86,7 +86,7 @@ class EnvBase(ABC):
         #     ax.set_aspect('equal')
         #     ax.set_facecolor('white')
 
-    def get_rrt_params(self):
+    def get_rrt_connect_params(self):
         raise NotImplementedError
 
     def get_sgpmp_params(self):

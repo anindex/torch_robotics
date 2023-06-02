@@ -64,7 +64,7 @@ class PlanningTask(Task):
         self.df_collision_ws_boundaries = CollisionWorkspaceBoundariesDistanceField(
             num_interpolate=self.robot.num_interpolate,
             link_interpolate_range=self.robot.link_interpolate_range,
-            margin=0.,
+            margin=obstacle_buffer,
             ws_bounds_min=self.ws_min,
             ws_bounds_max=self.ws_max,
             tensor_args=self.tensor_args
@@ -190,13 +190,13 @@ class PlanningTask(Task):
 
             ########################
             # Self collision
-            cost_collision_self = self.df_collision_self.compute_cost(x_pos, field_type=field_type)
+            cost_collision_self = self.df_collision_self.compute_cost(x_pos, field_type=field_type, **kwargs)
 
             # Object collision
-            cost_collision_objects = self.df_collision_objects.compute_cost(x_pos, field_type=field_type)
+            cost_collision_objects = self.df_collision_objects.compute_cost(x_pos, field_type=field_type, **kwargs)
 
             # Workspace boundaries
-            cost_collision_border = self.df_collision_ws_boundaries.compute_cost(x_pos, field_type=field_type)
+            cost_collision_border = self.df_collision_ws_boundaries.compute_cost(x_pos, field_type=field_type, **kwargs)
 
             if field_type == 'occupancy':
                 collisions = cost_collision_self | cost_collision_objects | cost_collision_border
@@ -205,7 +205,7 @@ class PlanningTask(Task):
 
         return collisions
 
-    def get_trajs_collision_and_free(self, trajs, return_indices=False, margin=0.001, num_interpolation=5):
+    def get_trajs_collision_and_free(self, trajs, return_indices=False, num_interpolation=5):
         assert trajs.ndim == 3 or trajs.ndim == 4
         N = 1
         if trajs.ndim == 4:  # n_goals (or steps), batch of trajectories, length, dim
@@ -217,7 +217,10 @@ class PlanningTask(Task):
 
         # compute collisions on a finer interpolated trajectory
         trajs_new = interpolate_traj_via_points(trajs_new, num_intepolation=num_interpolation)
-        trajs_waypoints_collisions = self.compute_collision(trajs_new, margin=margin)
+        # Set 0 margin for collision checking, which means we allow trajectories to pass very close to objects.
+        # While the optimized trajectory via points are not at a 0 margin from the object, the interpolated via points
+        # might be. A 0 margin guarantees that we do not discard those trajectories.
+        trajs_waypoints_collisions = self.compute_collision(trajs_new, margin=0.)
 
         if trajs.ndim == 4:
             trajs_waypoints_collisions = einops.rearrange(trajs_waypoints_collisions, '(N B) H -> N B H', N=N, B=B)

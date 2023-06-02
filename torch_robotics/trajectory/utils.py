@@ -12,7 +12,7 @@ def smoothen_trajectory(traj_pos, traj_len=30, dt=0.02, set_average_velocity=Tru
         # bc_type='clamped' for zero velocities at start and finish
         spline_pos = interpolate.make_interp_spline(np.linspace(0, 1, traj_pos.shape[0]), traj_pos, k=3, bc_type='clamped')
         spline_vel = spline_pos.derivative(1)
-    except TypeError:
+    except:
         # Trajectory is too short to interpolate, so add last position again and interpolate
         traj_pos = np.vstack((traj_pos, traj_pos[-1] + np.random.normal(0, 0.01)))
         return smoothen_trajectory(traj_pos, traj_len=traj_len, dt=dt,

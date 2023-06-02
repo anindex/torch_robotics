@@ -90,12 +90,13 @@ class EmbodimentDistanceFieldBase(DistanceField):
         return link_pos
 
     def compute_embodiment_cost(self, link_pos, field_type=None, **kwargs):  # position tensor
+        margin = kwargs.get('margin', self.margin)
         if field_type is None:
             field_type = self.field_type
         if field_type == 'rbf':
             return self.compute_embodiment_rbf_distances(link_pos, **kwargs).sum((-1, -2))
         elif field_type == 'sdf':  # this computes the negative cost from the DISTANCE FUNCTION
-            margin_minus_sdf = -(self.compute_embodiment_signed_distances(link_pos, **kwargs) - self.margin).min(-1)[0]
+            margin_minus_sdf = -(self.compute_embodiment_signed_distances(link_pos, **kwargs) - margin).min(-1)[0]
             if len(margin_minus_sdf.shape) == 2:  # cover the multiple objects case
                 margin_minus_sdf = margin_minus_sdf.min(-1)[0]
             if self.clamp_sdf:
@@ -141,7 +142,8 @@ class CollisionSelfField(EmbodimentDistanceFieldBase):
     def __init__(self, margin=0.005, **kwargs):
         super().__init__(margin=margin, **kwargs)
 
-    def compute_embodiment_rbf_distances(self, link_pos, margin=None, **kwargs):  # position tensor
+    def compute_embodiment_rbf_distances(self, link_pos, **kwargs):  # position tensor
+        margin = kwargs.get('margin', self.margin)
         rbf_distance = torch.exp(torch.square(link_pos.unsqueeze(-2) -
                                               link_pos.unsqueeze(-3)).sum(-1) / (-margin ** 2 * 2))
         return rbf_distance
@@ -158,8 +160,9 @@ class CollisionSelfField(EmbodimentDistanceFieldBase):
         return distances
 
     def compute_embodiment_collision(self, link_pos, **kwargs):  # position tensor
+        margin = kwargs.get('margin', self.margin)
         distances = self.compute_embodiment_signed_distances(link_pos, **kwargs)  # batch_dim x links x links
-        any_self_collision = torch.any(distances < self.margin, dim=-1)
+        any_self_collision = torch.any(distances < margin, dim=-1)
         return any_self_collision
 
 
@@ -168,17 +171,20 @@ class CollisionObjectBase(EmbodimentDistanceFieldBase):
     def __init__(self, margin=0.01, **kwargs):
         super().__init__(margin=margin, **kwargs)
 
-    def compute_embodiment_rbf_distances(self, link_pos, margin=None, **kwargs):  # position tensor
+    def compute_embodiment_rbf_distances(self, link_pos, **kwargs):  # position tensor
+        margin = kwargs.get('margin', self.margin)
         rbf_distance = torch.exp(torch.square(self.object_signed_distances(link_pos, **kwargs)) / (-margin ** 2 * 2))
         return rbf_distance
 
     def compute_embodiment_signed_distances(self, link_pos, **kwargs):
         return self.object_signed_distances(link_pos, **kwargs)
 
-    def compute_embodiment_collision(self, link_pos, **kwargs):  # position tensor
+    def compute_embodiment_collision(self, link_pos, **kwargs):
+        margin = kwargs.get('margin', self.margin)
+        # position tensor
         signed_distances = self.object_signed_distances(link_pos, **kwargs)
         signed_distances = signed_distances.min(-1)[0].min(-1)[0]
-        any_collision = signed_distances < self.margin
+        any_collision = signed_distances < margin
         return any_collision
 
     @abstractmethod
