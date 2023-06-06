@@ -102,4 +102,7 @@ if __name__ == '__main__':
     env = EnvMazeBoxes3D(tensor_args=DEFAULT_TENSOR_ARGS)
     fig, ax = create_fig_and_axes(env.dim)
     env.render(ax)
+    ax.set_xlabel('x')
+    ax.set_ylabel('y')
+    ax.set_zlabel('z')
     plt.show()

@@ -39,6 +39,11 @@ class EnvBase(ABC):
     def get_obj_list(self):
         return self.obj_list
 
+    def add_obj(self, obj):
+        # Adds an object to the environment
+        raise NotImplementedError
+        self.simplify_primitives()
+
     def simplify_primitives(self):
         return
         # Groups primitives of the same type for faster batched computation

@@ -2,10 +2,13 @@ from abc import ABC, abstractmethod
 from copy import deepcopy
 from math import ceil
 
+import einops
 import numpy as np
 import torch
 from matplotlib import pyplot as plt
 
+from torch_robotics.torch_kinematics_tree.geometrics.quaternion import q_to_rotation_matrix
+from torch_robotics.torch_kinematics_tree.geometrics.utils import transform_point
 from torch_robotics.torch_utils.torch_utils import DEFAULT_TENSOR_ARGS, to_torch, to_numpy
 
 
@@ -31,6 +34,10 @@ class PrimitiveShapeField(ABC):
 
     @abstractmethod
     def compute_signed_distance_impl(self, x):
+        # The SDF computed here assumes the primitive shape main center is located at the origin, and there is no
+        # rotation.
+        # Note that this center is different from e.g. the centers for spheres in MultiSphereField, since a primitive
+        # shape can be made of multiple shapes.
         raise NotImplementedError()
 
     def zero_grad(self):
@@ -59,7 +66,7 @@ class PrimitiveShapeField(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def render(self, ax):
+    def render(self, ax, pos=None, ori=None):
         raise NotImplementedError
 
 
@@ -150,18 +157,20 @@ class MultiSphereField(PrimitiveShapeField):
         # Check if point p is inside the discretized sphere
         return torch.linalg.norm(p - center) <= radius
 
-    def render(self, ax):
+    def render(self, ax, pos=None, ori=None):
         for center, radius in zip(self.centers, self.radii):
             center = to_numpy(center)
             radius = to_numpy(radius)
+            pos = to_numpy(pos)
+            # orientation is not needed, because the shape is symmetric
             if ax.name == '3d':
                 u, v = np.mgrid[0:2 * np.pi:30j, 0:np.pi:20j]
                 x = radius * (np.cos(u) * np.sin(v))
                 y = radius * (np.sin(u) * np.sin(v))
                 z = radius * np.cos(v)
-                ax.plot_surface(x + center[0], y + center[1], z + center[2], cmap='gray', alpha=1)
+                ax.plot_surface(x + center[0] + pos[0], y + center[1] + pos[1], z + center[2] + pos[2], cmap='gray', alpha=1)
             else:
-                circle = plt.Circle((center[0], center[1]), radius, color='gray', linewidth=0, alpha=1)
+                circle = plt.Circle((center[0] + pos[0], center[1] + pos[1]), radius, color='gray', linewidth=0, alpha=1)
                 ax.add_patch(circle)
 
 
@@ -225,26 +234,48 @@ class MultiBoxField(PrimitiveShapeField):
                 ] += 1
         return obst_map
 
-    def render(self, ax):
+    def render(self, ax, pos=None, ori=None):
         def get_cube():
-            phi = np.arange(1, 10, 2) * np.pi / 4
-            Phi, Theta = np.meshgrid(phi, phi)
-            x = np.cos(Phi) * np.sin(Theta)
-            y = np.sin(Phi) * np.sin(Theta)
-            z = np.cos(Theta) / np.sqrt(2)
+            phi = torch.arange(1, 10, 2, **self.tensor_args) * torch.pi / 4
+            Phi, Theta = torch.meshgrid(phi, phi, indexing="ij")
+            x = torch.cos(Phi) * torch.sin(Theta)
+            y = torch.sin(Phi) * torch.sin(Theta)
+            z = torch.cos(Theta) / np.sqrt(2)
             return x, y, z
 
+        rot = q_to_rotation_matrix(ori).squeeze()
         if ax.name == '3d':
             x, y, z = get_cube()
             for center, size in zip(self.centers, self.sizes):
-                cx, cy, cz = to_numpy(center)
-                a, b, c = to_numpy(size)
-                ax.plot_surface(cx + x * a, cy + y * b, cz + z * c, cmap='gray', alpha=0.25)
+                cx, cy, cz = center
+                a, b, c = size
+
+                points_x = cx + x * a
+                points_y = cy + y * b
+                points_z = cz + z * c
+
+                points = torch.stack((points_x.ravel(), points_y.ravel(), points_z.ravel()), dim=-1)
+                points = transform_point(points, rot, pos)
+
+                d = x.shape[0]
+                points_x = points[:, 0].view(d, d)
+                points_y = points[:, 1].view(d, d)
+                points_z = points[:, 2].view(d, d)
+
+                points_x_np, points_y_np, points_z_np = to_numpy(points_x), to_numpy(points_y), to_numpy(points_z)
+                ax.plot_surface(points_x_np, points_y_np, points_z_np, cmap='gray', alpha=0.25)
         else:
             for center, size in zip(self.centers, self.sizes):
                 cx, cy = to_numpy(center)
                 a, b = to_numpy(size)
-                rectangle = plt.Rectangle((cx - a / 2, cy - b / 2), a, b, color='gray', linewidth=0, alpha=1)
+                pos_np = to_numpy(pos)
+                # by definition a rotation in the xy-plane is around the z-axis
+                rot_np = to_numpy(rot[:2, :2])
+                angle_deg = np.arctan2(rot_np[1, 0], rot_np[0, 0])
+                point = np.array([cx - a / 2, cy - b / 2])
+                new_point = rot_np @ point.reshape((-1, 1)).ravel() + pos_np[:2]
+                rectangle = plt.Rectangle((new_point[0], new_point[1]), a, b,
+                                          color='gray', linewidth=0, alpha=1, angle=np.rad2deg(angle_deg))
                 ax.add_patch(rectangle)
 
 
@@ -274,7 +305,7 @@ class MultiRoundedBoxField(MultiBoxField):
 # Alias for rounded box.
 # Use a rounded box instead of a box by default.
 # This creates smoother cost functions, which are important to gradient-based optimization methods.
-# MultiBoxField = MultiRoundedBoxField
+MultiBoxField = MultiRoundedBoxField
 
 
 class MultiInfiniteCylinderField(PrimitiveShapeField):
@@ -308,7 +339,8 @@ class MultiInfiniteCylinderField(PrimitiveShapeField):
     def add_to_occupancy_map(self, obst_map):
         raise NotImplementedError
 
-    def render(self, ax):
+    def render(self, ax, pos=None, ori=None):
+        raise NotImplementedError
         # https://stackoverflow.com/a/49311446
         def data_for_cylinder_along_z(center_x, center_y, radius, height_z):
             z = np.linspace(0, height_z, 50)
@@ -456,24 +488,46 @@ class ObjectField(PrimitiveShapeField):
 
         # position and orientation
         assert (pos is None and ori is None) or (pos.ndims == 2 and ori.ndims == 2)
-        self.pos = torch.zeros((1, self.dim), **self.tensor_args) if pos is None else pos
-        self.ori = torch.tensor([1, 0, 0, 0], **self.tensor_args).view((1, -1)) if ori is None else ori  # quat - wxyz
+        self.pos = torch.zeros(3, **self.tensor_args) if pos is None else pos
+        self.ori = torch.tensor([1, 0, 0, 0], **self.tensor_args) if ori is None else ori  # quat - wxyz
 
     def __repr__(self):
         return f"Scene(fields={self.fields})"
+
+    def set_position_orientation(self, pos=None, ori=None):
+        if pos is not None:
+            assert len(pos) == 3
+            self.pos = to_torch(pos, **self.tensor_args)
+        if ori is not None:
+            assert len(ori) == 4, "quaternion wxyz"
+            self.ori = to_torch(ori, **self.tensor_args)
 
     def join_primitives(self):
         raise NotImplementedError
 
     def compute_signed_distance_impl(self, x):
+        # Transform the point before computing the SDF.
+        # The implemented SDFs assume the objects are centered around 0 and not rotated.
+        x_shape = x.shape
+        if x_shape[-1] == 2:
+            x_new = torch.cat((x, torch.zeros((x.shape[:-1]), **self.tensor_args).unsqueeze(-1)), dim=-1)
+        else:
+            x_new = x
+
+        # transform back to the origin
+        rot = q_to_rotation_matrix(self.ori).squeeze().transpose(-2, -1)
+        x_new = transform_point(x_new-self.pos, rot, 0.)
+        if x_shape[-1] == 2:
+            x_new = x_new[..., :2]
+
         sdf_fields = []
         for field in self.fields:
-            sdf_fields.append(field.compute_signed_distance_impl(x))
+            sdf_fields.append(field.compute_signed_distance_impl(x_new))
         return torch.min(torch.stack(sdf_fields, dim=-1), dim=-1)[0]
 
-    def render(self, ax):
+    def render(self, ax, pos=None, ori=None):
         for field in self.fields:
-            field.render(ax)
+            field.render(ax, pos=self.pos, ori=self.ori)
 
     def add_to_occupancy_map(self, occ_map):
         for field in self.fields:
@@ -495,7 +549,11 @@ if __name__ == '__main__':
                           tensor_args=tensor_args)
 
     obj_field = ObjectField([spheres, boxes])
-    # obj_field = ObjectField([spheres])
+
+    theta = np.deg2rad(45)
+    # obj_field.set_position_orientation(pos=[-0.5, 0., 0.])
+    # obj_field.set_position_orientation(ori=[np.cos(theta/2), 0, 0, np.sin(theta/2)])
+    obj_field.set_position_orientation(pos=[-0.5, 0., 0.], ori=[np.cos(theta/2), 0, 0, np.sin(theta/2)])
 
     # Render objects
     fig, ax = plt.subplots()

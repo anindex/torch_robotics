@@ -27,11 +27,10 @@ def multiply_inv_transform(l_rot_w, l_trans_w, l_rot_c, l_trans_c):
     return w_rot_c, w_trans_c
 
 
-@torch.jit.script
+@torch.compile
 def transform_point(point, rot, trans):
     new_point = (point @ rot.transpose(-1, -2)) + trans
     return new_point
-
 
 def vector3_to_skew_symm_matrix(vec3):
     vec3 = to_torch_2d_min(vec3)
