@@ -8,7 +8,7 @@ from torch_robotics.torch_utils.torch_utils import DEFAULT_TENSOR_ARGS
 from torch_robotics.visualizers.planning_visualizer import create_fig_and_axes
 
 
-class GridCircles2D(EnvBase):
+class EnvGridCircles2D(EnvBase):
 
     def __init__(self, tensor_args=None, **kwargs):
         obj_list = create_grid_spheres(rows=7, cols=7, heights=0, radius=0.1, tensor_args=tensor_args)
@@ -75,7 +75,28 @@ class GridCircles2D(EnvBase):
 
 
 if __name__ == '__main__':
-    env = GridCircles2D(tensor_args=DEFAULT_TENSOR_ARGS)
+    env = EnvGridCircles2D(tensor_args=DEFAULT_TENSOR_ARGS)
     fig, ax = create_fig_and_axes(env.dim)
     env.render(ax)
+    plt.show()
+
+    # Render sdf
+    fig, ax = plt.subplots()
+    xs = torch.linspace(-1, 1, steps=400)
+    ys = torch.linspace(-1, 1, steps=400)
+    X, Y = torch.meshgrid(xs, ys, indexing='xy')
+    X_flat = torch.flatten(X)
+    Y_flat = torch.flatten(Y)
+    sdf = None
+    for obj in env.obj_list:
+        sdf_obj = obj.compute_signed_distance(torch.stack((X_flat, Y_flat), dim=-1).view(-1, 1, 2))
+        sdf_obj = sdf_obj.reshape(X.shape)
+        if sdf is None:
+            sdf = sdf_obj
+        else:
+            sdf = torch.minimum(sdf, sdf_obj)
+    ctf = ax.contourf(X, Y, sdf)
+    fig.colorbar(ctf, orientation='vertical')
+    ax.set_xlim(-1, 1)
+    ax.set_ylim(-1, 1)
     plt.show()

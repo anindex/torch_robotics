@@ -248,6 +248,35 @@ class MultiBoxField(PrimitiveShapeField):
                 ax.add_patch(rectangle)
 
 
+class MultiRoundedBoxField(MultiBoxField):
+
+    def __init__(self, centers, sizes, tensor_args=None):
+        """
+        Parameters
+        ----------
+            centers : numpy array
+                Center of the boxes.
+            sizes: numpy array
+                Sizes of the boxes.
+        """
+        super().__init__(centers, sizes, tensor_args=tensor_args)
+        self.radius = torch.min(self.sizes, dim=-1)[0] * 0.15  # empirical value
+
+    def compute_signed_distance_impl(self, x):
+        # Implementation of rounded box
+        # https://raphlinus.github.io/graphics/2020/04/21/blurred-rounded-rects.html
+        distance_to_centers = torch.abs(x.unsqueeze(-2) - self.centers.unsqueeze(0))
+        q = distance_to_centers - self.half_sizes.unsqueeze(0) + self.radius.unsqueeze(0).unsqueeze(-1)
+        sdfs = torch.linalg.norm(torch.relu(q), dim=-1) - self.radius.unsqueeze(0)
+        return torch.min(sdfs, dim=-1)[0]
+
+
+# Alias for rounded box.
+# Use a rounded box instead of a box by default.
+# This creates smoother cost functions, which are important to gradient-based optimization methods.
+# MultiBoxField = MultiRoundedBoxField
+
+
 class MultiInfiniteCylinderField(PrimitiveShapeField):
 
     def __init__(self, centers, radii, tensor_args=None):
@@ -477,8 +506,8 @@ if __name__ == '__main__':
 
     # Render sdf
     fig, ax = plt.subplots()
-    xs = torch.linspace(-1, 1, steps=200)
-    ys = torch.linspace(-1, 1, steps=200)
+    xs = torch.linspace(-1, 1, steps=400)
+    ys = torch.linspace(-1, 1, steps=400)
     X, Y = torch.meshgrid(xs, ys, indexing='xy')
     X_flat = torch.flatten(X)
     Y_flat = torch.flatten(Y)

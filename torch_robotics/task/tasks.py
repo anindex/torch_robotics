@@ -25,7 +25,7 @@ class PlanningTask(Task):
             ws_limits=None,
             use_occupancy_map=False,
             cell_size=0.01,
-            obstacle_buffer=0.01,
+            obstacle_buffer=0.025,
             **kwargs
     ):
         super().__init__(**kwargs)

@@ -20,6 +20,8 @@ class EnvSpheres3D(EnvBase):
                     [0.5, -0.45, 0.2],
                     [0.6, -0.35, 0.6],
                     [0.3, 0.0, 1.0],
+                    [0.0, -0.25, 0.25],
+                    [0.0, 0.25, 0.3],
                     ]),
                 torch.tensor([
                     0.15,
@@ -30,6 +32,8 @@ class EnvSpheres3D(EnvBase):
                     0.15,
                     0.15,
                     0.15,
+                    0.15,
+                    0.15
                 ]),
                 tensor_args=tensor_args)
 
@@ -80,5 +84,8 @@ class EnvSpheres3D(EnvBase):
 if __name__ == '__main__':
     env = EnvSpheres3D(tensor_args=DEFAULT_TENSOR_ARGS)
     fig, ax = create_fig_and_axes(env.dim)
+    ax.set_xlabel('x')
+    ax.set_ylabel('y')
+    ax.set_zlabel('z')
     env.render(ax)
     plt.show()

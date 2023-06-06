@@ -64,6 +64,39 @@ class EnvMazeBoxes3D(EnvBase):
             **kwargs
         )
 
+    def get_rrt_connect_params(self):
+        params = dict(
+            n_iters=10000,
+            step_size=0.01,
+            n_radius=0.3,
+            n_pre_samples=50000,
+            max_time=15
+        )
+        return params
+
+    def get_gpmp_params(self):
+        params = dict(
+            opt_iters=100,
+            num_samples=64,
+            sigma_start=1e-5,
+            sigma_gp=1e-2,
+            sigma_goal_prior=1e-5,
+            sigma_coll=1e-5,
+            step_size=5e-1,
+            sigma_start_init=1e-4,
+            sigma_goal_init=1e-4,
+            sigma_gp_init=0.2,
+            sigma_start_sample=1e-4,
+            sigma_goal_sample=1e-4,
+            sigma_gp_sample=0.2,
+            solver_params={
+                'delta': 1e-2,
+                'trust_region': True,
+                'method': 'cholesky',
+            },
+        )
+        return params
+
 
 if __name__ == '__main__':
     env = EnvMazeBoxes3D(tensor_args=DEFAULT_TENSOR_ARGS)
