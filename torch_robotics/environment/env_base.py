@@ -3,6 +3,7 @@ from abc import abstractmethod, ABC
 
 import numpy as np
 import torch
+from matplotlib import pyplot as plt
 
 from torch_robotics.environment.occupancy_map import OccupancyMap
 from torch_robotics.torch_utils.torch_utils import to_numpy
@@ -90,6 +91,32 @@ class EnvBase(ABC):
         #     ax.contourf(x, y, map, 2, cmap='Greys')
         #     ax.set_aspect('equal')
         #     ax.set_facecolor('white')
+
+    def render_sdf(self, ax=None, fig=None):
+        if self.dim == 3:
+            raise NotImplementedError
+        # draw sdf
+        xs = torch.linspace(self.limits_np[0][0], self.limits_np[1][0], steps=400)
+        ys = torch.linspace(self.limits_np[0][1], self.limits_np[1][1], steps=400)
+        X, Y = torch.meshgrid(xs, ys, indexing='xy')
+        X_flat = torch.flatten(X)
+        Y_flat = torch.flatten(Y)
+        sdf = None
+        for obj in self.obj_list:
+            sdf_obj = obj.compute_signed_distance(torch.stack((X_flat, Y_flat), dim=-1).view(-1, 1, 2))
+            sdf_obj = sdf_obj.reshape(X.shape)
+            if sdf is None:
+                sdf = sdf_obj
+            else:
+                sdf = torch.minimum(sdf, sdf_obj)
+        ctf = ax.contourf(X, Y, sdf)
+        if fig is not None:
+            fig.colorbar(ctf, orientation='vertical')
+        ax.set_xlim(self.limits_np[0][0], self.limits_np[1][0])
+        ax.set_ylim(self.limits_np[0][1], self.limits_np[1][1])
+        if self.dim == 3:
+            ax.set_zlim(self.limits_np[0][2], self.limits_np[1][2])
+        ax.set_aspect('equal')
 
     def get_rrt_connect_params(self):
         raise NotImplementedError

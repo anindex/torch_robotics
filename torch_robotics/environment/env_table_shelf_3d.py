@@ -61,8 +61,8 @@ def create_shelf_field(tensor_args=None):
         sizes.append((shelf_width, shelf_depth, shelf_height))
 
     centers = np.array(centers)
-    main_center = np.array((side_panel_width + shelf_width/2, depth/2, height/2))
-    centers -= main_center
+    # main_center = np.array((side_panel_width + shelf_width/2, depth/2, height/2))
+    # centers -= main_center
     sizes = np.array(sizes)
     boxes = MultiBoxField(centers, sizes, tensor_args=tensor_args)
     return ObjectField([boxes], 'shelf')
@@ -71,15 +71,25 @@ def create_shelf_field(tensor_args=None):
 class EnvTableShelf3D(EnvBase):
 
     def __init__(self, tensor_args=None, **kwargs):
-        # creates a table and shelf fields
+        # table object field
         table_obj_field = create_table_object_field(tensor_args=tensor_args)
+        table_sizes = table_obj_field.fields[0].sizes[0]
+        table_obj_field.set_position_orientation(pos=(0, -table_sizes[1].item()/2, -table_sizes[2].item()/2))
+
+        # shelf object field
         shelf_obj_field = create_shelf_field(tensor_args=tensor_args)
+        theta = np.deg2rad(90)
+        dist_table_shelf = 0.15
+        shelf_obj_field.set_position_orientation(
+            pos=(-table_sizes[0]/2 - dist_table_shelf, -table_sizes[1], -table_sizes[2].item()),
+            ori=[np.cos(theta / 2), 0, 0, np.sin(theta / 2)]
+        )
 
         obj_list = [table_obj_field, shelf_obj_field]
 
         super().__init__(
             name=self.__class__.__name__,
-            limits=torch.tensor([[-1, -1, -1], [1, 1, 1]], **tensor_args),  # environment limits
+            limits=torch.tensor([[-1, -1, -1], [1, 1, 1.5]], **tensor_args),  # environment limits
             obj_list=obj_list,
             tensor_args=tensor_args,
             **kwargs

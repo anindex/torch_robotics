@@ -81,22 +81,6 @@ if __name__ == '__main__':
     plt.show()
 
     # Render sdf
-    fig, ax = plt.subplots()
-    xs = torch.linspace(-1, 1, steps=400)
-    ys = torch.linspace(-1, 1, steps=400)
-    X, Y = torch.meshgrid(xs, ys, indexing='xy')
-    X_flat = torch.flatten(X)
-    Y_flat = torch.flatten(Y)
-    sdf = None
-    for obj in env.obj_list:
-        sdf_obj = obj.compute_signed_distance(torch.stack((X_flat, Y_flat), dim=-1).view(-1, 1, 2))
-        sdf_obj = sdf_obj.reshape(X.shape)
-        if sdf is None:
-            sdf = sdf_obj
-        else:
-            sdf = torch.minimum(sdf, sdf_obj)
-    ctf = ax.contourf(X, Y, sdf)
-    fig.colorbar(ctf, orientation='vertical')
-    ax.set_xlim(-1, 1)
-    ax.set_ylim(-1, 1)
+    fig, ax = create_fig_and_axes(env.dim)
+    env.render_sdf(ax, fig)
     plt.show()

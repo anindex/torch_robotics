@@ -1,6 +1,7 @@
 import os
 
 import numpy as np
+import torch
 from matplotlib import pyplot as plt
 from matplotlib.animation import FuncAnimation
 
@@ -41,6 +42,7 @@ class PlanningVisualizer:
             for i in range(len(trajs_coll_idxs) + len(trajs_free_idxs)):
                 kwargs['colors'].append(self.colors['collision'] if i in trajs_coll_idxs else self.colors['free'])
         self.robot.render_trajectories(ax, trajs=trajs, **kwargs)
+
         return fig, ax
 
     def animate_robot_trajectories(

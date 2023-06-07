@@ -5,10 +5,11 @@ from math import ceil
 import einops
 import numpy as np
 import torch
-from matplotlib import pyplot as plt
+from matplotlib import pyplot as plt, transforms
+from matplotlib.patches import FancyBboxPatch, BoxStyle
 
 from torch_robotics.torch_kinematics_tree.geometrics.quaternion import q_to_rotation_matrix
-from torch_robotics.torch_kinematics_tree.geometrics.utils import transform_point
+from torch_robotics.torch_kinematics_tree.geometrics.utils import transform_point, rotate_point
 from torch_robotics.torch_utils.torch_utils import DEFAULT_TENSOR_ARGS, to_torch, to_numpy
 
 
@@ -174,6 +175,13 @@ class MultiSphereField(PrimitiveShapeField):
                 ax.add_patch(circle)
 
 
+def patch_rotate_translate(ax, patch, rot, trans):
+    rot_angle_deg = np.rad2deg(np.arctan2(rot[1, 0], rot[0, 0]))
+    affine_transf = transforms.Affine2D().rotate_deg(rot_angle_deg).translate(trans[0], trans[1]) + ax.transData
+    patch.set_transform(affine_transf)
+    ax.add_patch(patch)
+
+
 class MultiBoxField(PrimitiveShapeField):
 
     def __init__(self, centers, sizes, tensor_args=None):
@@ -234,18 +242,19 @@ class MultiBoxField(PrimitiveShapeField):
                 ] += 1
         return obst_map
 
+    def get_cube(self):
+        phi = torch.arange(1, 10, 2, **self.tensor_args) * torch.pi / 4
+        Phi, Theta = torch.meshgrid(phi, phi, indexing="ij")
+        x = torch.cos(Phi) * torch.sin(Theta)
+        y = torch.sin(Phi) * torch.sin(Theta)
+        z = torch.cos(Theta) / np.sqrt(2)
+        return x, y, z
+
     def render(self, ax, pos=None, ori=None):
-        def get_cube():
-            phi = torch.arange(1, 10, 2, **self.tensor_args) * torch.pi / 4
-            Phi, Theta = torch.meshgrid(phi, phi, indexing="ij")
-            x = torch.cos(Phi) * torch.sin(Theta)
-            y = torch.sin(Phi) * torch.sin(Theta)
-            z = torch.cos(Theta) / np.sqrt(2)
-            return x, y, z
 
         rot = q_to_rotation_matrix(ori).squeeze()
         if ax.name == '3d':
-            x, y, z = get_cube()
+            x, y, z = self.get_cube()
             for center, size in zip(self.centers, self.sizes):
                 cx, cy, cz = center
                 a, b, c = size
@@ -263,20 +272,22 @@ class MultiBoxField(PrimitiveShapeField):
                 points_z = points[:, 2].view(d, d)
 
                 points_x_np, points_y_np, points_z_np = to_numpy(points_x), to_numpy(points_y), to_numpy(points_z)
+                # TODO - implemented drawing of rounded boxes in 3D
                 ax.plot_surface(points_x_np, points_y_np, points_z_np, cmap='gray', alpha=0.25)
         else:
-            for center, size in zip(self.centers, self.sizes):
+            for i, (center, size) in enumerate(zip(self.centers, self.sizes)):
                 cx, cy = to_numpy(center)
                 a, b = to_numpy(size)
                 pos_np = to_numpy(pos)
                 # by definition a rotation in the xy-plane is around the z-axis
                 rot_np = to_numpy(rot[:2, :2])
-                angle_deg = np.arctan2(rot_np[1, 0], rot_np[0, 0])
                 point = np.array([cx - a / 2, cy - b / 2])
-                new_point = rot_np @ point.reshape((-1, 1)).ravel() + pos_np[:2]
-                rectangle = plt.Rectangle((new_point[0], new_point[1]), a, b,
-                                          color='gray', linewidth=0, alpha=1, angle=np.rad2deg(angle_deg))
-                ax.add_patch(rectangle)
+                self.draw_box(ax, i, point, a, b, rot_np, pos_np[:2])
+
+    def draw_box(self, ax, i, point, a, b, rot, trans):
+        rectangle = plt.Rectangle((point[0], point[1]), a, b,
+                                  color='gray', linewidth=0, alpha=1)
+        patch_rotate_translate(ax, rectangle, rot, trans)
 
 
 class MultiRoundedBoxField(MultiBoxField):
@@ -300,6 +311,12 @@ class MultiRoundedBoxField(MultiBoxField):
         q = distance_to_centers - self.half_sizes.unsqueeze(0) + self.radius.unsqueeze(0).unsqueeze(-1)
         sdfs = torch.linalg.norm(torch.relu(q), dim=-1) - self.radius.unsqueeze(0)
         return torch.min(sdfs, dim=-1)[0]
+
+    def draw_box(self, ax, i, point, a, b, rot, trans):
+        rounded_box = FancyBboxPatch((point[0], point[1]), a, b, color='gray',
+                                     boxstyle=BoxStyle.Round(pad=0., rounding_size=to_numpy(self.radius[i]).item())
+                                     )
+        patch_rotate_translate(ax, rounded_box, rot, trans)
 
 
 # Alias for rounded box.
@@ -516,7 +533,7 @@ class ObjectField(PrimitiveShapeField):
 
         # transform back to the origin
         rot = q_to_rotation_matrix(self.ori).squeeze().transpose(-2, -1)
-        x_new = transform_point(x_new-self.pos, rot, 0.)
+        x_new = rotate_point(x_new-self.pos, rot)
         if x_shape[-1] == 2:
             x_new = x_new[..., :2]
 
