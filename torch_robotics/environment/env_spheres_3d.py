@@ -21,7 +21,7 @@ class EnvSpheres3D(EnvBase):
                     [0.6, -0.35, 0.6],
                     [0.3, 0.0, 1.0],
                     [0.0, -0.25, 0.25],
-                    [0.0, 0.25, 0.3],
+                    [0.0, 0.4, 0.3],
                     ]),
                 torch.tensor([
                     0.15,
@@ -80,6 +80,7 @@ class EnvSpheres3D(EnvBase):
             max_time=15
         )
         return params
+
 
 if __name__ == '__main__':
     env = EnvSpheres3D(tensor_args=DEFAULT_TENSOR_ARGS)
