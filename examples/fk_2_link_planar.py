@@ -1,8 +1,7 @@
 import torch
 import time
 
-from torch_kinematics_tree.models.robots import Differentiable2LinkPlanar
-
+from torch_robotics.torch_kinematics_tree.models.robots import Differentiable2LinkPlanar
 
 if __name__ == "__main__":
 

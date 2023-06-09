@@ -9,7 +9,7 @@ from torch_robotics.torch_utils.torch_utils import to_numpy
 import matplotlib.collections as mcoll
 
 
-class PointMassRobot(RobotBase):
+class RobotPointMass(RobotBase):
 
     def __init__(self,
                  **kwargs):

@@ -5,7 +5,7 @@ from torch_robotics.robot.robot_base import RobotBase
 from torch_robotics.torch_utils.torch_utils import to_numpy, tensor_linspace
 
 
-class Planar2LinkRobot(RobotBase):
+class RobotPlanar2Link(RobotBase):
 
     def __init__(self,
                  tensor_args=None,

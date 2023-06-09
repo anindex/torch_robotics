@@ -7,7 +7,7 @@ from torch_robotics.torch_kinematics_tree.geometrics.utils import link_pos_from_
 from torch_robotics.torch_kinematics_tree.models.robots import DifferentiableFrankaPanda
 
 
-class PandaRobot(RobotBase):
+class RobotPanda(RobotBase):
 
     def __init__(self,
                  tensor_args=None,
