@@ -76,15 +76,15 @@ class EnvTableShelf(EnvBase):
         table_sizes = table_obj_field.fields[0].sizes[0]
         dist_robot_to_table = 0.10
         table_obj_field.set_position_orientation(
-            pos=(0, -dist_robot_to_table - table_sizes[1].item()/2, -table_sizes[2].item()/2)
+            pos=(0, dist_robot_to_table + table_sizes[1].item()/2, -table_sizes[2].item()/2)
         )
 
         # shelf object field
         shelf_obj_field = create_shelf_field(tensor_args=tensor_args)
-        theta = np.deg2rad(90)
+        theta = np.deg2rad(-90)
         dist_table_shelf = 0.15
         shelf_obj_field.set_position_orientation(
-            pos=(-table_sizes[0]/2 - dist_table_shelf, -dist_robot_to_table - table_sizes[1], -table_sizes[2].item()),
+            pos=(+table_sizes[0]/2 + dist_table_shelf, dist_robot_to_table + table_sizes[1], -table_sizes[2].item()),
             ori=[np.cos(theta / 2), 0, 0, np.sin(theta / 2)]
         )
 
@@ -92,8 +92,8 @@ class EnvTableShelf(EnvBase):
 
         super().__init__(
             name=self.__class__.__name__,
-            limits=torch.tensor([[-1, -1.5, -1], [1, 1, 1.5]], **tensor_args),  # environment limits
-            obj_list=obj_list,
+            limits=torch.tensor([[-1, -1, -1], [1, 1.5, 1.5]], **tensor_args),  # environment limits
+            obj_fixed_list=obj_list,
             tensor_args=tensor_args,
             **kwargs
         )

@@ -2,7 +2,7 @@ import numpy as np
 import torch
 
 from torch_robotics.robot.robot_base import RobotBase
-from torch_robotics.torch_utils.torch_utils import to_numpy, tensor_linspace
+from torch_robotics.torch_utils.torch_utils import to_numpy, tensor_linspace_v1
 
 
 class RobotPlanar2Link(RobotBase):
@@ -41,9 +41,9 @@ class RobotPlanar2Link(RobotBase):
             q = q.unsqueeze(0)  # add batch dimension
         points_along_links = 25
         p1, p2 = self.end_link_positions(q)
-        positions_link1 = tensor_linspace(torch.zeros_like(p1), p1, points_along_links)
+        positions_link1 = tensor_linspace_v1(torch.zeros_like(p1), p1, points_along_links)
         positions_link1 = positions_link1.swapaxes(-2, -1)
-        positions_link2 = tensor_linspace(p1 + self.self_collision_margin, p2, points_along_links)
+        positions_link2 = tensor_linspace_v1(p1 + self.self_collision_margin, p2, points_along_links)
         positions_link2 = positions_link2.swapaxes(-2, -1)
 
         x_pos = torch.cat((positions_link1, positions_link2), dim=-2)

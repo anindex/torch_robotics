@@ -74,7 +74,7 @@ def batch_trace(covs):
 
 
 @torch.jit.script
-def tensor_linspace(start: torch.Tensor, end: torch.Tensor, steps: int = 10):
+def tensor_linspace_v1(start: torch.Tensor, end: torch.Tensor, steps: int = 10):
     # https://github.com/zhaobozb/layout2im/blob/master/models/bilinear.py#L246
     """
     Vectorized version of torch.linspace.
@@ -106,13 +106,13 @@ def tensor_linspace(start: torch.Tensor, end: torch.Tensor, steps: int = 10):
 
 
 @torch.jit.script
-def linspace(start: torch.Tensor, stop: torch.Tensor, num: int):
+def torch_linspace_v2(start: torch.Tensor, stop: torch.Tensor, num: int):
     """
     Creates a tensor of shape [num, *start.shape] whose values are evenly spaced from start to end, inclusive.
     Replicates but the multi-dimensional bahaviour of numpy.linspace in PyTorch.
     """
     # create a tensor of 'num' steps from 0 to 1
-    steps = torch.arange(num, dtype=torch.float32, device=start.device) / (num - 1)
+    steps = torch.arange(num, dtype=start.dtype, device=start.device) / (num - 1)
 
     # reshape the 'steps' tensor to [-1, *([1]*start.ndim)] to allow for broadcastings
     # - using 'steps.reshape([-1, *([1]*start.ndim)])' would be nice here but torchscript

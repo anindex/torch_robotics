@@ -7,10 +7,11 @@ import numpy as np
 import torch
 from matplotlib import pyplot as plt, transforms
 from matplotlib.patches import FancyBboxPatch, BoxStyle
+from torch.autograd.functional import jacobian
 
 from torch_robotics.torch_kinematics_tree.geometrics.quaternion import q_to_rotation_matrix
 from torch_robotics.torch_kinematics_tree.geometrics.utils import transform_point, rotate_point
-from torch_robotics.torch_utils.torch_utils import DEFAULT_TENSOR_ARGS, to_torch, to_numpy
+from torch_robotics.torch_utils.torch_utils import DEFAULT_TENSOR_ARGS, to_torch, to_numpy, tensor_linspace_v1
 
 
 class PrimitiveShapeField(ABC):
@@ -67,7 +68,7 @@ class PrimitiveShapeField(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def render(self, ax, pos=None, ori=None):
+    def render(self, ax, pos=None, ori=None, color=None):
         raise NotImplementedError
 
 
@@ -158,7 +159,7 @@ class MultiSphereField(PrimitiveShapeField):
         # Check if point p is inside the discretized sphere
         return torch.linalg.norm(p - center) <= radius
 
-    def render(self, ax, pos=None, ori=None):
+    def render(self, ax, pos=None, ori=None, color='gray'):
         for center, radius in zip(self.centers, self.radii):
             center = to_numpy(center)
             radius = to_numpy(radius)
@@ -169,9 +170,9 @@ class MultiSphereField(PrimitiveShapeField):
                 x = radius * (np.cos(u) * np.sin(v))
                 y = radius * (np.sin(u) * np.sin(v))
                 z = radius * np.cos(v)
-                ax.plot_surface(x + center[0] + pos[0], y + center[1] + pos[1], z + center[2] + pos[2], cmap='gray', alpha=1)
+                ax.plot_surface(x + center[0] + pos[0], y + center[1] + pos[1], z + center[2] + pos[2], cmap=color, alpha=1)
             else:
-                circle = plt.Circle((center[0] + pos[0], center[1] + pos[1]), radius, color='gray', linewidth=0, alpha=1)
+                circle = plt.Circle((center[0] + pos[0], center[1] + pos[1]), radius, color=color, linewidth=0, alpha=1)
                 ax.add_patch(circle)
 
 
@@ -250,7 +251,7 @@ class MultiBoxField(PrimitiveShapeField):
         z = torch.cos(Theta) / np.sqrt(2)
         return x, y, z
 
-    def render(self, ax, pos=None, ori=None):
+    def render(self, ax, pos=None, ori=None, color='gray'):
 
         rot = q_to_rotation_matrix(ori).squeeze()
         if ax.name == '3d':
@@ -273,7 +274,7 @@ class MultiBoxField(PrimitiveShapeField):
 
                 points_x_np, points_y_np, points_z_np = to_numpy(points_x), to_numpy(points_y), to_numpy(points_z)
                 # TODO - implemented drawing of rounded boxes in 3D
-                ax.plot_surface(points_x_np, points_y_np, points_z_np, cmap='gray', alpha=0.25)
+                ax.plot_surface(points_x_np, points_y_np, points_z_np, cmap=color, alpha=0.25)
         else:
             for i, (center, size) in enumerate(zip(self.centers, self.sizes)):
                 cx, cy = to_numpy(center)
@@ -282,11 +283,11 @@ class MultiBoxField(PrimitiveShapeField):
                 # by definition a rotation in the xy-plane is around the z-axis
                 rot_np = to_numpy(rot[:2, :2])
                 point = np.array([cx - a / 2, cy - b / 2])
-                self.draw_box(ax, i, point, a, b, rot_np, pos_np[:2])
+                self.draw_box(ax, i, point, a, b, rot_np, pos_np[:2], color)
 
-    def draw_box(self, ax, i, point, a, b, rot, trans):
+    def draw_box(self, ax, i, point, a, b, rot, trans, color='gray'):
         rectangle = plt.Rectangle((point[0], point[1]), a, b,
-                                  color='gray', linewidth=0, alpha=1)
+                                  color=color, linewidth=0, alpha=1)
         patch_rotate_translate(ax, rectangle, rot, trans)
 
 
@@ -312,8 +313,8 @@ class MultiRoundedBoxField(MultiBoxField):
         sdfs = torch.linalg.norm(torch.relu(q), dim=-1) - self.radius.unsqueeze(0)
         return torch.min(sdfs, dim=-1)[0]
 
-    def draw_box(self, ax, i, point, a, b, rot, trans):
-        rounded_box = FancyBboxPatch((point[0], point[1]), a, b, color='gray',
+    def draw_box(self, ax, i, point, a, b, rot, trans, color='gray'):
+        rounded_box = FancyBboxPatch((point[0], point[1]), a, b, color=color,
                                      boxstyle=BoxStyle.Round(pad=0., rounding_size=to_numpy(self.radius[i]).item())
                                      )
         patch_rotate_translate(ax, rounded_box, rot, trans)
@@ -325,169 +326,173 @@ class MultiRoundedBoxField(MultiBoxField):
 MultiBoxField = MultiRoundedBoxField
 
 
-class MultiInfiniteCylinderField(PrimitiveShapeField):
+# TODO - NEEDS CHECKING
+# class MultiInfiniteCylinderField(PrimitiveShapeField):
+#
+#     def __init__(self, centers, radii, tensor_args=None):
+#         """
+#         Parameters
+#         ----------
+#             centers : numpy array
+#                 Centers of the cylinders.
+#             radii : numpy array
+#                 Radii of the cylinders.
+#         """
+#         super().__init__(dim=centers.shape[-1], tensor_args=tensor_args)
+#         self.centers = torch.tensor(centers, **self.tensor_args)
+#         self.radii = torch.tensor(radii, **self.tensor_args)
+#
+#     def __repr__(self):
+#         return f"InfiniteCylinder(centers={self.centers}, radii={self.radii})"
+#
+#     def compute_signed_distance_impl(self, x):
+#         # treat it like a circle in 2d
+#         distance_to_centers_2d = torch.norm(x[..., :2].unsqueeze(-2) - self.centers.unsqueeze(0)[..., :2], dim=-1)
+#         sdfs = distance_to_centers_2d - self.radii.unsqueeze(0)
+#         return torch.min(sdfs, dim=-1)[0]
+#
+#     def zero_grad(self):
+#         self.centers.grad = None
+#         self.radii.grad = None
+#
+#     def add_to_occupancy_map(self, obst_map):
+#         raise NotImplementedError
+#
+#     def render(self, ax, pos=None, ori=None):
+#         raise NotImplementedError
+#         # https://stackoverflow.com/a/49311446
+#         def data_for_cylinder_along_z(center_x, center_y, radius, height_z):
+#             z = np.linspace(0, height_z, 50)
+#             theta = np.linspace(0, 2 * np.pi, 50)
+#             theta_grid, z_grid = np.meshgrid(theta, z)
+#             x_grid = radius * np.cos(theta_grid) + center_x
+#             y_grid = radius * np.sin(theta_grid) + center_y
+#             return x_grid, y_grid, z_grid
+#
+#         for center, radius in zip(self.centers, self.radii):
+#             cx, cy, cz = to_numpy(center)
+#             radius = to_numpy(radius)
+#             xc, yc, zc = data_for_cylinder_along_z(cx, cy, radius, 1.5)  # add height just for visualization
+#             ax.plot_surface(xc, yc, zc, cmap='gray', alpha=0.75)
+#
+#
+# class MultiCylinderField(MultiInfiniteCylinderField):
+#
+#     def __init__(self, centers, radii, heights, tensor_args=None):
+#         """
+#         Parameters
+#         ----------
+#             centers : numpy array
+#                 Centers of the cylinders.
+#             radii : numpy array
+#                 Radii of the cylinders.
+#             heights : numpy array
+#                 Heights of the cylinders.
+#         """
+#         super().__init__(centers, radii, tensor_args=tensor_args)
+#         self.heights = torch.tensor(heights, **self.tensor_args)
+#         self.half_heights = self.heights / 2
+#
+#     def __repr__(self):
+#         return f"Cylinder(centers={self.centers}, radii={self.radii}, heights={self.heights})"
+#
+#     def compute_signed_distance_impl(self, x):
+#         raise NotImplementedError
+#         x = x - self.center
+#         x_proj = x[:, :2]
+#         x_proj_norm = torch.norm(x_proj, dim=-1)
+#         x_proj_norm = torch.where(x_proj_norm > 0, x_proj_norm, torch.ones_like(x_proj_norm))
+#         x_proj = x_proj / x_proj_norm[:, None]
+#         x_proj = x_proj * self.radius
+#         x_proj = torch.cat([x_proj, x[:, 2:]], dim=-1)
+#         return torch.norm(x - x_proj, dim=-1) - self.radius
+#
+#     def zero_grad(self):
+#         super().zero_grad()
+#         self.heights.grad = None
+#
+#     def add_to_occupancy_map(self, obst_map):
+#         raise NotImplementedError
+#
+#
+# class MultiEllipsoidField(PrimitiveShapeField):
+#
+#     def __init__(self, centers, radii, tensor_args=None):
+#         """
+#         Axis aligned ellipsoid.
+#         Parameters
+#         ----------
+#             center : numpy array
+#                 Center of the ellipsoid.
+#             radii : numpy array
+#                 Radii of the ellipsoid.
+#         """
+#         super().__init__(dim=centers.shape[-1], tensor_args=tensor_args)
+#         self.center = torch.tensor(centers, **self.tensor_args)
+#         self.radii = torch.tensor(radii, **self.tensor_args)
+#
+#     def compute_signed_distance_impl(self, x):
+#         return torch.norm((x - self.center) / self.radii, dim=-1) - 1
+#
+#     def zero_grad(self):
+#         self.center.grad = None
+#         self.radii.grad = None
+#
+#     def __repr__(self):
+#         return f"Ellipsoid(center={self.center}, radii={self.radii})"
+#
+#
+# class MultiCapsuleField(PrimitiveShapeField):
+#
+#     def __init__(self, centers, radii, heights, tensor_args=None):
+#         """
+#         Parameters
+#         ----------
+#             centers : numpy array
+#                 Center of the capsule.
+#             radiii : float
+#                 Radius of the capsule.
+#             heights : float
+#                 Height of the capsule.
+#         """
+#         super().__init__(dim=centers.shape[-1], tensor_args=tensor_args)
+#         self.center = torch.tensor(centers, **self.tensor_args)
+#         self.radius = torch.tensor(radii, **self.tensor_args)
+#         self.height = torch.tensor(heights, **self.tensor_args)
+#
+#     def compute_signed_distance_impl(self, x):
+#         x = x - self.center
+#         x_proj = x[:, :2]
+#         x_proj_norm = torch.norm(x_proj, dim=-1)
+#         x_proj_norm = torch.where(x_proj_norm > 0, x_proj_norm, torch.ones_like(x_proj_norm))
+#         x_proj = x_proj / x_proj_norm[:, None]
+#         x_proj = x_proj * self.radius
+#         x_proj = torch.cat([x_proj, x[:, 2:]], dim=-1)
+#         x_proj = torch.norm(x - x_proj, dim=-1) - self.radius
+#         x_proj = torch.where(x_proj > 0, x_proj, torch.zeros_like(x_proj))
+#         x_proj = torch.where(x_proj < self.height, x_proj, torch.ones_like(x_proj) * self.height)
+#         x_proj = torch.cat([x_proj, x[:, 2:]], dim=-1)
+#         return torch.norm(x - x_proj, dim=-1) - self.radius
+#
+#     def zero_grad(self):
+#         self.center.grad = None
+#         self.radius.grad = None
+#         self.height.grad = None
+#
+#     def __repr__(self):
+#         return f"Capsule(center={self.center}, radius={self.radius}, height={self.height})"
+#
+#
+# class MeshField(PrimitiveShapeField):
+#     """
+#     Represents a mesh as a primitive shape.
+#     """
+#
+#     def __init__(self, **kwargs):
+#         super().__init__(**kwargs)
 
-    def __init__(self, centers, radii, tensor_args=None):
-        """
-        Parameters
-        ----------
-            centers : numpy array
-                Centers of the cylinders.
-            radii : numpy array
-                Radii of the cylinders.
-        """
-        super().__init__(dim=centers.shape[-1], tensor_args=tensor_args)
-        self.centers = torch.tensor(centers, **self.tensor_args)
-        self.radii = torch.tensor(radii, **self.tensor_args)
-
-    def __repr__(self):
-        return f"InfiniteCylinder(centers={self.centers}, radii={self.radii})"
-
-    def compute_signed_distance_impl(self, x):
-        # treat it like a circle in 2d
-        distance_to_centers_2d = torch.norm(x[..., :2].unsqueeze(-2) - self.centers.unsqueeze(0)[..., :2], dim=-1)
-        sdfs = distance_to_centers_2d - self.radii.unsqueeze(0)
-        return torch.min(sdfs, dim=-1)[0]
-
-    def zero_grad(self):
-        self.centers.grad = None
-        self.radii.grad = None
-
-    def add_to_occupancy_map(self, obst_map):
-        raise NotImplementedError
-
-    def render(self, ax, pos=None, ori=None):
-        raise NotImplementedError
-        # https://stackoverflow.com/a/49311446
-        def data_for_cylinder_along_z(center_x, center_y, radius, height_z):
-            z = np.linspace(0, height_z, 50)
-            theta = np.linspace(0, 2 * np.pi, 50)
-            theta_grid, z_grid = np.meshgrid(theta, z)
-            x_grid = radius * np.cos(theta_grid) + center_x
-            y_grid = radius * np.sin(theta_grid) + center_y
-            return x_grid, y_grid, z_grid
-
-        for center, radius in zip(self.centers, self.radii):
-            cx, cy, cz = to_numpy(center)
-            radius = to_numpy(radius)
-            xc, yc, zc = data_for_cylinder_along_z(cx, cy, radius, 1.5)  # add height just for visualization
-            ax.plot_surface(xc, yc, zc, cmap='gray', alpha=0.75)
 
 
-class MultiCylinderField(MultiInfiniteCylinderField):
-
-    def __init__(self, centers, radii, heights, tensor_args=None):
-        """
-        Parameters
-        ----------
-            centers : numpy array
-                Centers of the cylinders.
-            radii : numpy array
-                Radii of the cylinders.
-            heights : numpy array
-                Heights of the cylinders.
-        """
-        super().__init__(centers, radii, tensor_args=tensor_args)
-        self.heights = torch.tensor(heights, **self.tensor_args)
-        self.half_heights = self.heights / 2
-
-    def __repr__(self):
-        return f"Cylinder(centers={self.centers}, radii={self.radii}, heights={self.heights})"
-
-    def compute_signed_distance_impl(self, x):
-        raise NotImplementedError
-        x = x - self.center
-        x_proj = x[:, :2]
-        x_proj_norm = torch.norm(x_proj, dim=-1)
-        x_proj_norm = torch.where(x_proj_norm > 0, x_proj_norm, torch.ones_like(x_proj_norm))
-        x_proj = x_proj / x_proj_norm[:, None]
-        x_proj = x_proj * self.radius
-        x_proj = torch.cat([x_proj, x[:, 2:]], dim=-1)
-        return torch.norm(x - x_proj, dim=-1) - self.radius
-
-    def zero_grad(self):
-        super().zero_grad()
-        self.heights.grad = None
-
-    def add_to_occupancy_map(self, obst_map):
-        raise NotImplementedError
-
-
-class MultiEllipsoidField(PrimitiveShapeField):
-
-    def __init__(self, centers, radii, tensor_args=None):
-        """
-        Axis aligned ellipsoid.
-        Parameters
-        ----------
-            center : numpy array
-                Center of the ellipsoid.
-            radii : numpy array
-                Radii of the ellipsoid.
-        """
-        super().__init__(dim=centers.shape[-1], tensor_args=tensor_args)
-        self.center = torch.tensor(centers, **self.tensor_args)
-        self.radii = torch.tensor(radii, **self.tensor_args)
-
-    def compute_signed_distance_impl(self, x):
-        return torch.norm((x - self.center) / self.radii, dim=-1) - 1
-
-    def zero_grad(self):
-        self.center.grad = None
-        self.radii.grad = None
-
-    def __repr__(self):
-        return f"Ellipsoid(center={self.center}, radii={self.radii})"
-
-
-class MultiCapsuleField(PrimitiveShapeField):
-
-    def __init__(self, centers, radii, heights, tensor_args=None):
-        """
-        Parameters
-        ----------
-            centers : numpy array
-                Center of the capsule.
-            radiii : float
-                Radius of the capsule.
-            heights : float
-                Height of the capsule.
-        """
-        super().__init__(dim=centers.shape[-1], tensor_args=tensor_args)
-        self.center = torch.tensor(centers, **self.tensor_args)
-        self.radius = torch.tensor(radii, **self.tensor_args)
-        self.height = torch.tensor(heights, **self.tensor_args)
-
-    def compute_signed_distance_impl(self, x):
-        x = x - self.center
-        x_proj = x[:, :2]
-        x_proj_norm = torch.norm(x_proj, dim=-1)
-        x_proj_norm = torch.where(x_proj_norm > 0, x_proj_norm, torch.ones_like(x_proj_norm))
-        x_proj = x_proj / x_proj_norm[:, None]
-        x_proj = x_proj * self.radius
-        x_proj = torch.cat([x_proj, x[:, 2:]], dim=-1)
-        x_proj = torch.norm(x - x_proj, dim=-1) - self.radius
-        x_proj = torch.where(x_proj > 0, x_proj, torch.zeros_like(x_proj))
-        x_proj = torch.where(x_proj < self.height, x_proj, torch.ones_like(x_proj) * self.height)
-        x_proj = torch.cat([x_proj, x[:, 2:]], dim=-1)
-        return torch.norm(x - x_proj, dim=-1) - self.radius
-
-    def zero_grad(self):
-        self.center.grad = None
-        self.radius.grad = None
-        self.height.grad = None
-
-    def __repr__(self):
-        return f"Capsule(center={self.center}, radius={self.radius}, height={self.height})"
-
-
-class MeshField(PrimitiveShapeField):
-    """
-    Represents a mesh as a primitive shape.
-    """
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
 
 
 ########################################################################################################################
@@ -507,6 +512,10 @@ class ObjectField(PrimitiveShapeField):
         assert (pos is None and ori is None) or (pos.ndims == 2 and ori.ndims == 2)
         self.pos = torch.zeros(3, **self.tensor_args) if pos is None else pos
         self.ori = torch.tensor([1, 0, 0, 0], **self.tensor_args) if ori is None else ori  # quat - wxyz
+
+        # precomputed sdf and gradients
+        # holds the sdf (and its gradient) of this object for all points in the environment workspace
+        self.grid_map_sdf = None
 
     def __repr__(self):
         return f"Scene(fields={self.fields})"
@@ -542,9 +551,9 @@ class ObjectField(PrimitiveShapeField):
             sdf_fields.append(field.compute_signed_distance_impl(x_new))
         return torch.min(torch.stack(sdf_fields, dim=-1), dim=-1)[0]
 
-    def render(self, ax, pos=None, ori=None):
+    def render(self, ax, pos=None, ori=None, color='gray'):
         for field in self.fields:
-            field.render(ax, pos=self.pos, ori=self.ori)
+            field.render(ax, pos=self.pos, ori=self.ori, color=color)
 
     def add_to_occupancy_map(self, occ_map):
         for field in self.fields:

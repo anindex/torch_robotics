@@ -16,7 +16,7 @@ class EnvGridCircles2D(EnvBase):
         super().__init__(
             name=self.__class__.__name__,
             limits=torch.tensor([[-1, -1], [1, 1]], **tensor_args),  # environment limits
-            obj_list=obj_list,
+            obj_fixed_list=obj_list,
             tensor_args=tensor_args,
             **kwargs
         )
@@ -75,7 +75,7 @@ class EnvGridCircles2D(EnvBase):
 
 
 if __name__ == '__main__':
-    env = EnvGridCircles2D(tensor_args=DEFAULT_TENSOR_ARGS)
+    env = EnvGridCircles2D(precompute_sdf_obj_fixed=True, tensor_args=DEFAULT_TENSOR_ARGS)
     fig, ax = create_fig_and_axes(env.dim)
     env.render(ax)
     plt.show()

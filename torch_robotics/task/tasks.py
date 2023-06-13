@@ -53,7 +53,7 @@ class PlanningTask(Task):
 
         # collision field for objects
         self.df_collision_objects = CollisionObjectDistanceField(
-            df_obj_list_fn=self.env.get_obj_list,
+            df_obj_list_fn=self.env.get_df_obj_list,
             num_interpolate=self.robot.num_interpolate,
             link_interpolate_range=self.robot.link_interpolate_range,
             margin=obstacle_buffer,

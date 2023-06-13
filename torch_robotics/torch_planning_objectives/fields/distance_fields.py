@@ -65,13 +65,11 @@ class DistanceField(ABC):
 class EmbodimentDistanceFieldBase(DistanceField):
 
     def __init__(self,
-                 df_obj_list_fn=None,
                  num_interpolate=0, link_interpolate_range=[2, 7],
                  margin=0.001,
                  field_type='sdf', clamp_sdf=True,
                  **kwargs):
         super().__init__(**kwargs)
-        self.df_obj_list_fn = df_obj_list_fn
         self.num_interpolate = num_interpolate
         self.link_interpolate_range = link_interpolate_range
         self.margin = margin
@@ -194,8 +192,11 @@ class CollisionObjectBase(EmbodimentDistanceFieldBase):
 
 class CollisionObjectDistanceField(CollisionObjectBase):
 
-    def __init__(self, **kwargs):
+    def __init__(self,
+                 df_obj_list_fn=None,
+                 **kwargs):
         super().__init__(**kwargs)
+        self.df_obj_list_fn = df_obj_list_fn
 
     def object_signed_distances(self, link_pos, **kwargs):
         if self.df_obj_list_fn is None:
