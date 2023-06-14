@@ -9,9 +9,11 @@ from matplotlib import pyplot as plt, transforms
 from matplotlib.patches import FancyBboxPatch, BoxStyle
 from torch.autograd.functional import jacobian
 
+from torch_robotics.environment.env_base import EnvBase
 from torch_robotics.torch_kinematics_tree.geometrics.quaternion import q_to_rotation_matrix
 from torch_robotics.torch_kinematics_tree.geometrics.utils import transform_point, rotate_point
 from torch_robotics.torch_utils.torch_utils import DEFAULT_TENSOR_ARGS, to_torch, to_numpy, tensor_linspace_v1
+from torch_robotics.visualizers.planning_visualizer import create_fig_and_axes
 
 
 class PrimitiveShapeField(ABC):
@@ -92,7 +94,8 @@ class MultiSphereField(PrimitiveShapeField):
 
     def compute_signed_distance_impl(self, x):
         distance_to_centers = torch.norm(x.unsqueeze(-2) - self.centers.unsqueeze(0), dim=-1)
-        sdfs = distance_to_centers - self.radii.unsqueeze(0)
+        # sdfs = distance_to_centers - self.radii.unsqueeze(0)
+        sdfs = distance_to_centers - self.radii
         return torch.min(sdfs, dim=-1)[0]
 
     def zero_grad(self):
@@ -581,7 +584,7 @@ if __name__ == '__main__':
     # obj_field.set_position_orientation(ori=[np.cos(theta/2), 0, 0, np.sin(theta/2)])
     obj_field.set_position_orientation(pos=[-0.5, 0., 0.], ori=[np.cos(theta/2), 0, 0, np.sin(theta/2)])
 
-    # Render objects
+    # # Render objects
     fig, ax = plt.subplots()
     ax.set_xlim(-1, 1)
     ax.set_ylim(-1, 1)
@@ -590,15 +593,37 @@ if __name__ == '__main__':
 
     # Render sdf
     fig, ax = plt.subplots()
-    xs = torch.linspace(-1, 1, steps=400)
-    ys = torch.linspace(-1, 1, steps=400)
+    xs = torch.linspace(-1, 1, steps=400, **tensor_args)
+    ys = torch.linspace(-1, 1, steps=400, **tensor_args)
     X, Y = torch.meshgrid(xs, ys, indexing='xy')
     X_flat = torch.flatten(X)
     Y_flat = torch.flatten(Y)
     sdf = obj_field.compute_signed_distance(torch.stack((X_flat, Y_flat), dim=-1).view(-1, 1, 2))
     sdf = sdf.reshape(X.shape)
-    ctf = ax.contourf(X, Y, sdf)
+    sdf_np = to_numpy(sdf)
+    ctf = ax.contourf(to_numpy(X), to_numpy(Y), sdf_np)
     fig.colorbar(ctf, orientation='vertical')
     ax.set_xlim(-1, 1)
     ax.set_ylim(-1, 1)
+    plt.show()
+
+    ##############################################################################################################
+    env = EnvBase(
+        name='DummyEnv',
+        limits=torch.tensor([[-1, -1], [1, 1]], **tensor_args),
+        obj_fixed_list=[obj_field],
+        precompute_sdf_obj_fixed=True,
+        sdf_cell_size=0.005,
+        tensor_args=tensor_args,
+    )
+    fig, ax = create_fig_and_axes(env.dim)
+    env.render(ax)
+    plt.show()
+
+    # Render sdf
+    fig, ax = create_fig_and_axes(env.dim)
+    env.render_sdf(ax, fig)
+
+    # Render gradient of sdf
+    # env.render_grad_sdf(ax, fig)
     plt.show()

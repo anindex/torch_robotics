@@ -5,7 +5,17 @@ import numpy as np
 import torch
 
 
-DEFAULT_TENSOR_ARGS = {'device': 'cpu', 'dtype': torch.float32}
+def get_torch_device(device='cuda'):
+    if 'cuda' in device and torch.cuda.is_available():
+        device = 'cuda'
+    elif 'mps' in device:
+        device = 'mps'
+    else:
+        device = 'cpu'
+    return torch.device(device)
+
+
+DEFAULT_TENSOR_ARGS = {'device': get_torch_device('cuda'), 'dtype': torch.float32}
 
 def dict_to_device(ob, device):
     if isinstance(ob, collections.Mapping):
@@ -37,16 +47,6 @@ def to_torch_2d_min(variable):
         return tensor_var.unsqueeze(0)
     else:
         return tensor_var
-
-
-def get_torch_device(device='cuda'):
-    if 'cuda' in device and torch.cuda.is_available():
-        device = 'cuda'
-    elif 'mps' in device:
-        device = 'mps'
-    else:
-        device = 'cpu'
-    return torch.device(device)
 
 
 def freeze_torch_model_params(model):

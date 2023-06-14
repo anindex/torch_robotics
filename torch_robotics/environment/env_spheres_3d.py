@@ -77,16 +77,29 @@ class EnvSpheres3D(EnvBase):
             step_size=torch.pi/80,
             n_radius=torch.pi/4,
             n_pre_samples=50000,
+
             max_time=15
         )
         return params
 
 
 if __name__ == '__main__':
-    env = EnvSpheres3D(tensor_args=DEFAULT_TENSOR_ARGS)
+    env = EnvSpheres3D(
+        precompute_sdf_obj_fixed=True,
+        sdf_cell_size=0.01,
+        tensor_args=DEFAULT_TENSOR_ARGS
+    )
     fig, ax = create_fig_and_axes(env.dim)
     ax.set_xlabel('x')
     ax.set_ylabel('y')
     ax.set_zlabel('z')
     env.render(ax)
+    plt.show()
+
+    # Render sdf
+    fig, ax = create_fig_and_axes(env.dim)
+    env.render_sdf(ax, fig)
+
+    # Render gradient of sdf
+    env.render_grad_sdf(ax, fig)
     plt.show()

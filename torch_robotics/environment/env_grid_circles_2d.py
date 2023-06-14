@@ -83,4 +83,7 @@ if __name__ == '__main__':
     # Render sdf
     fig, ax = create_fig_and_axes(env.dim)
     env.render_sdf(ax, fig)
+
+    # Render gradient of sdf
+    env.render_grad_sdf(ax, fig)
     plt.show()

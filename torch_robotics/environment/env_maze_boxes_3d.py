@@ -4,7 +4,7 @@ from matplotlib import pyplot as plt
 
 from torch_robotics.environment.env_base import EnvBase
 from torch_robotics.environment.primitives import ObjectField, MultiBoxField
-from torch_robotics.torch_utils.torch_utils import DEFAULT_TENSOR_ARGS
+from torch_robotics.torch_utils.torch_utils import DEFAULT_TENSOR_ARGS, get_torch_device
 from torch_robotics.visualizers.planning_visualizer import create_fig_and_axes
 
 
@@ -99,10 +99,16 @@ class EnvMazeBoxes3D(EnvBase):
 
 
 if __name__ == '__main__':
-    env = EnvMazeBoxes3D(tensor_args=DEFAULT_TENSOR_ARGS)
+    DEFAULT_TENSOR_ARGS['device'] = get_torch_device('cpu')
+    env = EnvMazeBoxes3D(precompute_sdf_obj_fixed=True, tensor_args=DEFAULT_TENSOR_ARGS)
     fig, ax = create_fig_and_axes(env.dim)
     env.render(ax)
-    ax.set_xlabel('x')
-    ax.set_ylabel('y')
-    ax.set_zlabel('z')
+    plt.show()
+
+    # Render sdf
+    fig, ax = create_fig_and_axes(env.dim)
+    env.render_sdf(ax, fig)
+
+    # Render gradient of sdf
+    # env.render_grad_sdf(ax, fig)
     plt.show()

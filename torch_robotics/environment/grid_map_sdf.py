@@ -50,17 +50,22 @@ class GridMapSDF:
         points_for_sdf_meshgrid = torch.meshgrid(*basis_ranges, indexing='ij')
         self.points_for_sdf = torch.stack(points_for_sdf_meshgrid, dim=-1)
 
-        # compute the sdf and its gradient for all points
-        f_ravel = lambda x: x.ravel()
-        points_for_sdf_flat = torch.cat([f_ravel(ps).view(-1, 1) for ps in points_for_sdf_meshgrid], dim=-1)
-
-        sdf_tensor = self.compute_signed_distance_raw(points_for_sdf_flat)
-
         f_grad_sdf = lambda x: self.compute_signed_distance_raw(x).sum()
-        grad_sdf_tensor = jacobian(f_grad_sdf, self.points_for_sdf)
+        sdf_tensor_l = []
+        grad_sdf_tensor_l = []
+        # TODO - compute sdf and gradient in batches to prevent memory overflow
+        for i in range(self.points_for_sdf.shape[0]):
+            torch.cuda.empty_cache()
+            # sdf
+            sdf_tensor = self.compute_signed_distance_raw(self.points_for_sdf[i])
+            sdf_tensor_l.append(sdf_tensor)
+            # gradient of sdf
+            grad_sdf_tensor = jacobian(f_grad_sdf, self.points_for_sdf[i])
+            grad_sdf_tensor_l.append(grad_sdf_tensor)
+        torch.cuda.empty_cache()
 
-        self.sdf_tensor = sdf_tensor.reshape(*self.cmap_dim)
-        self.grad_sdf_tensor = grad_sdf_tensor.reshape((*self.cmap_dim, self.dim))
+        self.sdf_tensor = torch.stack(sdf_tensor_l, dim=0)
+        self.grad_sdf_tensor = torch.stack(grad_sdf_tensor_l, dim=0)
 
     def compute_signed_distance_raw(self, x):
         sdf = None
@@ -96,8 +101,8 @@ class GridMapSDF:
         X_in_map = X_in_map.type(torch.LongTensor)
 
         # Project out-of-bounds locations to axis
-        for i in range(X_in_map.shape[-1]):
-            X_in_map[..., i] = X_in_map[..., i].clamp(0, self.points_for_sdf.shape[i]-1)
+        max_idx = torch.tensor(self.points_for_sdf.shape[:-1])-1
+        X_in_map = X_in_map.clamp(torch.zeros_like(max_idx), max_idx)
 
         # SDFs and gradients
         # To compute the gradients, because we already have computed the gradients, we use a surrogate sdf function
@@ -107,21 +112,15 @@ class GridMapSDF:
         # grad_x_surrogate_sdf(x) = grad_sdf(x_detachted)
         try:
             X_in_map_detached = X_in_map.detach()
-            grad_sdf = 0.
-            if self.dim == 2:
-                sdf_vals = self.sdf_tensor[X_in_map_detached[..., 1], X_in_map_detached[..., 0]]
-                if X.requires_grad:
-                    grad_sdf = self.grad_sdf_tensor[X_in_map_detached[..., 1], X_in_map_detached[..., 0]]
-            elif self.dim == 3:
-                sdf_vals = self.sdf_tensor[X_in_map_detached[..., 1], X_in_map_detached[..., 0], X_in_map_detached[..., 2]]
-                if X.requires_grad:
-                    grad_sdf = self.grad_sdf_tensor[X_in_map_detached[..., 1], X_in_map_detached[..., 0], X_in_map_detached[..., 2]]
-            else:
-                raise NotImplementedError
+            X_query = X_in_map_detached[..., 0], X_in_map_detached[..., 1]
+            if self.dim == 3:
+                X_query = X_in_map_detached[..., 0], X_in_map_detached[..., 1], X_in_map_detached[..., 2]
 
-            if X.requires_grad:
-                X_detached = X.detach()
-                sdf_vals += (X * grad_sdf).sum(-1) - (X_detached * grad_sdf).sum(-1)
+            sdf_vals = self.sdf_tensor[X_query]
+            grad_sdf = self.grad_sdf_tensor[X_query]
+
+            X_detached = X.detach()
+            sdf_vals += (X * grad_sdf).sum(-1) - (X_detached * grad_sdf).sum(-1)
 
         except Exception as e:
             print(e)

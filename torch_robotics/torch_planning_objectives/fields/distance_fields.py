@@ -110,8 +110,8 @@ class EmbodimentDistanceFieldBase(DistanceField):
     def compute_costs_impl(self, link_pos, **kwargs):
         # position link_pos tensor # batch x num_links x 3
         link_pos = self.interpolate_links(link_pos)
-        self_cost = self.compute_embodiment_cost(link_pos, **kwargs)
-        return self_cost
+        embodiment_cost = self.compute_embodiment_cost(link_pos, **kwargs)
+        return embodiment_cost
 
     def compute_distance(self, link_pos, **kwargs):
         link_pos = self.interpolate_links(link_pos)

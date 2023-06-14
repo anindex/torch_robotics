@@ -75,24 +75,26 @@ class EnvTableShelf(EnvBase):
         table_obj_field = create_table_object_field(tensor_args=tensor_args)
         table_sizes = table_obj_field.fields[0].sizes[0]
         dist_robot_to_table = 0.10
+        theta = np.deg2rad(90)
         table_obj_field.set_position_orientation(
-            pos=(0, dist_robot_to_table + table_sizes[1].item()/2, -table_sizes[2].item()/2)
+            pos=(dist_robot_to_table + table_sizes[1].item()/2, 0, -table_sizes[2].item()/2),
+            ori=[np.cos(theta / 2), 0, 0, np.sin(theta / 2)]
         )
 
         # shelf object field
         shelf_obj_field = create_shelf_field(tensor_args=tensor_args)
-        theta = np.deg2rad(-90)
+        # theta = np.deg2rad(-90)
         dist_table_shelf = 0.15
         shelf_obj_field.set_position_orientation(
-            pos=(+table_sizes[0]/2 + dist_table_shelf, dist_robot_to_table + table_sizes[1], -table_sizes[2].item()),
-            ori=[np.cos(theta / 2), 0, 0, np.sin(theta / 2)]
+            pos=(dist_robot_to_table, dist_table_shelf + table_sizes[0].item()/2, -table_sizes[2].item()),
+            # ori=[np.cos(theta / 2), 0, 0, np.sin(theta / 2)]
         )
 
         obj_list = [table_obj_field, shelf_obj_field]
 
         super().__init__(
             name=self.__class__.__name__,
-            limits=torch.tensor([[-1, -1, -1], [1, 1.5, 1.5]], **tensor_args),  # environment limits
+            limits=torch.tensor([[-1, -1, -1], [1.5, 1., 1.5]], **tensor_args),  # environment limits
             obj_fixed_list=obj_list,
             tensor_args=tensor_args,
             **kwargs
@@ -100,7 +102,7 @@ class EnvTableShelf(EnvBase):
 
     def get_gpmp_params(self):
         params = dict(
-            opt_iters=500,
+            opt_iters=250,
             num_samples=64,
             sigma_start=1e-3,
             sigma_gp=1e-1,
@@ -133,10 +135,19 @@ class EnvTableShelf(EnvBase):
 
 
 if __name__ == '__main__':
-    env = EnvTableShelf(tensor_args=DEFAULT_TENSOR_ARGS)
+    env = EnvTableShelf(
+        precompute_sdf_obj_fixed=True,
+        sdf_cell_size=0.01,
+        tensor_args=DEFAULT_TENSOR_ARGS
+    )
     fig, ax = create_fig_and_axes(env.dim)
     env.render(ax)
-    ax.set_xlabel('x')
-    ax.set_ylabel('y')
-    ax.set_zlabel('z')
+    plt.show()
+
+    # Render sdf
+    fig, ax = create_fig_and_axes(env.dim)
+    env.render_sdf(ax, fig)
+
+    # Render gradient of sdf
+    # env.render_grad_sdf(ax, fig)
     plt.show()
