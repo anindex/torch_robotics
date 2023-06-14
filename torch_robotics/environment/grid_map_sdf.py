@@ -36,6 +36,7 @@ class GridMapSDF:
         # Map center (in cells)
         self.origin = np.array([d//2 for d in self.cmap_dim])
         self.c_offset = torch.Tensor(self.origin).to(**tensor_args)
+        # self.c_offset = torch.ones(self.origin.shape, **tensor_args)*100
 
     def precompute_sdf(self):
         # create voxel grid of points
@@ -57,10 +58,11 @@ class GridMapSDF:
         for i in range(self.points_for_sdf.shape[0]):
             torch.cuda.empty_cache()
             # sdf
-            sdf_tensor = self.compute_signed_distance_raw(self.points_for_sdf[i])
+            points_sdf = self.points_for_sdf[i]
+            sdf_tensor = self.compute_signed_distance_raw(points_sdf)
             sdf_tensor_l.append(sdf_tensor)
             # gradient of sdf
-            grad_sdf_tensor = jacobian(f_grad_sdf, self.points_for_sdf[i])
+            grad_sdf_tensor = jacobian(f_grad_sdf, points_sdf)
             grad_sdf_tensor_l.append(grad_sdf_tensor)
         torch.cuda.empty_cache()
 
