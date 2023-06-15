@@ -625,5 +625,5 @@ if __name__ == '__main__':
     env.render_sdf(ax, fig)
 
     # Render gradient of sdf
-    # env.render_grad_sdf(ax, fig)
+    env.render_grad_sdf(ax, fig)
     plt.show()

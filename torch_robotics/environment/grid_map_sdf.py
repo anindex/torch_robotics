@@ -24,19 +24,12 @@ class GridMapSDF:
         map_dim = torch.abs(limits[1] - limits[0])
         self.map_dim = map_dim
         self.cell_size = cell_size
-        self.cmap_dim = [0 for _ in map_dim]
-        for i, d in enumerate(self.cmap_dim):
-            self.cmap_dim[i] = ceil(map_dim[i]/cell_size)
+        self.cmap_dim = torch.ceil(map_dim/cell_size).type(torch.LongTensor).to(self.tensor_args['device'])
 
         self.points_for_sdf = None
         self.sdf_tensor = None
         self.grad_sdf_tensor = None
         self.precompute_sdf()
-
-        # Map center (in cells)
-        self.origin = np.array([d//2 for d in self.cmap_dim])
-        self.c_offset = torch.Tensor(self.origin).to(**tensor_args)
-        # self.c_offset = torch.ones(self.origin.shape, **tensor_args)*100
 
     def precompute_sdf(self):
         # create voxel grid of points
@@ -97,10 +90,7 @@ class GridMapSDF:
         :param X: Tensor of trajectories, of shape (batch_size, horizon, task_spaces, position_dim)
         :return: collision cost on the trajectories
         """
-        X_in_map = X * (1/self.cell_size) + self.c_offset
-        X_in_map = X_in_map.floor()
-
-        X_in_map = X_in_map.type(torch.LongTensor)
+        X_in_map = ((X-self.limits[0])/self.map_dim * self.cmap_dim).floor().type(torch.LongTensor)
 
         # Project out-of-bounds locations to axis
         max_idx = torch.tensor(self.points_for_sdf.shape[:-1])-1
