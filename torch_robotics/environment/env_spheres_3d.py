@@ -50,7 +50,6 @@ class EnvSpheres3D(EnvBase):
 
     def get_gpmp_params(self):
         params = dict(
-            # opt_iters=10,
             opt_iters=100,
             num_samples=64,
             sigma_start=1e-3,
@@ -66,9 +65,12 @@ class EnvSpheres3D(EnvBase):
             sigma_gp_sample=5e-2,
             solver_params={
                 'delta': 1e-2,
+                'cast_to_float32': True,
                 'trust_region': True,
-                # 'method': 'cholesky',
-                'method': 'cholesky-sparse',
+                'sparse_computation': False,
+                'sparse_computation_block_diag': False,
+                'method': 'cholesky',
+                # 'method': 'cholesky-sparse',
                 # 'method': 'inverse',
             },
         )
