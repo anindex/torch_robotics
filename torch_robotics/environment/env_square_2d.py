@@ -47,7 +47,7 @@ class EnvSquare2D(EnvBase):
 
     def get_gpmp_params(self):
         params = dict(
-            opt_iters=600,
+            opt_iters=100,
             num_samples=64,
             sigma_start=1e-5,
             sigma_gp=1e-2,

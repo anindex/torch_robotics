@@ -10,8 +10,11 @@ from torch.autograd.functional import jacobian
 
 from torch_robotics.environment.grid_map_sdf import GridMapSDF
 from torch_robotics.environment.occupancy_map import OccupancyMap
+from torch_robotics.environment.primitives import ObjectField, MultiSphereField, MultiBoxField
 from torch_robotics.torch_utils.torch_timer import Timer
-from torch_robotics.torch_utils.torch_utils import to_numpy
+from torch_robotics.torch_utils.torch_utils import to_numpy, DEFAULT_TENSOR_ARGS
+import torch_robotics
+from torch_robotics.visualizers.planning_visualizer import create_fig_and_axes
 
 
 class EnvBase(ABC):
@@ -38,6 +41,13 @@ class EnvBase(ABC):
 
         ################################################################################################
         # Objects
+        if obj_fixed_list is not None:
+            for obj in obj_fixed_list:
+                assert (isinstance(obj, ObjectField)), "Objects must be instances of ObjectField class"
+        if obj_movable_list is not None:
+            for obj in obj_movable_list:
+                assert (isinstance(obj, ObjectField)), "Objects must be instances of ObjectField class"
+
         self.obj_fixed_list = obj_fixed_list
         self.obj_movable_list = obj_movable_list
         self.obj_all_list = set(itertools.chain.from_iterable((
@@ -118,7 +128,7 @@ class EnvBase(ABC):
 
         if self.obj_movable_list is not None:
             for obj in self.obj_movable_list:
-                obj.render(ax, color='red')
+                obj.render(ax, color='red', cmap='Reds')
 
         ax.set_xlim(self.limits_np[0][0], self.limits_np[1][0])
         ax.set_ylim(self.limits_np[0][1], self.limits_np[1][1])
@@ -262,3 +272,43 @@ class EnvBase(ABC):
 
     def get_gpmp_params(self):
         raise NotImplementedError
+
+
+if __name__ == '__main__':
+    tensor_args = DEFAULT_TENSOR_ARGS
+    spheres = MultiSphereField(torch.zeros(2, **tensor_args).view(1, -1),
+                               torch.ones(1, **tensor_args).view(1, -1) * 0.3,
+                               tensor_args=tensor_args)
+
+    boxes = MultiBoxField(torch.zeros(2, **tensor_args).view(1, -1) + 0.5,
+                          torch.ones(2, **tensor_args).view(1, -1) * 0.3,
+                          tensor_args=tensor_args)
+
+    obj_field = ObjectField([spheres, boxes])
+
+    theta = np.deg2rad(45)
+    # obj_field.set_position_orientation(pos=[-0.5, 0., 0.])
+    # obj_field.set_position_orientation(ori=[np.cos(theta/2), 0, 0, np.sin(theta/2)])
+    obj_field.set_position_orientation(pos=[-0.5, 0., 0.], ori=[np.cos(theta/2), 0, 0, np.sin(theta/2)])
+
+    ##############################################################################################################
+    env = EnvBase(
+        name='DummyEnv',
+        limits=torch.tensor([[-1, -1], [1, 1]], **tensor_args),
+        obj_fixed_list=[obj_field],
+        precompute_sdf_obj_fixed=True,
+        sdf_cell_size=0.005,
+        tensor_args=tensor_args,
+    )
+    fig, ax = create_fig_and_axes(env.dim)
+    env.render(ax)
+    plt.show()
+
+    # Render sdf
+    fig, ax = create_fig_and_axes(env.dim)
+    env.render_sdf(ax, fig)
+
+    # Render gradient of sdf
+    env.render_grad_sdf(ax, fig)
+    plt.show()
+

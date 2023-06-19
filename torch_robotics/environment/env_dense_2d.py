@@ -11,7 +11,11 @@ from torch_robotics.visualizers.planning_visualizer import create_fig_and_axes
 
 class EnvDense2D(EnvBase):
 
-    def __init__(self, tensor_args=None, **kwargs):
+    def __init__(self,
+                 name='EnvDense2D',
+                 tensor_args=None,
+                 **kwargs
+                 ):
         # Old object placements
         obj_list = [
             MultiSphereField(
@@ -105,7 +109,7 @@ class EnvDense2D(EnvBase):
         # ]
 
         super().__init__(
-            name=self.__class__.__name__,
+            name=name,
             limits=torch.tensor([[-1, -1], [1, 1]], **tensor_args),  # environment limits
             obj_fixed_list=[ObjectField(obj_list, 'dense2d')],
             tensor_args=tensor_args,
@@ -118,13 +122,13 @@ class EnvDense2D(EnvBase):
             step_size=0.01,
             n_radius=0.3,
             n_pre_samples=50000,
-            max_time=5
+            max_time=10
         )
         return params
 
     def get_gpmp_params(self):
         params = dict(
-            opt_iters=200,
+            opt_iters=75,
             num_samples=64,
             sigma_start=1e-5,
             sigma_gp=1e-2,

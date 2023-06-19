@@ -10,7 +10,7 @@ from torch_robotics.visualizers.planning_visualizer import create_fig_and_axes
 
 class EnvSpheres3D(EnvBase):
 
-    def __init__(self, tensor_args=None, **kwargs):
+    def __init__(self, name='EnvDense2D', tensor_args=None, **kwargs):
         spheres = MultiSphereField(torch.tensor([
                     [0.6, 0.3, 0.],
                     [0.5, 0.3, 0.5],
@@ -41,7 +41,7 @@ class EnvSpheres3D(EnvBase):
         obj_list = [obj_field]
 
         super().__init__(
-            name=self.__class__.__name__,
+            name=name,
             limits=torch.tensor([[-1, -1, -1], [1, 1, 1]], **tensor_args),  # environment limits
             obj_fixed_list=obj_list,
             tensor_args=tensor_args,
@@ -50,7 +50,7 @@ class EnvSpheres3D(EnvBase):
 
     def get_gpmp_params(self):
         params = dict(
-            opt_iters=100,
+            opt_iters=50,
             num_samples=64,
             sigma_start=1e-3,
             sigma_gp=1e-1,

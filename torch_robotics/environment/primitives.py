@@ -9,7 +9,6 @@ from matplotlib import pyplot as plt, transforms
 from matplotlib.patches import FancyBboxPatch, BoxStyle
 from torch.autograd.functional import jacobian
 
-from torch_robotics.environment.env_base import EnvBase
 from torch_robotics.torch_kinematics_tree.geometrics.quaternion import q_to_rotation_matrix
 from torch_robotics.torch_kinematics_tree.geometrics.utils import transform_point, rotate_point
 from torch_robotics.torch_utils.torch_utils import DEFAULT_TENSOR_ARGS, to_torch, to_numpy, tensor_linspace_v1
@@ -70,7 +69,7 @@ class PrimitiveShapeField(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def render(self, ax, pos=None, ori=None, color=None):
+    def render(self, ax, pos=None, ori=None, color=None, **kwargs):
         raise NotImplementedError
 
 
@@ -162,7 +161,7 @@ class MultiSphereField(PrimitiveShapeField):
         # Check if point p is inside the discretized sphere
         return torch.linalg.norm(p - center) <= radius
 
-    def render(self, ax, pos=None, ori=None, color='gray'):
+    def render(self, ax, pos=None, ori=None, color='gray', cmap='gray', **kwargs):
         for center, radius in zip(self.centers, self.radii):
             center = to_numpy(center)
             radius = to_numpy(radius)
@@ -173,7 +172,11 @@ class MultiSphereField(PrimitiveShapeField):
                 x = radius * (np.cos(u) * np.sin(v))
                 y = radius * (np.sin(u) * np.sin(v))
                 z = radius * np.cos(v)
-                ax.plot_surface(x + center[0] + pos[0], y + center[1] + pos[1], z + center[2] + pos[2], cmap=color, alpha=1)
+                ax.plot_surface(
+                    x + center[0] + pos[0], y + center[1] + pos[1], z + center[2] + pos[2],
+                    cmap=cmap,
+                    alpha=1
+                )
             else:
                 circle = plt.Circle((center[0] + pos[0], center[1] + pos[1]), radius, color=color, linewidth=0, alpha=1)
                 ax.add_patch(circle)
@@ -254,7 +257,7 @@ class MultiBoxField(PrimitiveShapeField):
         z = torch.cos(Theta) / np.sqrt(2)
         return x, y, z
 
-    def render(self, ax, pos=None, ori=None, color='gray'):
+    def render(self, ax, pos=None, ori=None, color='gray', **kwargs):
 
         rot = q_to_rotation_matrix(ori).squeeze()
         if ax.name == '3d':
@@ -554,9 +557,9 @@ class ObjectField(PrimitiveShapeField):
             sdf_fields.append(field.compute_signed_distance_impl(x_new))
         return torch.min(torch.stack(sdf_fields, dim=-1), dim=-1)[0]
 
-    def render(self, ax, pos=None, ori=None, color='gray'):
+    def render(self, ax, pos=None, ori=None, color='gray', **kwargs):
         for field in self.fields:
-            field.render(ax, pos=self.pos, ori=self.ori, color=color)
+            field.render(ax, pos=self.pos, ori=self.ori, color=color, **kwargs)
 
     def add_to_occupancy_map(self, occ_map):
         for field in self.fields:
@@ -605,25 +608,4 @@ if __name__ == '__main__':
     fig.colorbar(ctf, orientation='vertical')
     ax.set_xlim(-1, 1)
     ax.set_ylim(-1, 1)
-    plt.show()
-
-    ##############################################################################################################
-    env = EnvBase(
-        name='DummyEnv',
-        limits=torch.tensor([[-1, -1], [1, 1]], **tensor_args),
-        obj_fixed_list=[obj_field],
-        precompute_sdf_obj_fixed=True,
-        sdf_cell_size=0.005,
-        tensor_args=tensor_args,
-    )
-    fig, ax = create_fig_and_axes(env.dim)
-    env.render(ax)
-    plt.show()
-
-    # Render sdf
-    fig, ax = create_fig_and_axes(env.dim)
-    env.render_sdf(ax, fig)
-
-    # Render gradient of sdf
-    env.render_grad_sdf(ax, fig)
     plt.show()

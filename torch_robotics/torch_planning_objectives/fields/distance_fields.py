@@ -94,9 +94,10 @@ class EmbodimentDistanceFieldBase(DistanceField):
         if field_type == 'rbf':
             return self.compute_embodiment_rbf_distances(link_pos, **kwargs).sum((-1, -2))
         elif field_type == 'sdf':  # this computes the negative cost from the DISTANCE FUNCTION
+            # get the closest link distance to all objects
             margin_minus_sdf = -(self.compute_embodiment_signed_distances(link_pos, **kwargs) - margin).min(-1)[0]
             if len(margin_minus_sdf.shape) == 2:  # cover the multiple objects case
-                margin_minus_sdf = margin_minus_sdf.min(-1)[0]
+                margin_minus_sdf = margin_minus_sdf.max(-1)[0]
             if self.clamp_sdf:
                 return torch.relu(margin_minus_sdf)
             return margin_minus_sdf

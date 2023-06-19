@@ -84,7 +84,7 @@ class PlanningVisualizer:
             if start_state is not None:
                 self.robot.render(ax, start_state, color='green')
             if goal_state is not None:
-                self.robot.render(ax, goal_state, color='red')
+                self.robot.render(ax, goal_state, color='purple')
 
         create_animation_video(fig, animate_fn, n_frames=n_frames, **kwargs)
 
@@ -113,7 +113,7 @@ class PlanningVisualizer:
             if start_state is not None:
                 self.robot.render(ax, start_state, color='green')
             if goal_state is not None:
-                self.robot.render(ax, goal_state, color='red')
+                self.robot.render(ax, goal_state, color='purple')
 
         create_animation_video(fig, animate_fn, n_frames=n_frames, **kwargs)
 
@@ -178,9 +178,9 @@ class PlanningVisualizer:
             if vel_start_state is not None:
                 ax[1].scatter(0, vel_start_state[i], color='green')
             if pos_goal_state is not None:
-                ax[0].scatter(H-1, pos_goal_state[i], color='red')
+                ax[0].scatter(H-1, pos_goal_state[i], color='purple')
             if vel_goal_state is not None:
-                ax[1].scatter(H-1, vel_goal_state[i], color='red')
+                ax[1].scatter(H-1, vel_goal_state[i], color='purple')
             # Y label
             ax[0].set_ylabel(f'q_{i}')
             # Set limits
