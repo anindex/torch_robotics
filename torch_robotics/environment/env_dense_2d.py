@@ -124,7 +124,7 @@ class EnvDense2D(EnvBase):
 
     def get_gpmp_params(self):
         params = dict(
-            opt_iters=75,
+            opt_iters=200,
             num_samples=64,
             sigma_start=1e-5,
             sigma_gp=1e-2,
