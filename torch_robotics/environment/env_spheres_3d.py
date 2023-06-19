@@ -65,7 +65,6 @@ class EnvSpheres3D(EnvBase):
             sigma_gp_sample=5e-2,
             solver_params={
                 'delta': 1e-2,
-                'cast_to_float32': True,
                 'trust_region': True,
                 'sparse_computation': False,
                 'sparse_computation_block_diag': False,

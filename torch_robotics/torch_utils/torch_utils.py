@@ -141,6 +141,11 @@ def batched_weighted_dot_prod(x: torch.Tensor, M: torch.Tensor, y: torch.Tensor,
     return r
 
 
-def is_psd(mat):
-    # checks if mat is positive semi-definite matrix
+def is_positive_semi_definite(mat):
+    # checks if mat is a positive semi-definite matrix
     return bool((mat == mat.T).all() and (torch.linalg.eigvals(mat).real >= 0).all())
+
+def is_positive_definite(mat):
+    # checks if mat is a positive definite matrix
+    return bool((mat == mat.T).all() and (torch.linalg.eigvals(mat).real > 0).all())
+
