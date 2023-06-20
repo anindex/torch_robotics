@@ -72,6 +72,36 @@ class EnvGridCircles2D(EnvBase):
             temperature=1.,
         )
         return params
+    
+    def get_mpot_params(self):
+        solver_params = dict(
+            reg=0.01,  # entropic regularization lambda
+            num_probe=5,
+            numInnerItermax=5,
+            stopThr=8e-2,
+            innerStopThr=1e-5,
+            verbose=False,
+        )
+
+        params = dict(
+            opt_iters=100,
+            solver_params=solver_params,
+            step_radius=0.38,
+            probe_radius=0.5,  # probe radius > step radius
+            polytope='cube',  # 'random' | 'simplex' | 'orthoplex' | 'cube'; 'random' option is added for ablations, not recommended for general use
+            eps_annealing=0.02,
+            num_bpoint=50,  # number of random points on the $4$-sphere, when polytope == 'random' (i.e. no polytope structure)
+            num_probe=5,  # number of probes points for each polytope vertices
+            pos_limits=[-1, 1],
+            vel_limits=[-1, 1],
+            w_smooth=1e-7,
+            sigma_coll=1e-2,
+            sigma_gp=0.13,
+            sigma_start_init=1e-4,
+            sigma_goal_init=1e-4,
+            sigma_gp_init=1.6,
+        )
+        return params
 
 
 if __name__ == '__main__':
