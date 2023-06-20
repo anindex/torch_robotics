@@ -122,7 +122,7 @@ class EnvDense2D(EnvBase):
             step_size=0.01,
             n_radius=0.3,
             n_pre_samples=50000,
-            max_time=10
+            max_time=15
         )
         return params
 

@@ -1,4 +1,5 @@
 # Adapted from https://github.com/brouberol/contexttimer
+import time
 from time import perf_counter
 
 import torch

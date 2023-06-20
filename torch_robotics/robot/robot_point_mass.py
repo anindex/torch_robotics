@@ -71,6 +71,6 @@ class RobotPointMass(RobotBase):
         if goal_state is not None:
             goal_state_np = to_numpy(goal_state)
             if len(goal_state_np) == 3:
-                ax.plot(goal_state_np[0], goal_state_np[1], goal_state_np[2], 'ro', markersize=7)
+                ax.plot(goal_state_np[0], goal_state_np[1], goal_state_np[2], marker='o', color='purple', markersize=7)
             else:
-                ax.plot(goal_state_np[0], goal_state_np[1], 'ro', markersize=7)
+                ax.plot(goal_state_np[0], goal_state_np[1], marker='o', color='purple', markersize=7)
