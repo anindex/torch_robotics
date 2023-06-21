@@ -95,7 +95,7 @@ class EnvGridCircles2D(EnvBase):
             pos_limits=[-1, 1],
             vel_limits=[-1, 1],
             w_smooth=1e-7,
-            sigma_coll=1e-2,
+            w_coll=2.4e-3,
             sigma_gp=0.13,
             sigma_start_init=1e-4,
             sigma_goal_init=1e-4,
