@@ -96,7 +96,7 @@ def q_div(q1, q2):
 
 
 def q_norm_squared(q):
-    return torch.sum(q ** 2, dim=-1)
+    return torch.sum(q ** 2, dim=-1, keepdim=True)
 
 
 def q_to_rotation_matrix(q):

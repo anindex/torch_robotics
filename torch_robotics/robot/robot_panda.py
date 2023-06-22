@@ -1,4 +1,5 @@
 import einops
+import numpy as np
 import torch
 
 from torch_robotics.robot.robot_base import RobotBase
@@ -10,12 +11,23 @@ from torch_robotics.torch_kinematics_tree.models.robots import DifferentiableFra
 class RobotPanda(RobotBase):
 
     def __init__(self,
+                 gripper=False,
                  tensor_args=None,
                  **kwargs):
 
-        self.jl_lower = [-2.8973, -1.7628, -2.8973, -3.0718, -2.8973, -0.0175, -2.8973]
-        self.jl_upper = [2.8973, 1.7628, 2.8973, -0.0698, 2.8973, 3.7525, 2.8973]
-        q_limits = torch.tensor([self.jl_lower, self.jl_upper], **tensor_args)
+        self.gripper = gripper
+
+        #############################################
+        # Differentiable robot model
+        self.diff_panda = DifferentiableFrankaPanda(gripper=gripper, device=tensor_args['device'])
+        self.link_names_for_collision_checking = [
+            'panda_link1', 'panda_link3', 'panda_link4', 'panda_link5', 'panda_link7',
+            'panda_hand', 'ee_link'
+        ]
+        self.link_name_ee = 'ee_link'
+
+        self.jl_lower, self.jl_upper, _, _ = self.diff_panda.get_joint_limit_array()
+        q_limits = torch.tensor(np.array([self.jl_lower, self.jl_upper]), **tensor_args)
 
         super().__init__(
             q_limits=q_limits,
@@ -24,14 +36,6 @@ class RobotPanda(RobotBase):
             tensor_args=tensor_args,
             **kwargs
         )
-
-        #############################################
-        # Differentiable robot model
-        self.diff_panda = DifferentiableFrankaPanda(gripper=False, device=self.tensor_args['device'])
-        self.link_names_for_collision_checking = [
-            'panda_link1', 'panda_link3', 'panda_link4', 'panda_link5', 'panda_link7', 'panda_link8', 'ee_link'
-        ]
-        self.link_name_ee = 'ee_link'
 
     def fk_map_impl(self, q, pos_only=False):
         q_orig_shape = q.shape
@@ -44,7 +48,7 @@ class RobotPanda(RobotBase):
         else:
             raise NotImplementedError
 
-        link_tensor = self.diff_panda.compute_forward_kinematics_link_list(
+        link_tensor = self.diff_panda.compute_forward_kinematics_all_links(
             q, link_list=self.link_names_for_collision_checking
         )
 

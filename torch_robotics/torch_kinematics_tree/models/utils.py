@@ -2,6 +2,8 @@ import torch
 from networkx.readwrite import json_graph
 from urdf_parser_py.urdf import URDF
 
+from torch_robotics.torch_kinematics_tree.utils.files import get_mjcf_path
+
 torch.set_default_dtype(torch.float32)
 
 JOINT_NAME_MAP = {
@@ -308,7 +310,6 @@ class URDFRobotModel(RobotModel):
 
 
 if __name__ == '__main__':
-    from torch_kinematics_tree.utils.files import get_mjcf_path
     hand = MJCFRobotModel(get_mjcf_path() / 'shadow_hand_series_e.xml')
     print(hand.find_joint_of_body('forearm'))
     print(hand.get_body_parameters(0, hand._bodies['thmiddle']))

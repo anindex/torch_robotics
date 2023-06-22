@@ -12,7 +12,7 @@ class DifferentiableKUKAiiwa(DifferentiableTree):
 
 
 class DifferentiableFrankaPanda(DifferentiableTree):
-    def __init__(self, link_list: Optional[str] = None, gripper=True, device='cpu'):
+    def __init__(self, link_list: Optional[str] = None, gripper=False, device='cpu'):
         if gripper:
             robot_file = get_robot_path() / 'franka_description' / 'robots' / 'panda_arm_hand.urdf'
         else:

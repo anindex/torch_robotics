@@ -1,7 +1,5 @@
 import itertools
-import sys
-from abc import abstractmethod, ABC
-from copy import copy
+from abc import ABC
 
 import numpy as np
 import torch
@@ -13,7 +11,6 @@ from torch_robotics.environment.occupancy_map import OccupancyMap
 from torch_robotics.environment.primitives import ObjectField, MultiSphereField, MultiBoxField
 from torch_robotics.torch_utils.torch_timer import Timer
 from torch_robotics.torch_utils.torch_utils import to_numpy, DEFAULT_TENSOR_ARGS
-import torch_robotics
 from torch_robotics.visualizers.planning_visualizer import create_fig_and_axes
 
 

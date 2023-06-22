@@ -1,6 +1,7 @@
 import torch
 import numpy as np
 
+from torch_robotics.torch_kinematics_tree.geometrics.quaternion import rotation_matrix_to_q
 from torch_robotics.torch_utils.torch_utils import to_torch, to_torch_2d_min
 
 DEFAULT_ACOS_BOUND: float = 1.0 - 1e-4
@@ -325,3 +326,21 @@ def link_pos_from_link_tensor(link_tensor):
     else:
         raise ValueError
     return link_pos
+
+
+def link_rot_from_link_tensor(link_tensor):
+    if link_tensor.shape[-1] == 3:
+        link_rot = link_tensor[..., :2, :2]
+    elif link_tensor.shape[-1] == 4:
+        link_rot = link_tensor[..., :3, :3]
+    else:
+        raise ValueError
+    return link_rot
+
+
+def link_quat_from_link_tensor(link_tensor):
+    rot = link_rot_from_link_tensor(link_tensor)
+    quat = rotation_matrix_to_q(rot)
+    return quat
+
+

@@ -1,5 +1,6 @@
 import collections
 import random
+from typing import List
 
 import numpy as np
 import torch
@@ -42,7 +43,10 @@ def to_torch(x, device='cpu', dtype=torch.float, requires_grad=False, clone=Fals
 
 
 def to_torch_2d_min(variable):
-    tensor_var = to_torch(variable)
+    if isinstance(variable, np.ndarray) or isinstance(variable, List):
+        tensor_var = to_torch(variable)
+    else:
+        tensor_var = variable
     if len(tensor_var.shape) == 1:
         return tensor_var.unsqueeze(0)
     else:
@@ -148,4 +152,11 @@ def is_positive_semi_definite(mat):
 def is_positive_definite(mat):
     # checks if mat is a positive definite matrix
     return bool((mat == mat.T).all() and (torch.linalg.eigvals(mat).real > 0).all())
+
+
+def torch_intersect_1d(a, b):
+    a_cat_b, counts = torch.cat([a, b]).unique(return_counts=True)
+    intersection = a_cat_b[torch.where(counts.gt(1))]
+    return intersection
+
 

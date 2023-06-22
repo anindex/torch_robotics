@@ -257,7 +257,7 @@ class MultiBoxField(PrimitiveShapeField):
         z = torch.cos(Theta) / np.sqrt(2)
         return x, y, z
 
-    def render(self, ax, pos=None, ori=None, color='gray', **kwargs):
+    def render(self, ax, pos=None, ori=None, color='gray', cmap='gray', **kwargs):
 
         rot = q_to_rotation_matrix(ori).squeeze()
         if ax.name == '3d':
@@ -280,7 +280,7 @@ class MultiBoxField(PrimitiveShapeField):
 
                 points_x_np, points_y_np, points_z_np = to_numpy(points_x), to_numpy(points_y), to_numpy(points_z)
                 # TODO - implemented drawing of rounded boxes in 3D
-                ax.plot_surface(points_x_np, points_y_np, points_z_np, cmap=color, alpha=0.25)
+                ax.plot_surface(points_x_np, points_y_np, points_z_np, cmap=cmap, alpha=0.25)
         else:
             for i, (center, size) in enumerate(zip(self.centers, self.sizes)):
                 cx, cy = to_numpy(center)

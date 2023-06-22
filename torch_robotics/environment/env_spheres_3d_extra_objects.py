@@ -4,7 +4,7 @@ from matplotlib import pyplot as plt
 
 from torch_robotics.environment.env_base import EnvBase
 from torch_robotics.environment.env_spheres_3d import EnvSpheres3D
-from torch_robotics.environment.primitives import ObjectField, MultiSphereField
+from torch_robotics.environment.primitives import ObjectField, MultiSphereField, MultiBoxField
 from torch_robotics.torch_utils.torch_utils import DEFAULT_TENSOR_ARGS
 from torch_robotics.visualizers.planning_visualizer import create_fig_and_axes
 
@@ -34,6 +34,21 @@ class EnvSpheres3DExtraObjects(EnvSpheres3D):
                 ,
                 tensor_args=tensor_args
             ),
+            MultiBoxField(
+                np.array(
+                    [
+                        [0.1, 0.35, 0.],
+                        [0.25, 0.0, 0.35],
+                    ]),
+                np.array(
+                    [
+                        [0.25, 0.25, 0.25],
+                        [0.125, 0.125, 0.125],
+                    ]
+                )
+                ,
+                tensor_args=tensor_args
+            )
         ]
 
         super().__init__(

@@ -276,4 +276,21 @@
     <limit effort="20" lower="0.0" upper="0.04" velocity="0.2"/>
     <mimic joint="panda_finger_joint1"/>
   </joint>
+
+  <joint name="ee_fixed_joint" type="fixed">
+    <parent link="panda_hand"/>
+    <child link="ee_link"/>
+    <!--origin rpy="0.0 0.0 1.570796325" xyz="0.0 0.0922 0.0"/-->
+    <!--origin rpy="-1.57 0.0 1.57" xyz="0.0 0. 0.0"/-->
+    <origin rpy="0.0 0.0 -1.57" xyz="0.0 0. 0.1"/>
+  </joint>
+  <link name="ee_link">
+    <collision>
+      <geometry>
+        <box size="0.01 0.01 0.01"/>
+      </geometry>
+      <origin rpy="0 0 0" xyz="0.0 0 0"/>
+    </collision>
+  </link>
+
 </robot>
