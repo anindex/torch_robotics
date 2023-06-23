@@ -78,7 +78,7 @@ class EnvGridCircles2D(EnvBase):
             reg=0.01,  # entropic regularization lambda
             num_probe=5,
             numInnerItermax=5,
-            stopThr=8e-2,
+            stopThr=1.2e-2,
             innerStopThr=1e-5,
             verbose=False,
         )
@@ -86,8 +86,8 @@ class EnvGridCircles2D(EnvBase):
         params = dict(
             opt_iters=100,
             solver_params=solver_params,
-            step_radius=0.38,
-            probe_radius=0.5,  # probe radius > step radius
+            step_radius=0.038,
+            probe_radius=0.05,  # probe radius > step radius
             polytope='cube',  # 'random' | 'simplex' | 'orthoplex' | 'cube'; 'random' option is added for ablations, not recommended for general use
             eps_annealing=0.02,
             num_bpoint=50,  # number of random points on the $4$-sphere, when polytope == 'random' (i.e. no polytope structure)
@@ -95,11 +95,11 @@ class EnvGridCircles2D(EnvBase):
             pos_limits=[-1, 1],
             vel_limits=[-1, 1],
             w_smooth=1e-7,
-            w_coll=2.4e-3,
-            sigma_gp=0.13,
+            w_coll=1.7e-3,
+            sigma_gp=0.08,
             sigma_start_init=1e-4,
             sigma_goal_init=1e-4,
-            sigma_gp_init=1.6,
+            sigma_gp_init=3.
         )
         return params
 
