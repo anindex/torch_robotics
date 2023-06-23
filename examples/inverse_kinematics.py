@@ -6,8 +6,7 @@ import torch
 from torch_robotics.torch_kinematics_tree.geometrics.frame import Frame
 from torch_robotics.torch_kinematics_tree.geometrics.skeleton import get_skeleton_from_model
 from torch_robotics.torch_kinematics_tree.geometrics.spatial_vector import y_rot, z_rot
-from torch_robotics.torch_kinematics_tree.geometrics.utils import link_pos_from_link_tensor, link_quat_from_link_tensor, \
-    link_rot_from_link_tensor
+from torch_robotics.torch_kinematics_tree.geometrics.utils import link_pos_from_link_tensor, link_rot_from_link_tensor
 from torch_robotics.torch_kinematics_tree.models.robots import DifferentiableFrankaPanda
 from torch_robotics.torch_utils.seed import fix_random_seed
 from torch_robotics.torch_utils.torch_timer import Timer
@@ -39,7 +38,6 @@ def plot_coordinate_frame(ax, frame, arrow_length=0.1, alpha=1.0, linewidth=1.0)
               length=arrow_length, normalize=True, color='blue', alpha=alpha, linewidth=linewidth)
 
 
-
 if __name__ == "__main__":
     seed = 0
     fix_random_seed(seed)
@@ -60,15 +58,13 @@ if __name__ == "__main__":
 
     with Timer() as t:
         q_ik, idx_valid = diff_panda.inverse_kinematics(
-            H_target, link_name='ee_link', batch_size=batch_size, max_iters=500, lr=1e-1, se3_eps=5e-2,
+            H_target, link_name='ee_link', batch_size=batch_size, max_iters=500, lr=2e-1, se3_eps=5e-2,
             eps_joint_lim=torch.pi/64,
             # print_freq=-1,
             debug=False
         )
     print(f"\nIK time: {t.elapsed:.3f} sec")
 
-    # print(q_ik)
-    # print(q_ik.shape)
     print(f'idx_valid: {idx_valid.nelement()}/{batch_size}')
 
     ############################################################################################################

@@ -315,6 +315,7 @@ class DifferentiableTree(torch.nn.Module):
             max_iters=1000, lr=1e-2,
             se3_eps=1e-1,
             q0=None,
+            q0_noise=torch.pi/8,
             eps_joint_lim=torch.pi/100,
             print_freq=50,
             debug=False
@@ -343,6 +344,9 @@ class DifferentiableTree(torch.nn.Module):
             q0 = torch.rand(batch_size, self._n_dofs, device=self._device)
             q0 = lower + q0 * (upper - lower)
         else:
+            # add some noise to get diverse solutions
+            q0 += torch.randn(batch_size, self._n_dofs, device=self._device) * q0_noise
+            q0 = torch.clamp(q0, lower, upper)
             assert q0.shape[0] == batch_size
             assert q0.shape[1] == self._n_dofs
 
