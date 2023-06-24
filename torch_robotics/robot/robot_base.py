@@ -14,7 +14,7 @@ class RobotBase(ABC):
             q_limits=None,
             self_collision_margin=0.001,
             num_interpolate=4,
-            link_interpolate_range=[2, 7],
+            link_interpolate_range=[0, 7],
             tensor_args=None,
             **kwargs
     ):
@@ -35,7 +35,7 @@ class RobotBase(ABC):
         # Collision field
         self.self_collision_margin = self_collision_margin
         self.num_interpolate = num_interpolate
-        self.link_interpolate_range = link_interpolate_range
+        self.link_interpolate_range = link_interpolate_range  # which links to interpolate for collision checking
 
     def random_q(self, n_samples=10):
         # Random position in configuration space

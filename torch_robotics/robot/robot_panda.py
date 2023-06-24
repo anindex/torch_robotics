@@ -35,7 +35,7 @@ class RobotPanda(RobotBase):
             name='RobotPanda',
             q_limits=q_limits,
             num_interpolate=4,
-            link_interpolate_range=[2, 7],
+            link_interpolate_range=[0, len(self.link_names_for_collision_checking)-1],  # which links to interpolate for collision checking
             tensor_args=tensor_args,
             **kwargs
         )
