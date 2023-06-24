@@ -124,6 +124,11 @@ class DifferentiableTree(torch.nn.Module):
             parent_body_idx = self._name_to_idx_map[parent_body_name]
             body.set_parent(self._bodies[parent_body_idx])
             self._bodies[parent_body_idx].add_child(body)
+    
+    def reset(self):
+        '''Reset the robot FK after stateful update'''
+        for body in self._bodies:
+            body.reset()
 
     def update_base_pose(self, pose_vec):
         self._bodies[0].update_pose(pose_vec)
@@ -196,23 +201,6 @@ class DifferentiableTree(torch.nn.Module):
         Returns: translation and rotation of the link frame
 
         """
-        if not state_less:
-            # TODO - fix the state_less=False error
-            # There is currently an error when calling compute_forward_kinematics twice, with and without the
-            # state_less flag, leading to different results, when this is not expected.
-            # The following code should produce the same positions and orientations at the link_name.
-            #
-            # ee_pos, ee_rot = self.compute_forward_kinematics(q, qd, link_name)
-            #
-            # link_tensor_v1 = self.compute_forward_kinematics(q, qd, link_name, state_less=True)
-            # ee_pos_v1 = link_pos_from_link_tensor(link_tensor_v1).squeeze()
-            # ee_rot_v1 = link_quat_from_link_tensor(link_tensor_v1).squeeze()
-            #
-            # print('\n----- TEST ')
-            # print(f'torch.allclose(ee_pos_v1, ee_pos): {torch.allclose(ee_pos_v1, ee_pos)}')
-            # print(f'torch.allclose(ee_rot_v1, ee_rot): {torch.allclose(ee_rot_v1, ee_rot)}')
-            # print()
-            raise NotImplementedError
 
         assert q.ndim == 2
 
