@@ -3,9 +3,11 @@ import numpy as np
 import torch
 
 from torch_robotics.robot.robot_base import RobotBase
+from torch_robotics.torch_kinematics_tree.geometrics.frame import Frame
 from torch_robotics.torch_kinematics_tree.geometrics.skeleton import get_skeleton_from_model
-from torch_robotics.torch_kinematics_tree.geometrics.utils import link_pos_from_link_tensor
+from torch_robotics.torch_kinematics_tree.geometrics.utils import link_pos_from_link_tensor, link_rot_from_link_tensor
 from torch_robotics.torch_kinematics_tree.models.robots import DifferentiableFrankaPanda
+from torch_robotics.visualizers.plot_utils import plot_coordinate_frame
 
 
 class RobotPanda(RobotBase):
@@ -30,6 +32,7 @@ class RobotPanda(RobotBase):
         q_limits = torch.tensor(np.array([self.jl_lower, self.jl_upper]), **tensor_args)
 
         super().__init__(
+            name='RobotPanda',
             q_limits=q_limits,
             num_interpolate=4,
             link_interpolate_range=[2, 7],
@@ -61,19 +64,32 @@ class RobotPanda(RobotBase):
         else:
             return link_tensor
 
-    def render(self, ax, q=None, color='blue', **kwargs):
+    def render(self, ax, q=None, color='blue', arrow_length=0.15, arrow_alpha=1.0, arrow_linewidth=2.0, **kwargs):
+        # draw skeleton
         skeleton = get_skeleton_from_model(self.diff_panda, q, self.diff_panda.get_link_names())
         skeleton.draw_skeleton(ax=ax, color=color)
+
+        # draw EE frame
+        H_EE = self.diff_panda.compute_forward_kinematics_all_links(
+            q.unsqueeze(0), link_list=[self.link_name_ee]
+        )
+        frame_EE = Frame(
+            rot=link_rot_from_link_tensor(H_EE).squeeze(),
+            trans=link_pos_from_link_tensor(H_EE).squeeze(),
+            device=self.tensor_args['device']
+        )
+        plot_coordinate_frame(
+            ax, frame_EE, tensor_args=self.tensor_args,
+            arrow_length=arrow_length, arrow_alpha=arrow_alpha, arrow_linewidth=arrow_linewidth
+        )
 
     def render_trajectories(self, ax, trajs=None, start_state=None, goal_state=None, colors=['gray'], **kwargs):
         if trajs is not None:
             for traj, color in zip(trajs, colors):
                 for t in range(traj.shape[0] - 1):
-                    skeleton = get_skeleton_from_model(self.diff_panda, traj[t], self.diff_panda.get_link_names())
-                    skeleton.draw_skeleton(ax=ax, color=color)
+                    q = traj[t]
+                    self.render(ax, q, color, **kwargs, arrow_length=0.1, arrow_alpha=0.5, arrow_linewidth=1.)
             if start_state is not None:
-                start_skeleton = get_skeleton_from_model(self.diff_panda, start_state, self.diff_panda.get_link_names())
-                start_skeleton.draw_skeleton(ax=ax, color='blue')
+                self.render(ax, start_state, color='green')
             if goal_state is not None:
-                start_skeleton = get_skeleton_from_model(self.diff_panda, goal_state, self.diff_panda.get_link_names())
-                start_skeleton.draw_skeleton(ax=ax, color='red')
+                self.render(ax, start_state, color='purple')

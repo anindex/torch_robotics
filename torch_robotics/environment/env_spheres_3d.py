@@ -48,7 +48,7 @@ class EnvSpheres3D(EnvBase):
             **kwargs
         )
 
-    def get_gpmp_params(self):
+    def get_gpmp_params(self, robot_name='NA'):
         params = dict(
             opt_iters=50,
             num_samples=64,
@@ -75,7 +75,7 @@ class EnvSpheres3D(EnvBase):
         )
         return params
 
-    def get_rrt_connect_params(self):
+    def get_rrt_connect_params(self, robot_name='NA'):
         params = dict(
             n_iters=10000,
             step_size=torch.pi/80,

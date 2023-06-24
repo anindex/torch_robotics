@@ -10,6 +10,7 @@ class RobotBase(ABC):
 
     def __init__(
             self,
+            name='RobotBase',
             q_limits=None,
             self_collision_margin=0.001,
             num_interpolate=4,
@@ -17,6 +18,7 @@ class RobotBase(ABC):
             tensor_args=None,
             **kwargs
     ):
+        self.name = name
         self.tensor_args = tensor_args
 
         ################################################################################################

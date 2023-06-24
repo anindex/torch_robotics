@@ -12,37 +12,13 @@ from torch_robotics.torch_utils.seed import fix_random_seed
 from torch_robotics.torch_utils.torch_timer import Timer
 from torch_robotics.torch_utils.torch_utils import to_numpy
 from torch_robotics.visualizers.planning_visualizer import create_fig_and_axes
-
-
-def plot_coordinate_frame(ax, frame, arrow_length=0.1, alpha=1.0, linewidth=1.0):
-    target_pos_np = to_numpy(frame.translation).squeeze()
-    frame_target_no_trans = copy(frame)
-    frame_target_no_trans.set_translation(torch.zeros_like(pos_target))
-    x_basis = torch.tensor([1, 0, 0], **tensor_args)
-    y_basis = torch.tensor([0, 1, 0], **tensor_args)
-    z_basis = torch.tensor([0, 0, 1], **tensor_args)
-    x_axis_target = to_numpy(frame_target_no_trans.transform_point(x_basis).squeeze())
-    y_axis_target = to_numpy(frame_target_no_trans.transform_point(y_basis).squeeze())
-    z_axis_target = to_numpy(frame_target_no_trans.transform_point(z_basis).squeeze())
-    # x-axis
-    ax.quiver(target_pos_np[0], target_pos_np[1], target_pos_np[2],
-              x_axis_target[0], x_axis_target[1], x_axis_target[2],
-              length=arrow_length, normalize=True, color='red', alpha=alpha, linewidth=linewidth)
-    # y-axis
-    ax.quiver(target_pos_np[0], target_pos_np[1], target_pos_np[2],
-              y_axis_target[0], y_axis_target[1], y_axis_target[2],
-              length=arrow_length, normalize=True, color='green', alpha=alpha, linewidth=linewidth)
-    # z-axis
-    ax.quiver(target_pos_np[0], target_pos_np[1], target_pos_np[2],
-              z_axis_target[0], z_axis_target[1], z_axis_target[2],
-              length=arrow_length, normalize=True, color='blue', alpha=alpha, linewidth=linewidth)
-
+from torch_robotics.visualizers.plot_utils import plot_coordinate_frame
 
 if __name__ == "__main__":
     seed = 0
     fix_random_seed(seed)
 
-    batch_size = 50
+    batch_size = 10
     device = 'cuda'
     # device = 'cpu'
     tensor_args = dict(device=device, dtype=torch.float32)
@@ -81,12 +57,12 @@ if __name__ == "__main__":
     # Origin frame
     frame_origin = Frame(device=device)
     ax.plot(0, 0, 0, color='b', marker='D', markersize=10, zorder=100)
-    plot_coordinate_frame(ax, frame_origin, arrow_length=0.1, linewidth=3.)
+    plot_coordinate_frame(ax, frame_origin, arrow_length=0.1, arrow_linewidth=3., tensor_args=tensor_args)
 
     # Target frame
     target_pos_np = to_numpy(pos_target)
     ax.plot(target_pos_np[0], target_pos_np[1], target_pos_np[2], 'r*', markersize=20, zorder=100)
-    plot_coordinate_frame(ax, frame_target, arrow_length=0.15, linewidth=3.)
+    plot_coordinate_frame(ax, frame_target, arrow_length=0.15, arrow_linewidth=3., tensor_args=tensor_args)
 
     # Robot
     for q in q_ik[idx_valid]:
@@ -100,6 +76,6 @@ if __name__ == "__main__":
             trans=link_pos_from_link_tensor(H_EE).squeeze(),
             device=device
         )
-        plot_coordinate_frame(ax, frame_EE, arrow_length=0.1, alpha=0.5)
+        plot_coordinate_frame(ax, frame_EE, arrow_length=0.1, arrow_alpha=0.5, tensor_args=tensor_args)
 
     plt.show()

@@ -14,6 +14,7 @@ class RobotPlanar2Link(RobotBase):
         q_limits = torch.tensor([[-torch.pi, -torch.pi + 0.01], [torch.pi, torch.pi - 0.01]], **tensor_args)
 
         super().__init__(
+            name='RobotPlanar2Link',
             q_limits=q_limits,
             tensor_args=tensor_args,
             **kwargs

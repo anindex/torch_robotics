@@ -64,7 +64,7 @@ class EnvMazeBoxes3D(EnvBase):
             **kwargs
         )
 
-    def get_rrt_connect_params(self):
+    def get_rrt_connect_params(self, robot_name='NA'):
         params = dict(
             n_iters=10000,
             step_size=0.01,
@@ -74,7 +74,7 @@ class EnvMazeBoxes3D(EnvBase):
         )
         return params
 
-    def get_gpmp_params(self):
+    def get_gpmp_params(self, robot_name='NA'):
         params = dict(
             opt_iters=100,
             num_samples=64,

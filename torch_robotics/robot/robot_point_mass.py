@@ -13,7 +13,10 @@ class RobotPointMass(RobotBase):
 
     def __init__(self,
                  **kwargs):
-        super().__init__(**kwargs)
+        super().__init__(
+            name='RobotPointMass',
+            **kwargs
+        )
 
     def fk_map_impl(self, q, pos_only=False):
         # There is no forward kinematics. Assume it's the identity.

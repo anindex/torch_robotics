@@ -215,12 +215,13 @@ class PlanningTask(Task):
             B, H, D = trajs.shape
             trajs_new = trajs
 
+        ###############################################################################################################
         # compute collisions on a finer interpolated trajectory
-        trajs_new = interpolate_traj_via_points(trajs_new, num_intepolation=num_interpolation)
+        trajs_interpolated = interpolate_traj_via_points(trajs_new, num_intepolation=num_interpolation)
         # Set 0 margin for collision checking, which means we allow trajectories to pass very close to objects.
         # While the optimized trajectory via points are not at a 0 margin from the object, the interpolated via points
         # might be. A 0 margin guarantees that we do not discard those trajectories.
-        trajs_waypoints_collisions = self.compute_collision(trajs_new, margin=0.)
+        trajs_waypoints_collisions = self.compute_collision(trajs_interpolated, margin=0.)
 
         if trajs.ndim == 4:
             trajs_waypoints_collisions = einops.rearrange(trajs_waypoints_collisions, '(N B) H -> N B H', N=N, B=B)
@@ -228,6 +229,25 @@ class PlanningTask(Task):
         trajs_free_idxs = torch.argwhere(torch.logical_not(trajs_waypoints_collisions).all(dim=-1))
         trajs_coll_idxs = torch.argwhere(trajs_waypoints_collisions.any(dim=-1))
 
+        ###############################################################################################################
+        # Check joint limits of trajectories that are not in collision
+        if trajs.ndim == 4:
+            trajs_free_tmp = trajs[trajs_free_idxs[:, 0], trajs_free_idxs[:, 1], ...]
+        else:
+            trajs_free_tmp = trajs[trajs_free_idxs.squeeze(), ...]
+
+        trajs_free_tmp_position = self.robot.get_position(trajs_free_tmp)
+        trajs_free_inside_joint_limits_idxs = torch.logical_and(
+            trajs_free_tmp_position >= self.robot.q_min,
+            trajs_free_tmp_position <= self.robot.q_max).all(dim=-1).all(dim=-1)
+        trajs_free_inside_joint_limits_idxs = torch.atleast_1d(trajs_free_inside_joint_limits_idxs)
+        trajs_free_idxs = trajs_free_idxs[torch.argwhere(trajs_free_inside_joint_limits_idxs).squeeze()]
+        trajs_coll_idxs = torch.cat((
+            trajs_coll_idxs, trajs_free_idxs[torch.argwhere(torch.logical_not(trajs_free_inside_joint_limits_idxs)).squeeze()]
+        ))
+
+        ###############################################################################################################
+        # Return trajectories free and in collision
         if trajs.ndim == 4:
             trajs_free = trajs[trajs_free_idxs[:, 0], trajs_free_idxs[:, 1], ...]
             if trajs_free.ndim == 2:

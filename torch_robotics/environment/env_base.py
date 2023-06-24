@@ -261,13 +261,13 @@ class EnvBase(ABC):
         ax.set_xlabel('x')
         ax.set_ylabel('y')
 
-    def get_rrt_connect_params(self):
+    def get_rrt_connect_params(self, robot_name='NA'):
         raise NotImplementedError
 
-    def get_sgpmp_params(self):
+    def get_sgpmp_params(self, robot_name='NA'):
         raise NotImplementedError
 
-    def get_gpmp_params(self):
+    def get_gpmp_params(self, robot_name='NA'):
         raise NotImplementedError
 
 
