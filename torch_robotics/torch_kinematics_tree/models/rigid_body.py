@@ -120,8 +120,13 @@ class DifferentiableRigidBody(torch.nn.Module):
         )
         self.update_joint_acc(torch.zeros([1, 1], device=self._device))
 
-        self.pose = Frame(device=self._device)
+        self.reset()
 
+    def reset(self):
+        '''
+        Reset pose, velocity and acceleration to init state.
+        '''
+        self.pose = Frame(device=self._device)
         self.vel = MotionVec(device=self._device)
         self.acc = MotionVec(device=self._device)
 

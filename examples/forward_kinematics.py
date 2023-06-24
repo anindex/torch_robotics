@@ -35,7 +35,6 @@ if __name__ == "__main__":
         ee_pos_v2 = link_pos_from_link_tensor(link_tensor_v2).squeeze()
         ee_rot_v2 = link_quat_from_link_tensor(link_tensor_v2).squeeze()
 
-        """
         link_tensor_v5 = diff_panda.compute_forward_kinematics(q, torch.zeros_like(q), link_name='ee_link', state_less=True)
         ee_pos_v5 = link_pos_from_link_tensor(link_tensor_v5).squeeze()
         ee_rot_v5 = link_quat_from_link_tensor(link_tensor_v5).squeeze()
@@ -52,25 +51,27 @@ if __name__ == "__main__":
         ee_rot_v4 = ee_rot_v4.squeeze()
 
         # state_less after NOT state_less
+        diff_panda.reset()
         link_tensor_v6 = diff_panda.compute_forward_kinematics(q, torch.zeros_like(q), link_name='ee_link', state_less=True)
         ee_pos_v6 = link_pos_from_link_tensor(link_tensor_v6).squeeze()
         ee_rot_v6 = link_quat_from_link_tensor(link_tensor_v6).squeeze()
         ee_pos_v6 = ee_pos_v6.squeeze()
         ee_pos_v6 = ee_pos_v6.squeeze()
-        """
 
         print('\n----- TEST ')
         print(f'torch.allclose(ee_pos_v1, ee_pos_v2): {torch.allclose(ee_pos_v1, ee_pos_v2)}')
-        # print(f'torch.allclose(ee_pos_v2, ee_pos_v3): {torch.allclose(ee_pos_v2, ee_pos_v3)}')
-        # print(f'torch.allclose(ee_pos_v3, ee_pos_v4): {torch.allclose(ee_pos_v3, ee_pos_v4)}')
-        # print(f'torch.allclose(ee_pos_v2, ee_pos_v5): {torch.allclose(ee_pos_v2, ee_pos_v5)}')
-        # print(f'torch.allclose(ee_pos_v5, ee_pos_v6): {torch.allclose(ee_pos_v5, ee_pos_v6)}')
+        print(f'torch.allclose(ee_pos_v1, ee_pos_v3): {torch.allclose(ee_pos_v2, ee_pos_v3)}')  # comparison between state_less and NOT state_less
+        print(f'torch.allclose(ee_pos_v2, ee_pos_v3): {torch.allclose(ee_pos_v2, ee_pos_v3)}')
+        print(f'torch.allclose(ee_pos_v3, ee_pos_v4): {torch.allclose(ee_pos_v3, ee_pos_v4)}')
+        print(f'torch.allclose(ee_pos_v2, ee_pos_v5): {torch.allclose(ee_pos_v2, ee_pos_v5)}')
+        print(f'torch.allclose(ee_pos_v5, ee_pos_v6): {torch.allclose(ee_pos_v5, ee_pos_v6)}')
 
         print(f'torch.allclose(ee_rot_v1, ee_rot_v2): {torch.allclose(ee_rot_v1, ee_rot_v2)}')
-        # print(f'torch.allclose(ee_rot_v2, ee_rot_v3): {torch.allclose(ee_rot_v2, ee_rot_v3)}')
-        # print(f'torch.allclose(ee_rot_v3, ee_rot_v4): {torch.allclose(ee_rot_v3, ee_rot_v4)}')
-        # print(f'torch.allclose(ee_rot_v2, ee_rot_v5): {torch.allclose(ee_rot_v2, ee_rot_v5)}')
-        # print(f'torch.allclose(ee_rot_v5, ee_rot_v6): {torch.allclose(ee_rot_v5, ee_rot_v6)}')
+        print(f'torch.allclose(ee_rot_v1, ee_rot_v3): {torch.allclose(ee_rot_v2, ee_rot_v3)}')  # comparison between state_less and NOT state_less
+        print(f'torch.allclose(ee_rot_v2, ee_rot_v3): {torch.allclose(ee_rot_v2, ee_rot_v3)}')
+        print(f'torch.allclose(ee_rot_v3, ee_rot_v4): {torch.allclose(ee_rot_v3, ee_rot_v4)}')
+        print(f'torch.allclose(ee_rot_v2, ee_rot_v5): {torch.allclose(ee_rot_v2, ee_rot_v5)}')
+        print(f'torch.allclose(ee_rot_v5, ee_rot_v6): {torch.allclose(ee_rot_v5, ee_rot_v6)}')
         print()
 
     print(f"Computational Time {t.elapsed:.4f}")
