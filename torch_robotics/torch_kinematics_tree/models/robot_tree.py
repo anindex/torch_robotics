@@ -276,6 +276,9 @@ class DifferentiableTree(torch.nn.Module):
         Returns: dict link frame
 
         """
+        if q.ndim == 1:
+            q = q.unsqueeze(0)
+
         batch_size = q.shape[0]
 
         if link_list is None:

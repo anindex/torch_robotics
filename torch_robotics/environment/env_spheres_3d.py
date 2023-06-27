@@ -62,7 +62,6 @@ class EnvSpheres3D(EnvBase):
             sigma_gp_init=0.1,
             sigma_start_sample=1e-3,
             sigma_goal_sample=1e-3,
-            sigma_gp_sample=5e-2,
             solver_params={
                 'delta': 1e-2,
                 'trust_region': True,
@@ -82,7 +81,7 @@ class EnvSpheres3D(EnvBase):
             n_radius=torch.pi/4,
             n_pre_samples=50000,
 
-            max_time=15
+            max_time=30
         )
         return params
 

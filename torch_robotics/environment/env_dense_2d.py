@@ -140,7 +140,6 @@ class EnvDense2D(EnvBase):
             sigma_gp_init=0.2,
             sigma_start_sample=1e-4,
             sigma_goal_sample=1e-4,
-            sigma_gp_sample=0.2,
             solver_params={
                 'delta': 1e-2,
                 'trust_region': True,

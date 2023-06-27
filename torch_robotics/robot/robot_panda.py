@@ -5,7 +5,8 @@ import torch
 from torch_robotics.robot.robot_base import RobotBase
 from torch_robotics.torch_kinematics_tree.geometrics.frame import Frame
 from torch_robotics.torch_kinematics_tree.geometrics.skeleton import get_skeleton_from_model
-from torch_robotics.torch_kinematics_tree.geometrics.utils import link_pos_from_link_tensor, link_rot_from_link_tensor
+from torch_robotics.torch_kinematics_tree.geometrics.utils import link_pos_from_link_tensor, link_rot_from_link_tensor, \
+    link_quat_from_link_tensor
 from torch_robotics.torch_kinematics_tree.models.robots import DifferentiableFrankaPanda
 from torch_robotics.visualizers.plot_utils import plot_coordinate_frame
 
@@ -63,6 +64,20 @@ class RobotPanda(RobotBase):
             return link_pos
         else:
             return link_tensor
+
+    def get_EE_pose(self, q):
+        return self.diff_panda.compute_forward_kinematics_all_links(q, link_list=[self.link_name_ee])
+
+    def get_EE_position(self, q):
+        ee_pose = self.get_EE_pose(q)
+        return link_pos_from_link_tensor(ee_pose)
+
+    def get_EE_orientation(self, q, rotation_matrix=True):
+        ee_pose = self.get_EE_pose(q)
+        if rotation_matrix:
+            return link_rot_from_link_tensor(ee_pose)
+        else:
+            return link_quat_from_link_tensor(ee_pose)
 
     def render(self, ax, q=None, color='blue', arrow_length=0.15, arrow_alpha=1.0, arrow_linewidth=2.0, **kwargs):
         # draw skeleton

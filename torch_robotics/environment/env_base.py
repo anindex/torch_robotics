@@ -212,7 +212,7 @@ class EnvBase(ABC):
         ax.set_ylim(self.limits_np[0][1], self.limits_np[1][1])
         if self.dim == 3:
             ax.set_zlim(self.limits_np[0][2], self.limits_np[1][2])
-            ax.set_title('Binary SDF')
+            ax.set_title('Binary occupancy map')
             ax.set_zlabel('z')
         ax.set_aspect('equal')
 
