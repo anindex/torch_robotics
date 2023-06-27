@@ -1,11 +1,10 @@
 # Adapted from https://github.com/brouberol/contexttimer
-import time
 from time import perf_counter
 
 import torch
 
 
-class Timer(object):
+class TimerCUDA(object):
     """ A timer as a context manager
 
     Wraps around a timer. A custom timer can be passed
@@ -23,26 +22,45 @@ class Timer(object):
                   For convenience, if you only specify this, output defaults to True.
     """
 
-    def __init__(self, timer=perf_counter, factor=1,
+    def __init__(self, timer=perf_counter,
                  output=None, fmt="took {:.3f} seconds", prefix="",
-                 sync_cuda=True
+                 use_cuda_events=False
                  ):
         self.timer = timer
-        self.factor = factor
         self.output = output
         self.fmt = fmt
         self.prefix = prefix
+        self.start_time = None
         self.end = None
-        self.sync_cuda = True if sync_cuda and torch.cuda.is_available() else False
+
+        self.sync_cuda = True if torch.cuda.is_available() else False
+        if use_cuda_events:
+            assert self.sync_cuda, "CUDA must be available when using CUDA events"
+        self.use_cuda_events = use_cuda_events
+        self.factor_cuda_events = 1./1000.  # transform to seconds
+        self.start_event = None
+        self.end_event = None
 
     def __call__(self):
         """ Return the current time """
-        if self.sync_cuda:
+        if self.use_cuda_events:
+            self.end_event.record()
             torch.cuda.synchronize()
-        return self.timer()
+            return self.start_event.elapsed_time(self.end_event) * self.factor_cuda_events
+        else:
+            if self.sync_cuda:
+                torch.cuda.synchronize()
+            return self.timer()
 
     def __enter__(self):
         """ Set the start time """
+        if self.use_cuda_events:
+            self.start_event = torch.cuda.Event(enable_timing=True)
+            self.end_event = torch.cuda.Event(enable_timing=True)
+            self.start_event.record()
+        else:
+            self.start_time = self()
+
         self.start = self()
         return self
 
@@ -78,8 +96,14 @@ class Timer(object):
         """
         if self.end is None:
             # if elapsed is called in the context manager scope
-            return (self() - self.start) * self.factor
+            if self.use_cuda_events:
+                self()
+            else:
+                return self() - self.start
         else:
             # if elapsed is called out of the context manager scope
-            return (self.end - self.start) * self.factor
+            if self.use_cuda_events:
+                return self.end
+            else:
+                return self.end - self.start
 

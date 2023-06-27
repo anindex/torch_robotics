@@ -6,7 +6,7 @@ from torch_robotics.environment.primitives import ObjectField, MultiSphereField
 from torch_robotics.torch_kinematics_tree.geometrics.utils import link_pos_from_link_tensor
 from torch_robotics.torch_kinematics_tree.models.robots import DifferentiableFrankaPanda
 from torch_robotics.torch_planning_objectives.fields.distance_fields import CollisionObjectDistanceField
-from torch_robotics.torch_utils.torch_timer import Timer
+from torch_robotics.torch_utils.torch_timer import TimerCUDA
 from torch_robotics.torch_utils.torch_utils import DEFAULT_TENSOR_ARGS
 
 
@@ -62,7 +62,7 @@ print(f'distances.shape: {distances.shape}')
 def surrogate_compute_distances_objects(q_):
     return compute_distances_objects(q_).sum(0)
 
-with Timer() as t:
+with TimerCUDA() as t:
     q_new = torch.rand(batch_size, diff_panda._n_dofs).to(**tensor_args)
     grad_distance_wrt_q = jacobian(surrogate_compute_distances_objects, q_new).movedim(-2, 0)
     print(grad_distance_wrt_q)

@@ -5,7 +5,7 @@ from torch_robotics.torch_kinematics_tree.geometrics.utils import link_pos_from_
 from torch_robotics.torch_kinematics_tree.models.robots import DifferentiableFrankaPanda, DifferentiableUR10, \
     DifferentiableTiagoDualHoloMove, DifferentiableShadowHand, DifferentiableAllegroHand
 from torch_robotics.torch_utils.seed import fix_random_seed
-from torch_robotics.torch_utils.torch_timer import Timer
+from torch_robotics.torch_utils.torch_timer import TimerCUDA
 
 
 if __name__ == "__main__":
@@ -21,7 +21,7 @@ if __name__ == "__main__":
     diff_panda.print_link_names()
     print(diff_panda.get_joint_limits())
     print(diff_panda._n_dofs)
-    with Timer() as t:
+    with TimerCUDA() as t:
         q = torch.rand(batch_size, diff_panda._n_dofs).to(device).requires_grad_(True)
 
         # state_less
@@ -81,7 +81,7 @@ if __name__ == "__main__":
     diff_ur10.print_link_names()
     print(diff_ur10.get_joint_limits())
     print(diff_ur10._n_dofs)
-    with Timer() as t:
+    with TimerCUDA() as t:
         q = torch.rand(batch_size, diff_ur10._n_dofs).to(device).requires_grad_(True)
         data = diff_ur10.compute_forward_kinematics_all_links(q)
         print(data.shape)
@@ -92,7 +92,7 @@ if __name__ == "__main__":
     diff_tiago.print_link_names()
     print(diff_tiago.get_joint_limits())
     print(diff_tiago._n_dofs)
-    with Timer() as t:
+    with TimerCUDA() as t:
         q = torch.rand(batch_size, diff_tiago._n_dofs).to(device).requires_grad_(True)
         data = diff_tiago.compute_forward_kinematics_all_links(q)
         print(data.shape)
@@ -103,7 +103,7 @@ if __name__ == "__main__":
     hand.print_link_names()
     print(hand.get_joint_limits())
     print(hand._n_dofs)
-    with Timer() as t:
+    with TimerCUDA() as t:
         q = torch.rand(batch_size, hand._n_dofs).to(device).requires_grad_(True)
         data = hand.compute_forward_kinematics_all_links(q)
         print(data.shape)
@@ -114,7 +114,7 @@ if __name__ == "__main__":
     hand.print_link_names()
     print(hand.get_joint_limits())
     print(hand._n_dofs)
-    with Timer() as t:
+    with TimerCUDA() as t:
         q = torch.rand(batch_size, hand._n_dofs).to(device).requires_grad_(True)
         data = hand.compute_forward_kinematics_all_links(q)
         print(data.shape)

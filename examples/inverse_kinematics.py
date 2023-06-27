@@ -9,7 +9,7 @@ from torch_robotics.torch_kinematics_tree.geometrics.spatial_vector import y_rot
 from torch_robotics.torch_kinematics_tree.geometrics.utils import link_pos_from_link_tensor, link_rot_from_link_tensor
 from torch_robotics.torch_kinematics_tree.models.robots import DifferentiableFrankaPanda
 from torch_robotics.torch_utils.seed import fix_random_seed
-from torch_robotics.torch_utils.torch_timer import Timer
+from torch_robotics.torch_utils.torch_timer import TimerCUDA
 from torch_robotics.torch_utils.torch_utils import to_numpy
 from torch_robotics.visualizers.planning_visualizer import create_fig_and_axes
 from torch_robotics.visualizers.plot_utils import plot_coordinate_frame
@@ -32,7 +32,7 @@ if __name__ == "__main__":
     # Panda Kinematics
     diff_panda = DifferentiableFrankaPanda(gripper=False, device=device)
 
-    with Timer() as t:
+    with TimerCUDA() as t:
         q_ik, idx_valid = diff_panda.inverse_kinematics(
             H_target, link_name='ee_link', batch_size=batch_size, max_iters=500, lr=2e-1, se3_eps=5e-2,
             eps_joint_lim=torch.pi/64,

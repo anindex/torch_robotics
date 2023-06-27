@@ -2,7 +2,7 @@ import torch
 
 from torch_robotics.torch_kinematics_tree.geometrics.utils import link_pos_from_link_tensor, link_quat_from_link_tensor
 from torch_robotics.torch_kinematics_tree.models.robots import Differentiable2LinkPlanar, DifferentiableFrankaPanda
-from torch_robotics.torch_utils.torch_timer import Timer
+from torch_robotics.torch_utils.torch_timer import TimerCUDA
 
 if __name__ == "__main__":
 
@@ -18,7 +18,7 @@ if __name__ == "__main__":
 
     print()
     # Compute forward kinematics all task space links
-    with Timer() as t:
+    with TimerCUDA() as t:
         q = torch.rand(batch_size, diff_planar._n_dofs).to(device).requires_grad_(True)
         data_links_fk = diff_planar.compute_forward_kinematics_all_links(q)
         print(f'data_links_fk.shape: {data_links_fk.shape}')
@@ -26,7 +26,7 @@ if __name__ == "__main__":
 
     print()
     # Compute analytical jacobian for all task space links
-    with Timer() as t:
+    with TimerCUDA() as t:
         link_analytical_jac = diff_planar.compute_analytical_jacobian_all_links(q)
         print(f'link_analytical_jac.shape: {link_analytical_jac.shape}')
     print(f"Computational Time {t.elapsed:.4f}")
@@ -48,7 +48,7 @@ if __name__ == "__main__":
 
     print()
     # Compute forward kinematics all task space links
-    with Timer() as t:
+    with TimerCUDA() as t:
         q = torch.rand(batch_size, diff_panda._n_dofs).to(device).requires_grad_(True)
         data_links_fk = diff_panda.compute_forward_kinematics_all_links(q)
         print(f'data_links_fk.shape: {data_links_fk.shape}')
@@ -56,7 +56,7 @@ if __name__ == "__main__":
 
     print()
     # Compute analytical jacobian for all task space links
-    with Timer() as t:
+    with TimerCUDA() as t:
         link_analytical_jac = diff_panda.compute_analytical_jacobian_all_links(q)
         print(f'link_analytical_jac.shape: {link_analytical_jac.shape}')
     print(f"Computational Time {t.elapsed:.4f}")

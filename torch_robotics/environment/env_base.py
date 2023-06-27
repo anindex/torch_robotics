@@ -9,7 +9,7 @@ from torch.autograd.functional import jacobian
 from torch_robotics.environment.grid_map_sdf import GridMapSDF
 from torch_robotics.environment.occupancy_map import OccupancyMap
 from torch_robotics.environment.primitives import ObjectField, MultiSphereField, MultiBoxField
-from torch_robotics.torch_utils.torch_timer import Timer
+from torch_robotics.torch_utils.torch_timer import TimerCUDA
 from torch_robotics.torch_utils.torch_utils import to_numpy, DEFAULT_TENSOR_ARGS
 from torch_robotics.visualizers.planning_visualizer import create_fig_and_axes
 
@@ -57,7 +57,7 @@ class EnvBase(ABC):
         # Precompute the SDF map of fixed objects
         self.grid_map_sdf_obj_fixed = None
         if precompute_sdf_obj_fixed:
-            with Timer() as t:
+            with TimerCUDA() as t:
                 # Compute SDF grid
                 self.grid_map_sdf_obj_fixed = GridMapSDF(
                     self.limits, sdf_cell_size, self.obj_fixed_list, tensor_args=self.tensor_args
