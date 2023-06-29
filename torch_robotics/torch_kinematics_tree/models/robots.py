@@ -1,6 +1,16 @@
+from pathlib import Path
 from typing import Optional, List
+from xml.dom import minidom
+
+import numpy as np
+from urdf_parser_py.urdf import URDF, Joint, Link, Visual, Collision, Box, Pose
+
+from torch_robotics.torch_kinematics_tree.geometrics.quaternion import q_to_euler
 from torch_robotics.torch_kinematics_tree.models.robot_tree import DifferentiableTree
 from torch_robotics.torch_kinematics_tree.utils.files import get_robot_path
+from xml.etree import ElementTree as ET
+
+from torch_robotics.torch_utils.torch_utils import to_numpy
 
 
 class DifferentiableKUKAiiwa(DifferentiableTree):
@@ -12,11 +22,41 @@ class DifferentiableKUKAiiwa(DifferentiableTree):
 
 
 class DifferentiableFrankaPanda(DifferentiableTree):
-    def __init__(self, link_list: Optional[str] = None, gripper=False, device='cpu'):
+    def __init__(self, link_list: Optional[str] = None, gripper=False, device='cpu', grasped_object=None):
         if gripper:
             robot_file = get_robot_path() / 'franka_description' / 'robots' / 'panda_arm_hand.urdf'
         else:
             robot_file = get_robot_path() / 'franka_description' / 'robots' / 'panda_arm_no_gripper.urdf'
+
+        # Modify the urdf to append the grasped object
+        if grasped_object is not None:
+            robot_urdf = URDF.from_xml_file(robot_file)
+            joint = Joint(
+                name='grasped_object_fixed_joint',
+                parent='ee_link',
+                child='grasped_object',
+                joint_type='fixed',
+                origin=Pose(xyz=to_numpy(grasped_object.pos.squeeze()),
+                            rpy=to_numpy(q_to_euler(grasped_object.ori).squeeze())
+                            )
+            )
+            robot_urdf.add_joint(joint)
+
+            geometry = grasped_object.geometry_urdf
+            link = Link(
+                name='grasped_object',
+                visual=Visual(geometry),
+                # inertial=None,
+                collision=Collision(geometry),
+                origin=Pose(xyz=[0., 0., 0.], rpy=[0., 0., 0.])
+            )
+            robot_urdf.add_link(link)
+
+            robot_file = Path(str(robot_file).replace('.urdf', '_grasped_object.urdf'))
+            xmlstr = minidom.parseString(ET.tostring(robot_urdf.to_xml())).toprettyxml(indent="   ")
+            with open(str(robot_file), "w") as f:
+                f.write(xmlstr)
+
         self.model_path = robot_file.as_posix()
         self.name = "differentiable_franka_panda"
         super().__init__(self.model_path, self.name, link_list=link_list, device=device)

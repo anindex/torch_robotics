@@ -208,6 +208,7 @@
     <child link="panda_hand"/>
     <origin rpy="0 0 -0.785398163397" xyz="0 0 0"/>
   </joint>
+
   <link name="panda_hand">
     <visual>
       <geometry>
@@ -225,6 +226,7 @@
       <inertia ixx="0.0023394448" ixy="0.0" ixz="0.0" iyy="0.0005782786" iyz="0" izz="0.0021310296"/>
     </inertial>
   </link>
+
   <joint name="ee_fixed_joint" type="fixed">
     <parent link="panda_hand"/>
     <child link="ee_link"/>

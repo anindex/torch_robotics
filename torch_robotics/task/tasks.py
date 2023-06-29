@@ -230,7 +230,7 @@ class PlanningTask(Task):
         trajs_coll_idxs = torch.argwhere(trajs_waypoints_collisions.any(dim=-1))
 
         ###############################################################################################################
-        # Check joint limits of trajectories that are not in collision
+        # Check that trajectories that are not in collision are inside the joint limits
         if trajs.ndim == 4:
             trajs_free_tmp = trajs[trajs_free_idxs[:, 0], trajs_free_idxs[:, 1], ...]
         else:

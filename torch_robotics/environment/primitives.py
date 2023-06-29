@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from copy import deepcopy
 from math import ceil
+from typing import List
 
 import einops
 import numpy as np
@@ -498,26 +499,27 @@ MultiBoxField = MultiRoundedBoxField
 #         super().__init__(**kwargs)
 
 
-
-
-
 ########################################################################################################################
 class ObjectField(PrimitiveShapeField):
 
-    def __init__(self, primitive_fields, name='object', pos=None, ori=None):
+    def __init__(self, primitive_fields, name='object', pos=None, ori=None, reference_frame='base'):
         """
         Holds an object made of primitives and manages its position and orientation in the environment.
         """
         self.name = name
 
         assert primitive_fields is not None
+        assert isinstance(primitive_fields, List)
         super().__init__(dim=primitive_fields[0].dim, tensor_args=primitive_fields[0].tensor_args)
         self.fields = primitive_fields
 
         # position and orientation
-        assert (pos is None and ori is None) or (pos.ndims == 2 and ori.ndims == 2)
+        assert (pos is None and ori is None) or (pos.nelement() == 3 and ori.nelement() == 4)
         self.pos = torch.zeros(3, **self.tensor_args) if pos is None else pos
         self.ori = torch.tensor([1, 0, 0, 0], **self.tensor_args) if ori is None else ori  # quat - wxyz
+
+        # Reference frame for the position and orientation
+        self.reference_frame = reference_frame
 
         # precomputed sdf and gradients
         # holds the sdf (and its gradient) of this object for all points in the environment workspace
@@ -559,7 +561,11 @@ class ObjectField(PrimitiveShapeField):
 
     def render(self, ax, pos=None, ori=None, color='gray', **kwargs):
         for field in self.fields:
-            field.render(ax, pos=self.pos, ori=self.ori, color=color, **kwargs)
+            if pos is None:
+                pos = self.pos
+            if ori is None:
+                ori = self.ori
+            field.render(ax, pos=pos, ori=ori, color=color, **kwargs)
 
     def add_to_occupancy_map(self, occ_map):
         for field in self.fields:
