@@ -231,7 +231,7 @@ class URDFRobotModel(RobotModel):
                 ).reshape(1, 3)
             else:
                 joint_axis = torch.zeros((1, 3), device=self._device)
-            if joint_type != "fixed":
+            if joint_type != "fixed" and joint.limit is not None:
                 joint_limits = {
                     "effort": joint.limit.effort,
                     "lower": joint.limit.lower,
