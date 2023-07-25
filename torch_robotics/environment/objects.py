@@ -47,7 +47,7 @@ class GraspedObjectPandaBox(GraspedObject):
                           tensor_args=tensor_args)
         ]
 
-        # position and orientation wrt to the robot's end-effector link -> reference_frame='ee_link'
+        # position and orientation wrt to the robot's end-effector link -> for panda reference_frame='ee_link'
         pos = torch.tensor([0., 0., 0.05], **tensor_args)
         ori = torch.tensor([0.7071068, 0.7071068, 0, 0], **tensor_args)
 
@@ -60,6 +60,7 @@ class GraspedObjectPandaBox(GraspedObject):
         self.base_points_for_collision = self.get_base_points_for_collision()
 
     def get_base_points_for_collision(self):
+        # points on vertices and centers of faces
         size = self.fields[0].sizes[0]
         x, y, z = size
         vertices = torch.tensor(
