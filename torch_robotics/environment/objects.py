@@ -12,12 +12,8 @@ class GraspedObject(ObjectField):
     def __init__(self, primitive_fields, **kwargs):
         # pos, ori - position and orientation are specified wrt to the end-effector link
 
-        # Only one primitive
+        # Only one primitive type
         assert len(primitive_fields) == 1
-        assert len(primitive_fields[0].centers) == 1
-
-        # Object centered in origin
-        assert torch.all(primitive_fields[0].centers[0] == 0)
 
         super().__init__(primitive_fields, **kwargs)
 
@@ -41,6 +37,7 @@ class GraspedObject(ObjectField):
 class GraspedObjectPandaBox(GraspedObject):
 
     def __init__(self, tensor_args=None, **kwargs):
+        # One box
         primitive_fields = [
             MultiBoxField(torch.zeros(3, **tensor_args).view(1, -1),
                           torch.tensor([0.05, 0.05, 0.15], **tensor_args).view(1, -1),

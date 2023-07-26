@@ -55,14 +55,15 @@ class RobotBase(ABC):
         return torch.linalg.norm(q1 - q2, dim=-1)
 
     def fk_map(self, q, **kwargs):
-        # q: (..., q_dim)
-        # return: (..., taskspaces, x_dim)
         if q.ndim == 1:
             q = q.unsqueeze(0)  # add batch dimension
         return self.fk_map_impl(q, **kwargs)
 
     @abc.abstractmethod
-    def fk_map_impl(self, q, pos_only=False):
+    def fk_map_impl(self, q, pos_only=False, return_dict=False):
+        # q: (..., q_dim)
+        # return: dict{'link_tensor_pos': (..., taskspaces, x_dim) OR (..., taskspaces, x_dim+1, x_dim+1),
+        #               (optional 'grasped_object_coll_points_pos': (..., number_of_coll_points, x_dim)) }
         raise NotImplementedError
 
     @abc.abstractmethod

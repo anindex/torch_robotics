@@ -186,17 +186,17 @@ class PlanningTask(Task):
             # For distance fields
 
             # forward kinematics
-            x_pos = self.robot.fk_map(q, pos_only=True)  # batch, horizon, taskspaces, x_dim
+            fk_dict = self.robot.fk_map(q, pos_only=True, return_dict=True)  # batch, horizon, taskspaces, x_dim
 
             ########################
             # Self collision
-            cost_collision_self = self.df_collision_self.compute_cost(x_pos, field_type=field_type, **kwargs)
+            cost_collision_self = self.df_collision_self.compute_cost(**fk_dict, field_type=field_type, **kwargs)
 
             # Object collision
-            cost_collision_objects = self.df_collision_objects.compute_cost(x_pos, field_type=field_type, **kwargs)
+            cost_collision_objects = self.df_collision_objects.compute_cost(**fk_dict, field_type=field_type, **kwargs)
 
             # Workspace boundaries
-            cost_collision_border = self.df_collision_ws_boundaries.compute_cost(x_pos, field_type=field_type, **kwargs)
+            cost_collision_border = self.df_collision_ws_boundaries.compute_cost(**fk_dict, field_type=field_type, **kwargs)
 
             if field_type == 'occupancy':
                 collisions = cost_collision_self | cost_collision_objects | cost_collision_border

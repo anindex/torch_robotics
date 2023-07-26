@@ -8,6 +8,7 @@ from torch_robotics.torch_kinematics_tree.geometrics.quaternion import q_convert
 from torch_robotics.torch_kinematics_tree.geometrics.skeleton import get_skeleton_from_model
 from torch_robotics.torch_kinematics_tree.geometrics.utils import link_pos_from_link_tensor, link_rot_from_link_tensor, \
     link_quat_from_link_tensor
+from torch_robotics.torch_kinematics_tree.models.robot_tree import convert_link_dict_to_tensor
 from torch_robotics.torch_kinematics_tree.models.robots import DifferentiableFrankaPanda
 from torch_robotics.torch_utils.torch_utils import to_numpy
 from torch_robotics.visualizers.plot_utils import plot_coordinate_frame
@@ -32,7 +33,7 @@ class RobotPanda(RobotBase):
         self.link_names_for_collision_checking = [
             'panda_link1', 'panda_link3', 'panda_link4', 'panda_link5', 'panda_link7',
             'panda_hand',
-            self.link_name_grasped_object if grasped_object else self.link_name_ee,
+            self.link_name_ee,
         ]
 
         self.diff_panda = DifferentiableFrankaPanda(
@@ -51,7 +52,7 @@ class RobotPanda(RobotBase):
             **kwargs
         )
 
-    def fk_map_impl(self, q, pos_only=False):
+    def fk_map_impl(self, q, pos_only=False, return_dict=False):
         q_orig_shape = q.shape
         if len(q_orig_shape) == 3:
             b, h, d = q_orig_shape
@@ -62,20 +63,33 @@ class RobotPanda(RobotBase):
         else:
             raise NotImplementedError
 
-        link_tensor = self.diff_panda.compute_forward_kinematics_all_links(
-            q, link_list=self.link_names_for_collision_checking
-        )
+        link_pose_dict = self.diff_panda.compute_forward_kinematics_all_links(q, return_dict=True)
+        link_tensor = convert_link_dict_to_tensor(link_pose_dict, self.link_names_for_collision_checking)
 
-        # Transform points of the grasp object with the forward kinematics
+        # Transform collision points of the grasp object with the forward kinematics
+        grasped_object_points_in_robot_base_frame = None
+        if self.grasped_object:
+            grasped_object_points_in_object_frame = self.grasped_object.base_points_for_collision
+            frame_grasped_object = link_pose_dict[self.link_name_grasped_object]
+            # TODO - by default assumes that world frame is the robot base frame
+            grasped_object_points_in_robot_base_frame = frame_grasped_object.transform_point(grasped_object_points_in_object_frame)
 
         if len(q_orig_shape) == 3:
             link_tensor = einops.rearrange(link_tensor, "(b h) t d1 d2 -> b h t d1 d2", b=b, h=h)
 
         if pos_only:
             link_pos = link_pos_from_link_tensor(link_tensor)  # (batch horizon), taskspaces, x_dim
-            return link_pos
+            if return_dict:
+                return {'link_tensor_pos': link_pos,
+                        'grasped_object_coll_points_pos': grasped_object_points_in_robot_base_frame
+                        }
+            else:
+                return link_pos
         else:
-            return link_tensor
+            if return_dict:
+                return {'link_tensor_pos': link_tensor}
+            else:
+                return link_tensor
 
     def get_EE_pose(self, q):
         return self.diff_panda.compute_forward_kinematics_all_links(q, link_list=[self.link_name_ee])
@@ -113,9 +127,9 @@ class RobotPanda(RobotBase):
             ori = q_convert_wxyz(frame_grasped_object.get_quaternion().squeeze())
             self.grasped_object.render(ax, pos=pos, ori=ori, color=color)
 
-            # draw points in object for collision
+            # draw object collision points
             points_in_object_frame = self.grasped_object.base_points_for_collision
-            points_in_robot_base_frame = frame_grasped_object.transform_point(points_in_object_frame)
+            points_in_robot_base_frame = frame_grasped_object.transform_point(points_in_object_frame).squeeze()
             points_in_robot_base_frame_np = to_numpy(points_in_robot_base_frame)
             ax.scatter(
                 points_in_robot_base_frame_np[:, 0],
@@ -127,10 +141,10 @@ class RobotPanda(RobotBase):
     def render_trajectories(self, ax, trajs=None, start_state=None, goal_state=None, colors=['gray'], **kwargs):
         if trajs is not None:
             for traj, color in zip(trajs, colors):
-                for t in range(traj.shape[0] - 1):
+                for t in range(traj.shape[0]):
                     q = traj[t]
                     self.render(ax, q, color, **kwargs, arrow_length=0.1, arrow_alpha=0.5, arrow_linewidth=1.)
             if start_state is not None:
                 self.render(ax, start_state, color='green')
             if goal_state is not None:
-                self.render(ax, start_state, color='purple')
+                self.render(ax, goal_state, color='purple')

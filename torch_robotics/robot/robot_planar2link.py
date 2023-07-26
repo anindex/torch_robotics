@@ -37,7 +37,7 @@ class RobotPlanar2Link(RobotBase):
 
         return pos_end_link1, pos_end_link2
 
-    def fk_map_impl(self, q, pos_only=False):
+    def fk_map_impl(self, q, pos_only=False, return_dict=False):
         if q.ndim == 1:
             q = q.unsqueeze(0)  # add batch dimension
         points_along_links = 25
@@ -49,7 +49,10 @@ class RobotPlanar2Link(RobotBase):
 
         x_pos = torch.cat((positions_link1, positions_link2), dim=-2)
         if pos_only:
-            return x_pos
+            if return_dict:
+                return {'link_tensor_pos': x_pos}
+            else:
+                return x_pos
         else:
             raise NotImplementedError
 

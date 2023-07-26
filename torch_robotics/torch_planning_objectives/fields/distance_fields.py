@@ -101,9 +101,16 @@ class EmbodimentDistanceFieldBase(DistanceField):
         else:
             raise NotImplementedError('field_type {} not implemented'.format(field_type))
 
-    def compute_costs_impl(self, link_pos, **kwargs):
+    def compute_costs_impl(self, link_pos, grasped_object_coll_points_pos=None, **kwargs):
         # position link_pos tensor # batch x num_links x 3
+        # interpolate to approximate link spheres
         link_pos = self.interpolate_links(link_pos)
+
+        # stack collision points from grasped object
+        # these points do not need to be interpolated
+        if grasped_object_coll_points_pos is not None:
+            link_pos = torch.cat((link_pos, grasped_object_coll_points_pos), dim=-2)
+
         embodiment_cost = self.compute_embodiment_cost(link_pos, **kwargs)
         return embodiment_cost
 

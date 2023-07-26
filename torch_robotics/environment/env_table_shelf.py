@@ -102,13 +102,13 @@ class EnvTableShelf(EnvBase):
 
     def get_gpmp_params(self, robot_name='NA'):
         params = dict(
-            opt_iters=100,
+            opt_iters=250,
             num_samples=64,
             sigma_start=1e-3,
             sigma_gp=1e-1,
             sigma_goal_prior=1e-3,
             sigma_coll=1e-4,
-            step_size=1e0,
+            step_size=5e-1,
             sigma_start_init=1e-4,
             sigma_goal_init=1e-4,
             sigma_gp_init=0.1,

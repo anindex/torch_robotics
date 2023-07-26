@@ -18,16 +18,22 @@ class RobotPointMass(RobotBase):
             **kwargs
         )
 
-    def fk_map_impl(self, q, pos_only=False):
+    def fk_map_impl(self, q, pos_only=False, return_dict=False):
         # There is no forward kinematics. Assume it's the identity.
         # Add task space dimension
         if pos_only:
-            return q.unsqueeze(-2)
+            if return_dict:
+                return {'link_tensor_pos': q.unsqueeze(-2)}
+            else:
+                q.unsqueeze(-2)
         else:
             # no rotation
             H = torch.eye(self.q_dim + 1, **self.tensor_args).unsqueeze(0).unsqueeze(-3).repeat(*q.shape[:-1], 1, 1, 1)
             H[..., :self.q_dim, self.q_dim] = q.unsqueeze(-2)
-            return H
+            if return_dict:
+                return {'link_tensor_pos': H}
+            else:
+                return H
 
     def render(self, ax, q=None, color='blue', **kwargs):
         if q is not None:

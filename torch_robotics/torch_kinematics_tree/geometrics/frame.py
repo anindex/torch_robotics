@@ -114,8 +114,7 @@ class Frame(object):
         return q
 
     def transform_point(self, point: torch.Tensor) -> torch.Tensor:
-        new_point = (
-            self._rot @ (point).unsqueeze(-1)).squeeze(-1) + self._trans
+        new_point = ((self._rot @ point.unsqueeze(0).transpose(-1, -2)).transpose(-1, -2)) + self._trans.unsqueeze(-2)
         return new_point
 
     def get_euler(self) -> torch.Tensor:

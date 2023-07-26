@@ -28,7 +28,7 @@ class DifferentiableFrankaPanda(DifferentiableTree):
         else:
             robot_file = get_robot_path() / 'franka_description' / 'robots' / 'panda_arm_no_gripper.urdf'
 
-        # Modify the urdf to append the grasped object
+        # Modify the urdf to append the link of the grasped object
         if grasped_object is not None:
             robot_urdf = URDF.from_xml_file(robot_file)
             joint = Joint(
@@ -42,16 +42,17 @@ class DifferentiableFrankaPanda(DifferentiableTree):
             )
             robot_urdf.add_joint(joint)
 
-            geometry = grasped_object.geometry_urdf
+            geometry_grasped_object = grasped_object.geometry_urdf
             link = Link(
                 name='grasped_object',
-                visual=Visual(geometry),
+                visual=Visual(geometry_grasped_object),
                 # inertial=None,
-                collision=Collision(geometry),
+                collision=Collision(geometry_grasped_object),
                 origin=Pose(xyz=[0., 0., 0.], rpy=[0., 0., 0.])
             )
             robot_urdf.add_link(link)
 
+            # replace the robot file
             robot_file = Path(str(robot_file).replace('.urdf', '_grasped_object.urdf'))
             xmlstr = minidom.parseString(ET.tostring(robot_urdf.to_xml())).toprettyxml(indent="   ")
             with open(str(robot_file), "w") as f:
