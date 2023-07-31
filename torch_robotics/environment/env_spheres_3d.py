@@ -14,26 +14,26 @@ class EnvSpheres3D(EnvBase):
         spheres = MultiSphereField(torch.tensor([
                     [-0.25, 0.25, 0.6],
                     [-0.3, -0.2, 0.4],
-                    [-0.4, 0.1, 0.0],
-                    [0.4, 0.3, 0.],
-                    [0.3, 0.3, 0.5],
-                    [0.35, -0.45, 0.2],
-                    [0.4, -0.35, 0.6],
-                    [0.2, 0.0, 1.0],
-                    [0.0, -0.25, 0.25],
-                    [0.0, 0.4, 0.3],
+                    # [-0.4, 0.1, 0.0],
+                    # [0.4, 0.3, 0.],
+                    # [0.3, 0.3, 0.5],
+                    # [0.35, -0.45, 0.2],
+                    # [0.4, -0.35, 0.6],
+                    # [0.2, 0.0, 1.0],
+                    # [0.0, -0.25, 0.25],
+                    # [0.0, 0.4, 0.3],
                     ]),
                 torch.tensor([
                     0.15,
                     0.15,
-                    0.15,
-                    0.15,
-                    0.15,
-                    0.15,
-                    0.15,
-                    0.15,
-                    0.15,
-                    0.15
+                    # 0.15,
+                    # 0.15,
+                    # 0.15,
+                    # 0.15,
+                    # 0.15,
+                    # 0.15,
+                    # 0.15,
+                    # 0.15
                 ]),
                 tensor_args=tensor_args)
 
@@ -50,13 +50,13 @@ class EnvSpheres3D(EnvBase):
 
     def get_gpmp_params(self, robot_name='NA'):
         params = dict(
-            opt_iters=50,
+            opt_iters=250,
             num_samples=64,
             sigma_start=1e-3,
             sigma_gp=1e-1,
             sigma_goal_prior=1e-3,
             sigma_coll=1e-4,
-            step_size=5e-1,
+            step_size=1e0,
             sigma_start_init=1e-4,
             sigma_goal_init=1e-4,
             sigma_gp_init=0.1,

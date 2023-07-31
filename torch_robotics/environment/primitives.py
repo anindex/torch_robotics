@@ -90,7 +90,7 @@ class MultiSphereField(PrimitiveShapeField):
         self.radii = to_torch(radii, **self.tensor_args)
 
     def __repr__(self):
-        return f"Sphere(centers={self.centers}, radii={self.radii})"
+        return f"MultiSphereField(centers={self.centers}, radii={self.radii})"
 
     def compute_signed_distance_impl(self, x):
         distance_to_centers = torch.norm(x.unsqueeze(-2) - self.centers.unsqueeze(0), dim=-1)
@@ -207,7 +207,7 @@ class MultiBoxField(PrimitiveShapeField):
         self.half_sizes = self.sizes / 2
 
     def __repr__(self):
-        return f"Box(centers={self.centers}, sizes={self.sizes})"
+        return f"MultiBoxField(centers={self.centers}, sizes={self.sizes})"
 
     def compute_signed_distance_impl(self, x):
         distance_to_centers = torch.abs(x.unsqueeze(-2) - self.centers.unsqueeze(0))
@@ -526,7 +526,7 @@ class ObjectField(PrimitiveShapeField):
         self.grid_map_sdf = None
 
     def __repr__(self):
-        return f"Scene(fields={self.fields})"
+        return f"ObjectField(fields={self.fields})"
 
     def set_position_orientation(self, pos=None, ori=None):
         if pos is not None:
