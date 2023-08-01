@@ -55,6 +55,18 @@ class DistanceField(ABC):
         pass
 
 
+def interpolate_links(link_pos, num_interpolate, link_interpolate_range):
+    if num_interpolate > 0:
+        link_dim = link_pos.shape[:-1]
+        alpha = torch.linspace(0, 1, num_interpolate + 2).type_as(link_pos)[1:num_interpolate + 1]
+        alpha = alpha.view(tuple([1] * len(link_dim) + [-1, 1]))  # 1 x 1 x 1 x ... x num_interpolate x 1
+        X = link_pos[..., link_interpolate_range[0]:link_interpolate_range[1] + 1, :].unsqueeze(-2)  # batch_dim x num_interp_link x 1 x 3
+        X_diff = torch.diff(X, dim=-3)  # batch_dim x (num_interp_link - 1) x 1 x 3
+        X_interp = X[..., :-1, :, :] + X_diff * alpha  # batch_dim x (num_interp_link - 1) x num_interpolate x 3
+        link_pos = torch.cat([link_pos, X_interp.flatten(-3, -2)], dim=-2)  # batch_dim x (num_link + (num_interp_link - 1) * num_interpolate) x 3
+    return link_pos
+
+
 class EmbodimentDistanceFieldBase(DistanceField):
 
     def __init__(self,
@@ -68,17 +80,6 @@ class EmbodimentDistanceFieldBase(DistanceField):
         self.margin = margin
         self.field_type = field_type
         self.clamp_sdf = clamp_sdf
-
-    def interpolate_links(self, link_pos):
-        if self.num_interpolate > 0:
-            link_dim = link_pos.shape[:-1]
-            alpha = torch.linspace(0, 1, self.num_interpolate + 2).type_as(link_pos)[1:self.num_interpolate + 1]
-            alpha = alpha.view(tuple([1] * len(link_dim) + [-1, 1]))  # 1 x 1 x 1 x ... x num_interpolate x 1
-            X = link_pos[..., self.link_interpolate_range[0]:self.link_interpolate_range[1] + 1, :].unsqueeze(-2)  # batch_dim x num_interp_link x 1 x 3
-            X_diff = torch.diff(X, dim=-3)  # batch_dim x (num_interp_link - 1) x 1 x 3
-            X_interp = X[..., :-1, :, :] + X_diff * alpha  # batch_dim x (num_interp_link - 1) x num_interpolate x 3
-            link_pos = torch.cat([link_pos, X_interp.flatten(-3, -2)], dim=-2)  # batch_dim x (num_link + (num_interp_link - 1) * num_interpolate) x 3
-        return link_pos
 
     def compute_embodiment_cost(self, link_pos, field_type=None, **kwargs):  # position tensor
         margin = kwargs.get('margin', self.margin)
@@ -104,7 +105,7 @@ class EmbodimentDistanceFieldBase(DistanceField):
     def compute_costs_impl(self, link_pos, grasped_object_coll_points_pos=None, **kwargs):
         # position link_pos tensor # batch x num_links x 3
         # interpolate to approximate link spheres
-        link_pos = self.interpolate_links(link_pos)
+        link_pos = interpolate_links(link_pos, self.num_interpolate, self.link_interpolate_range)
 
         # stack collision points from grasped object
         # these points do not need to be interpolated
@@ -115,7 +116,7 @@ class EmbodimentDistanceFieldBase(DistanceField):
         return embodiment_cost
 
     def compute_distance(self, link_pos, **kwargs):
-        link_pos = self.interpolate_links(link_pos)
+        link_pos = interpolate_links(link_pos, self.num_interpolate, self.link_interpolate_range)
         self_distances = self.compute_embodiment_signed_distances(link_pos, **kwargs).min(-1)[0]  # batch_dim
         return self_distances
 

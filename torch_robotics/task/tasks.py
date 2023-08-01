@@ -241,10 +241,14 @@ class PlanningTask(Task):
             trajs_free_tmp_position >= self.robot.q_min,
             trajs_free_tmp_position <= self.robot.q_max).all(dim=-1).all(dim=-1)
         trajs_free_inside_joint_limits_idxs = torch.atleast_1d(trajs_free_inside_joint_limits_idxs)
-        trajs_free_idxs = trajs_free_idxs[torch.argwhere(trajs_free_inside_joint_limits_idxs).squeeze()]
-        trajs_coll_idxs = torch.cat((
-            trajs_coll_idxs, trajs_free_idxs[torch.argwhere(torch.logical_not(trajs_free_inside_joint_limits_idxs)).squeeze()]
-        ))
+        trajs_free_idxs_try = trajs_free_idxs[torch.argwhere(trajs_free_inside_joint_limits_idxs).squeeze()]
+        if trajs_free_idxs_try.nelement() == 0:
+            trajs_coll_idxs = trajs_free_idxs.clone()
+        else:
+            trajs_coll_idxs = torch.cat((
+                trajs_coll_idxs, trajs_free_idxs_try[torch.argwhere(torch.logical_not(trajs_free_inside_joint_limits_idxs)).squeeze()]
+            ))
+        trajs_free_idxs = trajs_free_idxs_try
 
         ###############################################################################################################
         # Return trajectories free and in collision
