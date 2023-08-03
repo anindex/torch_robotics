@@ -89,7 +89,7 @@ class PandaEnvBase(EnvBase):
         self.df_collision_self_and_obstacles = EmbodimentDistanceField(
             self_margin=self_buffer, obst_margin=obstacle_buffer,
             field_type='occupancy',
-            num_interpolate=4, link_interpolate_range=[2, 7]
+            num_interpolated_points=50,
         )
 
         self.df_collision_border = BorderDistanceField(

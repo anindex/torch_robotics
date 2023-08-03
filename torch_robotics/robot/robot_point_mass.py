@@ -18,7 +18,7 @@ class RobotPointMass(RobotBase):
             **kwargs
         )
 
-    def fk_map_impl(self, q, pos_only=False, return_dict=False):
+    def fk_map_collision_impl(self, q, pos_only=False, return_dict=False):
         # There is no forward kinematics. Assume it's the identity.
         # Add task space dimension
         if pos_only:

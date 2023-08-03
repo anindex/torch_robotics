@@ -12,9 +12,12 @@ class RobotBase(ABC):
             self,
             name='RobotBase',
             q_limits=None,
+            grasped_object=None,
+            margin_for_grasped_object_collision_checking=0.001,
+            link_names_for_object_collision_checking=None,
+            link_margins_for_object_collision_checking=None,
             self_collision_margin=0.001,
-            num_interpolate=4,
-            link_interpolate_range=[0, 7],
+            num_interpolated_points=50,
             tensor_args=None,
             **kwargs
     ):
@@ -32,10 +35,27 @@ class RobotBase(ABC):
         self.q_distribution = torch.distributions.uniform.Uniform(self.q_min, self.q_max)
         self.q_dim = len(self.q_min)
 
+        # Grasped object
+        self.grasped_object = grasped_object
+        self.margin_for_grasped_object_collision_checking = margin_for_grasped_object_collision_checking
+
         # Collision field
+        assert num_interpolated_points >= len(link_names_for_object_collision_checking)
         self.self_collision_margin = self_collision_margin
-        self.num_interpolate = num_interpolate
-        self.link_interpolate_range = link_interpolate_range  # which links to interpolate for collision checking
+        self.num_interpolated_points = num_interpolated_points
+        self.link_names_for_object_collision_checking = link_names_for_object_collision_checking
+        self.n_links_for_object_collision_checking = len(link_names_for_object_collision_checking)
+        self.link_margins_for_object_collision_checking = link_margins_for_object_collision_checking
+        self.link_margins_for_object_collision_checking_tensor = torch.tensor(
+            link_margins_for_object_collision_checking, **self.tensor_args).repeat_interleave(
+            int(num_interpolated_points/len(link_margins_for_object_collision_checking))
+        )
+        # append grasped object margins
+        if self.grasped_object is not None:
+            self.link_margins_for_object_collision_checking_tensor = torch.cat(
+                (self.link_margins_for_object_collision_checking_tensor,
+                 torch.ones(self.grasped_object.n_base_points_for_collision, **self.tensor_args) * self.margin_for_grasped_object_collision_checking)
+            )
 
     def random_q(self, n_samples=10):
         # Random position in configuration space
@@ -54,16 +74,15 @@ class RobotBase(ABC):
     def distance_q(self, q1, q2):
         return torch.linalg.norm(q1 - q2, dim=-1)
 
-    def fk_map(self, q, **kwargs):
+    def fk_map_collision(self, q, **kwargs):
         if q.ndim == 1:
             q = q.unsqueeze(0)  # add batch dimension
-        return self.fk_map_impl(q, **kwargs)
+        return self.fk_map_collision_impl(q, **kwargs)
 
     @abc.abstractmethod
-    def fk_map_impl(self, q, pos_only=False, return_dict=False):
+    def fk_map_collision_impl(self, q, **kwargs):
         # q: (..., q_dim)
-        # return: dict{'link_tensor_pos': (..., taskspaces, x_dim) OR (..., taskspaces, x_dim+1, x_dim+1),
-        #               (optional 'grasped_object_coll_points_pos': (..., number_of_coll_points, x_dim)) }
+        # return: (..., links_collision_positions, 3)
         raise NotImplementedError
 
     @abc.abstractmethod

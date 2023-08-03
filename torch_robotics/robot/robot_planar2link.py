@@ -37,7 +37,7 @@ class RobotPlanar2Link(RobotBase):
 
         return pos_end_link1, pos_end_link2
 
-    def fk_map_impl(self, q, pos_only=False, return_dict=False):
+    def fk_map_collision_impl(self, q, pos_only=False, return_dict=False):
         if q.ndim == 1:
             q = q.unsqueeze(0)  # add batch dimension
         points_along_links = 25

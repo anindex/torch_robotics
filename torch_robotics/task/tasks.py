@@ -25,7 +25,7 @@ class PlanningTask(Task):
             ws_limits=None,
             use_occupancy_map=False,
             cell_size=0.01,
-            obstacle_buffer=0.025,
+            obstacle_cutoff_margin=0.025,
             **kwargs
     ):
         super().__init__(**kwargs)
@@ -42,29 +42,31 @@ class PlanningTask(Task):
 
         ################################################################################################
         # Collision fields
-        self.obstacle_buffer = obstacle_buffer
         # collision field for self-collision
         self.df_collision_self = CollisionSelfField(
-            num_interpolate=self.robot.num_interpolate,
-            link_interpolate_range=self.robot.link_interpolate_range,
-            margin=self.robot.self_collision_margin,
+            self.robot,
+            num_interpolated_points=self.robot.num_interpolated_points,
+            cutoff_margin=self.robot.self_collision_margin,
             tensor_args=self.tensor_args
         )
 
+        self.obstacle_cutoff_margin = obstacle_cutoff_margin
         # collision field for objects
         self.df_collision_objects = CollisionObjectDistanceField(
+            self.robot,
             df_obj_list_fn=self.env.get_df_obj_list,
-            num_interpolate=self.robot.num_interpolate,
-            link_interpolate_range=self.robot.link_interpolate_range,
-            margin=obstacle_buffer,
+            num_interpolated_points=self.robot.num_interpolated_points,
+            link_margins_for_object_collision_checking_tensor=self.robot.link_margins_for_object_collision_checking_tensor,
+            cutoff_margin=obstacle_cutoff_margin,
             tensor_args=self.tensor_args
         )
 
         # collision field for workspace boundaries
         self.df_collision_ws_boundaries = CollisionWorkspaceBoundariesDistanceField(
-            num_interpolate=self.robot.num_interpolate,
-            link_interpolate_range=self.robot.link_interpolate_range,
-            margin=obstacle_buffer,
+            self.robot,
+            num_interpolated_points=self.robot.num_interpolated_points,
+            link_margins_for_object_collision_checking_tensor=self.robot.link_margins_for_object_collision_checking_tensor,
+            cutoff_margin=obstacle_cutoff_margin,
             ws_bounds_min=self.ws_min,
             ws_bounds_max=self.ws_max,
             tensor_args=self.tensor_args
@@ -156,7 +158,7 @@ class PlanningTask(Task):
             # Task space collisions
             # forward kinematics
             q_try = q[idxs_coll_free[:, 0], idxs_coll_free[:, 1]]  # I, q_dim
-            x_pos = self.robot.fk_map(q_try, pos_only=True)  # I, taskspaces, x_dim
+            x_pos = self.robot.fk_map_collision(q_try, pos_only=True)  # I, taskspaces, x_dim
 
             # workspace boundaries
             # configuration is not valid if any points in the task spaces is out of workspace boundaries
@@ -186,17 +188,17 @@ class PlanningTask(Task):
             # For distance fields
 
             # forward kinematics
-            fk_dict = self.robot.fk_map(q, pos_only=True, return_dict=True)  # batch, horizon, taskspaces, x_dim
+            fk_collision_pos = self.robot.fk_map_collision(q)  # batch, horizon, taskspaces, x_dim
 
             ########################
             # Self collision
-            cost_collision_self = self.df_collision_self.compute_cost(**fk_dict, field_type=field_type, **kwargs)
+            cost_collision_self = self.df_collision_self.compute_cost(fk_collision_pos, field_type=field_type, **kwargs)
 
             # Object collision
-            cost_collision_objects = self.df_collision_objects.compute_cost(**fk_dict, field_type=field_type, **kwargs)
+            cost_collision_objects = self.df_collision_objects.compute_cost(fk_collision_pos, field_type=field_type, **kwargs)
 
             # Workspace boundaries
-            cost_collision_border = self.df_collision_ws_boundaries.compute_cost(**fk_dict, field_type=field_type, **kwargs)
+            cost_collision_border = self.df_collision_ws_boundaries.compute_cost(fk_collision_pos, field_type=field_type, **kwargs)
 
             if field_type == 'occupancy':
                 collisions = cost_collision_self | cost_collision_objects | cost_collision_border
@@ -231,24 +233,27 @@ class PlanningTask(Task):
 
         ###############################################################################################################
         # Check that trajectories that are not in collision are inside the joint limits
-        if trajs.ndim == 4:
-            trajs_free_tmp = trajs[trajs_free_idxs[:, 0], trajs_free_idxs[:, 1], ...]
-        else:
-            trajs_free_tmp = trajs[trajs_free_idxs.squeeze(), ...]
+        if trajs_free_idxs.nelement() == 0:
 
-        trajs_free_tmp_position = self.robot.get_position(trajs_free_tmp)
-        trajs_free_inside_joint_limits_idxs = torch.logical_and(
-            trajs_free_tmp_position >= self.robot.q_min,
-            trajs_free_tmp_position <= self.robot.q_max).all(dim=-1).all(dim=-1)
-        trajs_free_inside_joint_limits_idxs = torch.atleast_1d(trajs_free_inside_joint_limits_idxs)
-        trajs_free_idxs_try = trajs_free_idxs[torch.argwhere(trajs_free_inside_joint_limits_idxs).squeeze()]
-        if trajs_free_idxs_try.nelement() == 0:
-            trajs_coll_idxs = trajs_free_idxs.clone()
         else:
-            trajs_coll_idxs = torch.cat((
-                trajs_coll_idxs, trajs_free_idxs_try[torch.argwhere(torch.logical_not(trajs_free_inside_joint_limits_idxs)).squeeze()]
-            ))
-        trajs_free_idxs = trajs_free_idxs_try
+            if trajs.ndim == 4:
+                trajs_free_tmp = trajs[trajs_free_idxs[:, 0], trajs_free_idxs[:, 1], ...]
+            else:
+                trajs_free_tmp = trajs[trajs_free_idxs.squeeze(), ...]
+
+            trajs_free_tmp_position = self.robot.get_position(trajs_free_tmp)
+            trajs_free_inside_joint_limits_idxs = torch.logical_and(
+                trajs_free_tmp_position >= self.robot.q_min,
+                trajs_free_tmp_position <= self.robot.q_max).all(dim=-1).all(dim=-1)
+            trajs_free_inside_joint_limits_idxs = torch.atleast_1d(trajs_free_inside_joint_limits_idxs)
+            trajs_free_idxs_try = trajs_free_idxs[torch.argwhere(trajs_free_inside_joint_limits_idxs).squeeze()]
+            if trajs_free_idxs_try.nelement() == 0:
+                trajs_coll_idxs = trajs_free_idxs.clone()
+            else:
+                trajs_coll_idxs = torch.cat((
+                    trajs_coll_idxs, trajs_free_idxs_try[torch.argwhere(torch.logical_not(trajs_free_inside_joint_limits_idxs)).squeeze()]
+                ))
+            trajs_free_idxs = trajs_free_idxs_try
 
         ###############################################################################################################
         # Return trajectories free and in collision

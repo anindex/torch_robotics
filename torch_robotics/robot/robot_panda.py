@@ -27,24 +27,24 @@ class RobotPanda(RobotBase):
 
         #############################################
         # Differentiable robot model
-        self.grasped_object = grasped_object
-        self.margin_for_grasped_object_collision_checking = 0.001  # small margin for object placement
+
+        # https://media.cheggcdn.com/media%2Fce1%2Fce100d57-2fdf-4cd7-8f4a-111a156d6339%2Fphp1EL2S4.png
+        # https://www.researchgate.net/profile/Jesse-Haviland/publication/361785335/figure/fig1/AS:1174695604953098@1657080665902/The-Elementary-Transform-Sequence-of-the-7-degree-offreedom-Franka-Emika-Panda.png
+        link_names_for_object_collision_checking = [
+            'panda_link1', 'panda_link3', 'panda_link4', 'panda_link5', 'panda_link7',
+            'panda_hand',
+            # self.link_name_ee,
+        ]
+        # these margins correspond to link_names_for_collision_checking
+        link_margins_for_object_collision_checking = [
+            0.10, 0.10, 0.10, 0.05, 0.05,
+            0.05,
+            # 0.01
+        ]
+        assert len(link_names_for_object_collision_checking) == len(link_margins_for_object_collision_checking)
 
         self.link_name_ee = 'ee_link'
         self.link_name_grasped_object = 'grasped_object'
-
-        self.link_names_for_collision_checking = [
-            'panda_link1', 'panda_link3', 'panda_link4', 'panda_link5', 'panda_link7',
-            'panda_hand',
-            self.link_name_ee,
-        ]
-        # these margins correspond to link_names_for_collision_checking
-        self.link_margins_for_object_collision_checking = [
-            0.05, 0.05, 0.03, 0.03, 0.03,
-            0.01,
-            0.01
-        ]
-        assert len(self.link_names_for_collision_checking) == len(self.link_margins_for_object_collision_checking)
 
         self.diff_panda = DifferentiableFrankaPanda(
             gripper=self.gripper, device=tensor_args['device'], grasped_object=grasped_object
@@ -56,14 +56,17 @@ class RobotPanda(RobotBase):
         super().__init__(
             name='RobotPanda',
             q_limits=q_limits,
-            self_collision_margin=0.01,
-            num_interpolate=4,
-            link_interpolate_range=[0, len(self.link_names_for_collision_checking)-1],  # which links to interpolate for collision checking
+            grasped_object=grasped_object,
+            link_names_for_object_collision_checking=link_names_for_object_collision_checking,
+            link_margins_for_object_collision_checking=link_margins_for_object_collision_checking,
+            margin_for_grasped_object_collision_checking=0.005,  # small margin for object placement
+            self_collision_margin=0.001,
+            num_interpolated_points=30,
             tensor_args=tensor_args,
             **kwargs
         )
 
-    def fk_map_impl(self, q, pos_only=False, return_dict=False):
+    def fk_map_collision_impl(self, q, **kwargs):
         q_orig_shape = q.shape
         if len(q_orig_shape) == 3:
             b, h, d = q_orig_shape
@@ -75,7 +78,7 @@ class RobotPanda(RobotBase):
             raise NotImplementedError
 
         link_pose_dict = self.diff_panda.compute_forward_kinematics_all_links(q, return_dict=True)
-        link_tensor = convert_link_dict_to_tensor(link_pose_dict, self.link_names_for_collision_checking)
+        link_tensor = convert_link_dict_to_tensor(link_pose_dict, self.link_names_for_object_collision_checking)
 
         # Transform collision points of the grasp object with the forward kinematics
         grasped_object_points_in_robot_base_frame = None
@@ -88,19 +91,13 @@ class RobotPanda(RobotBase):
         if len(q_orig_shape) == 3:
             link_tensor = einops.rearrange(link_tensor, "(b h) t d1 d2 -> b h t d1 d2", b=b, h=h)
 
-        if pos_only:
-            link_pos = link_pos_from_link_tensor(link_tensor)  # (batch horizon), taskspaces, x_dim
-            if return_dict:
-                return {'link_tensor_pos': link_pos,
-                        'grasped_object_coll_points_pos': grasped_object_points_in_robot_base_frame
-                        }
-            else:
-                return link_pos
-        else:
-            if return_dict:
-                return {'link_tensor_pos': link_tensor}
-            else:
-                return link_tensor
+        link_pos = link_pos_from_link_tensor(link_tensor)  # (batch horizon), taskspaces, x_dim
+        if grasped_object_points_in_robot_base_frame is not None:
+            if len(q_orig_shape) == 3:
+                grasped_object_points_in_robot_base_frame = einops.rearrange(grasped_object_points_in_robot_base_frame, "(b h) d1 d2 -> b h d1 d2", b=b, h=h)
+            link_pos = torch.cat((link_pos, grasped_object_points_in_robot_base_frame), dim=-2)
+
+        return link_pos
 
     def get_EE_pose(self, q):
         return self.diff_panda.compute_forward_kinematics_all_links(q, link_list=[self.link_name_ee])
@@ -127,9 +124,9 @@ class RobotPanda(RobotBase):
 
         # draw link collision points
         if draw_links_spheres:
-            link_tensor = convert_link_dict_to_tensor(fks_dict, self.link_names_for_collision_checking)
+            link_tensor = convert_link_dict_to_tensor(fks_dict, self.link_names_for_object_collision_checking)
             link_pos = link_pos_from_link_tensor(link_tensor)
-            link_pos = interpolate_links(link_pos, self.num_interpolate, self.link_interpolate_range).squeeze(0)
+            link_pos = interpolate_links(link_pos, self.num_interpolated_points).squeeze(0)
             spheres = MultiSphereField(link_pos, 0.1 * torch.ones((link_pos.shape[0], 1), **self.tensor_args), tensor_args=self.tensor_args)
             spheres.render(ax, color='red', cmap='Reds', **kwargs)
 
