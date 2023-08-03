@@ -16,6 +16,7 @@ from torch_robotics.torch_utils.torch_utils import DEFAULT_TENSOR_ARGS, to_torch
 from torch_robotics.visualizers.planning_visualizer import create_fig_and_axes
 
 
+
 class PrimitiveShapeField(ABC):
     """
     Represents a primitive object in N-D.

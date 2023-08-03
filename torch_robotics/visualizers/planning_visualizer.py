@@ -79,7 +79,7 @@ class PlanningVisualizer:
                 self.robot.render(
                     ax, q=q,
                     color=self.colors['collision'] if self.task.compute_collision(q, margin=0.0) else self.colors['free'],
-                    arrow_length=0.1, arrow_alpha=0.5, arrow_linewidth=1.
+                    arrow_length=0.1, arrow_alpha=0.5, arrow_linewidth=1., **kwargs
                 )
 
             if start_state is not None:

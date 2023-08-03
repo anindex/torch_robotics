@@ -17,7 +17,7 @@ class RobotBase(ABC):
             link_names_for_object_collision_checking=None,
             link_margins_for_object_collision_checking=None,
             self_collision_margin=0.001,
-            num_interpolated_points=50,
+            num_interpolated_points_for_object_collision_checking=50,
             tensor_args=None,
             **kwargs
     ):
@@ -40,16 +40,17 @@ class RobotBase(ABC):
         self.margin_for_grasped_object_collision_checking = margin_for_grasped_object_collision_checking
 
         # Collision field
-        assert num_interpolated_points >= len(link_names_for_object_collision_checking)
+        assert num_interpolated_points_for_object_collision_checking >= len(link_names_for_object_collision_checking)
         self.self_collision_margin = self_collision_margin
-        self.num_interpolated_points = num_interpolated_points
+        self.num_interpolated_points_for_object_collision_checking = num_interpolated_points_for_object_collision_checking
         self.link_names_for_object_collision_checking = link_names_for_object_collision_checking
         self.n_links_for_object_collision_checking = len(link_names_for_object_collision_checking)
         self.link_margins_for_object_collision_checking = link_margins_for_object_collision_checking
-        self.link_margins_for_object_collision_checking_tensor = torch.tensor(
+        self.link_margins_for_object_collision_checking_robot_tensor = torch.tensor(
             link_margins_for_object_collision_checking, **self.tensor_args).repeat_interleave(
-            int(num_interpolated_points/len(link_margins_for_object_collision_checking))
+            int(num_interpolated_points_for_object_collision_checking / len(link_margins_for_object_collision_checking))
         )
+        self.link_margins_for_object_collision_checking_tensor = self.link_margins_for_object_collision_checking_robot_tensor
         # append grasped object margins
         if self.grasped_object is not None:
             self.link_margins_for_object_collision_checking_tensor = torch.cat(

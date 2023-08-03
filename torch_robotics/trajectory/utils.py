@@ -31,13 +31,13 @@ def smoothen_trajectory(traj_pos, traj_len=30, dt=0.02, set_average_velocity=Tru
     return to_torch(pos, **tensor_args), to_torch(vel, **tensor_args)
 
 
-def interpolate_traj_via_points(trajs, num_intepolation=10):
+def interpolate_traj_via_points(trajs, num_interpolation=10):
     # Interpolates a trajectory linearly between waypoints
     H, D = trajs.shape[-2:]
-    if num_intepolation > 0:
+    if num_interpolation > 0:
         assert trajs.ndim > 1
         traj_dim = trajs.shape
-        alpha = torch.linspace(0, 1, num_intepolation + 2).type_as(trajs)[1:num_intepolation + 1]
+        alpha = torch.linspace(0, 1, num_interpolation + 2).type_as(trajs)[1:num_interpolation + 1]
         alpha = alpha.view((1,) * len(traj_dim[:-1]) + (-1, 1))
         interpolated_trajs = trajs[..., 0:traj_dim[-2] - 1, None, :] * alpha + \
                              trajs[..., 1:traj_dim[-2], None, :] * (1 - alpha)

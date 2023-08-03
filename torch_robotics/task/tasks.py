@@ -45,17 +45,16 @@ class PlanningTask(Task):
         # collision field for self-collision
         self.df_collision_self = CollisionSelfField(
             self.robot,
-            num_interpolated_points=self.robot.num_interpolated_points,
+            num_interpolated_points=self.robot.num_interpolated_points_for_object_collision_checking,
             cutoff_margin=self.robot.self_collision_margin,
             tensor_args=self.tensor_args
         )
 
-        self.obstacle_cutoff_margin = obstacle_cutoff_margin
         # collision field for objects
         self.df_collision_objects = CollisionObjectDistanceField(
             self.robot,
             df_obj_list_fn=self.env.get_df_obj_list,
-            num_interpolated_points=self.robot.num_interpolated_points,
+            num_interpolated_points=self.robot.num_interpolated_points_for_object_collision_checking,
             link_margins_for_object_collision_checking_tensor=self.robot.link_margins_for_object_collision_checking_tensor,
             cutoff_margin=obstacle_cutoff_margin,
             tensor_args=self.tensor_args
@@ -64,7 +63,7 @@ class PlanningTask(Task):
         # collision field for workspace boundaries
         self.df_collision_ws_boundaries = CollisionWorkspaceBoundariesDistanceField(
             self.robot,
-            num_interpolated_points=self.robot.num_interpolated_points,
+            num_interpolated_points=self.robot.num_interpolated_points_for_object_collision_checking,
             link_margins_for_object_collision_checking_tensor=self.robot.link_margins_for_object_collision_checking_tensor,
             cutoff_margin=obstacle_cutoff_margin,
             ws_bounds_min=self.ws_min,
@@ -219,7 +218,7 @@ class PlanningTask(Task):
 
         ###############################################################################################################
         # compute collisions on a finer interpolated trajectory
-        trajs_interpolated = interpolate_traj_via_points(trajs_new, num_intepolation=num_interpolation)
+        trajs_interpolated = interpolate_traj_via_points(trajs_new, num_interpolation=num_interpolation)
         # Set 0 margin for collision checking, which means we allow trajectories to pass very close to objects.
         # While the optimized trajectory via points are not at a 0 margin from the object, the interpolated via points
         # might be. A 0 margin guarantees that we do not discard those trajectories.
@@ -234,7 +233,7 @@ class PlanningTask(Task):
         ###############################################################################################################
         # Check that trajectories that are not in collision are inside the joint limits
         if trajs_free_idxs.nelement() == 0:
-
+            pass
         else:
             if trajs.ndim == 4:
                 trajs_free_tmp = trajs[trajs_free_idxs[:, 0], trajs_free_idxs[:, 1], ...]

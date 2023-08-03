@@ -19,6 +19,7 @@ from torch_robotics.environment.env_spheres_3d import EnvSpheres3D
 from torch_robotics.environment.primitives import MultiSphereField
 from torch_robotics.robot.robot_panda import RobotPanda
 from torch_robotics.task.tasks import PlanningTask
+from torch_robotics.torch_planning_objectives.fields.distance_fields import interpolate_links
 from torch_robotics.torch_utils.seed import fix_random_seed
 from torch_robotics.torch_utils.torch_utils import get_torch_device, to_numpy
 
@@ -76,9 +77,6 @@ def make_gif_from_array(filename, array, fps=10):
     fps : int
         frames per second (default: 10)
     """
-
-
-
     # copy into the color dimension if the images are black and white
     if array.ndim == 3:
         array = array[..., np.newaxis] * np.ones(3)
@@ -173,6 +171,8 @@ class PandaMotionPlanningIsaacGymEnv:
 
         self.all_robots_in_one_env = all_robots_in_one_env
         self.color_robots = color_robots
+
+        self.show_collision_spheres = False
 
         ###############################################################################################################
         # ISAAC
@@ -356,8 +356,10 @@ class PandaMotionPlanningIsaacGymEnv:
         ###############################################################################################################
         # CAMERA
         # point camera at middle env
-        cam_pos = gymapi.Vec3(2., 0, 1.5)
-        cam_target = gymapi.Vec3(-3, 0, -1)
+        cam_pos = gymapi.Vec3(1.75, 0, 1.25)
+        cam_target = gymapi.Vec3(-3, 0, -1.25)
+        # cam_pos = gymapi.Vec3(0.2, 0, 1.25)
+        # cam_target = gymapi.Vec3(-0.1, 0, -0.5)
         if len(self.envs) == 1:
             self.middle_env = self.envs[0]
         else:
@@ -377,7 +379,7 @@ class PandaMotionPlanningIsaacGymEnv:
         ###############################################################################################################
         # DEBUGGING visualization
         self.axes_geom = gymutil.AxesGeometry(0.15)
-        self.sphere_geom = gymutil.WireframeSphereGeometry(0.005, 6, 6, gymapi.Transform(), color=(0, 0, 1))
+        self.sphere_geom = gymutil.WireframeSphereGeometry(0.15, 6, 6, gymapi.Transform(), color=(0, 0, 1))
 
         ###############################################################################################################
         # ==== prepare tensors =====
@@ -507,8 +509,18 @@ class PandaMotionPlanningIsaacGymEnv:
                 ee_transform = gymapi.Transform(p=gymapi.Vec3(*ee_pose[0]), r=gymapi.Quat(*ee_pose[1]))
                 # reference frame
                 gymutil.draw_lines(self.axes_geom, self.gym, self.viewer, env, ee_transform)
-                # sphere
-                # gymutil.draw_lines(self.sphere_geom, self.gym, self.viewer, env, ee_transform)
+
+                # collision spheres
+                if self.show_collision_spheres:
+                    # TODO - tensor version. It is currently very slow.
+                    joint_state_curr = self.gym.get_actor_dof_states(env, franka_handle, gymapi.STATE_ALL)
+                    joint_pos_curr = to_torch(joint_state_curr['pos'][:7], **self.tensor_args)
+                    fk_link_pos = self.robot.fk_map_collision(joint_pos_curr)
+                    fk_link_pos = interpolate_links(fk_link_pos, self.robot.num_interpolated_points_for_object_collision_checking).squeeze(0)
+                    for j, (link_pos, margin) in enumerate(zip(fk_link_pos, self.robot.link_margins_for_object_collision_checking_tensor)):
+                        link_transform = gymapi.Transform(p=gymapi.Vec3(*link_pos))
+                        sphere_geom = gymutil.WireframeSphereGeometry(margin, 16, 16, gymapi.Transform(), color=(0, 0, 1))
+                        gymutil.draw_lines(sphere_geom, self.gym, self.viewer, env, link_transform)
 
             # update viewer
             self.gym.step_graphics(self.sim)
@@ -567,6 +579,8 @@ class MotionPlanningController:
         joint_positions_start = joint_states[:, :, 0]
         joint_velocities_zero = torch.zeros_like(joint_states[:, :, 1])
         for _ in range(n_first_steps):
+            if self.mp_env.check_viewer_has_closed():
+                break
             if self.mp_env.controller_type == 'position':
                 _ = self.mp_env.step(joint_positions_start, visualize=visualize, render_viewer_camera=render_viewer_camera)
             elif self.mp_env.controller_type == 'velocity':
@@ -576,6 +590,8 @@ class MotionPlanningController:
 
         # execute planned trajectory
         for actions in trajectories:
+            if self.mp_env.check_viewer_has_closed():
+                break
             joint_states = self.mp_env.step(actions, visualize=visualize, render_viewer_camera=render_viewer_camera)
 
         # last steps -- keep robot in place
@@ -583,10 +599,14 @@ class MotionPlanningController:
             # stay the current position after the trajectory has finished
             joint_positions_last = joint_states[:, :, 0]
             for _ in range(n_last_steps):
+                if self.mp_env.check_viewer_has_closed():
+                    break
                 _ = self.mp_env.step(joint_positions_last, visualize=visualize, render_viewer_camera=render_viewer_camera)
         elif self.mp_env.controller_type == 'velocity':
             # apply zero velocity
             for _ in range(n_last_steps):
+                if self.mp_env.check_viewer_has_closed():
+                    break
                 _ = self.mp_env.step(joint_velocities_zero, visualize=visualize, render_viewer_camera=render_viewer_camera)
         else:
             raise NotImplementedError
