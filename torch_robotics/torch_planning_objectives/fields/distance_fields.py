@@ -63,6 +63,19 @@ def interpolate_links(link_pos, num_interpolated_points):
     return link_pos
 
 
+# Old implementation
+# def interpolate_links(link_pos, num_interpolate, link_interpolate_range):
+#     if num_interpolate > 0:
+#         link_dim = link_pos.shape[:-1]
+#         alpha = torch.linspace(0, 1, num_interpolate + 2).type_as(link_pos)[1:num_interpolate + 1]
+#         alpha = alpha.view(tuple([1] * len(link_dim) + [-1, 1]))  # 1 x 1 x 1 x ... x num_interpolate x 1
+#         X = link_pos[..., link_interpolate_range[0]:link_interpolate_range[1] + 1, :].unsqueeze(-2)  # batch_dim x num_interp_link x 1 x 3
+#         X_diff = torch.diff(X, dim=-3)  # batch_dim x (num_interp_link - 1) x 1 x 3
+#         X_interp = X[..., :-1, :, :] + X_diff * alpha  # batch_dim x (num_interp_link - 1) x num_interpolate x 3
+#         link_pos = torch.cat([link_pos, X_interp.flatten(-3, -2)], dim=-2)  # batch_dim x (num_link + (num_interp_link - 1) * num_interpolate) x 3
+#     return link_pos
+
+
 class EmbodimentDistanceFieldBase(DistanceField):
 
     def __init__(self,
