@@ -3,6 +3,10 @@ import time
 from math import ceil
 
 import cv2
+import imageio
+import numpy as np
+from moviepy.video.io.ImageSequenceClip import ImageSequenceClip
+from moviepy.video.io.VideoFileClip import VideoFileClip
 
 from isaacgym import gymapi
 from isaacgym import gymutil
@@ -15,6 +19,7 @@ from torch_robotics.environment.env_spheres_3d import EnvSpheres3D
 from torch_robotics.environment.primitives import MultiSphereField
 from torch_robotics.robot.robot_panda import RobotPanda
 from torch_robotics.task.tasks import PlanningTask
+from torch_robotics.torch_planning_objectives.fields.distance_fields import interpolate_links
 from torch_robotics.torch_utils.seed import fix_random_seed
 from torch_robotics.torch_utils.torch_utils import get_torch_device, to_numpy
 
@@ -52,6 +57,36 @@ def create_assets_from_primitive_shapes(sim, gym, obj_list):
     return object_assets_l, object_poses_l
 
 
+def make_gif_from_array(filename, array, fps=10):
+    # https://gist.github.com/nirum/d4224ad3cd0d71bfef6eba8f3d6ffd59
+    """Creates a gif given a stack of images using moviepy
+    Notes
+    -----
+    works with current Github version of moviepy (not the pip version)
+    https://github.com/Zulko/moviepy/commit/d4c9c37bc88261d8ed8b5d9b7c317d13b2cdf62e
+    Usage
+    -----
+    >>> X = randn(100, 64, 64)
+    >>> make_gif_from_array('test.gif', X)
+    Parameters
+    ----------
+    filename : string
+        The filename of the gif to write to
+    array : array_like
+        A numpy array that contains a sequence of images
+    fps : int
+        frames per second (default: 10)
+    """
+    # copy into the color dimension if the images are black and white
+    if array.ndim == 3:
+        array = array[..., np.newaxis] * np.ones(3)
+
+    # make the moviepy clip
+    clip = ImageSequenceClip(list(array), fps=fps)
+    clip.write_gif(filename, fps=fps)
+    return clip
+
+
 class ViewerRecorder:
 
     def __init__(self, dt=1/50., fps=50):
@@ -62,7 +97,13 @@ class ViewerRecorder:
     def append(self, step, img):
         self.step_img.append((step, img))
 
-    def make_video(self, video_path='./trajs_replay.mp4'):
+    def make_video(
+            self,
+            video_path='./trajs_replay.mp4',
+            n_first_steps=0,
+            n_last_steps=0,
+            make_gif=False
+    ):
         frame = self.step_img[0][1]
         height, width, layers = frame.shape
 
@@ -70,27 +111,44 @@ class ViewerRecorder:
         video = cv2.VideoWriter(video_path, fourcc, self.fps, (width, height))
 
         max_steps = len(self.step_img) - 1
+        image_l = []
+        step_text = 0
         for step, frame in self.step_img:
             frame = np.ascontiguousarray(frame, dtype=np.uint8)
-            cv2.putText(frame,
-                        f'Step: {step}/{max_steps}',
-                        (50, 50),
-                        cv2.FONT_HERSHEY_SIMPLEX, 1,
-                        (255, 255, 255),
-                        2,
-                        cv2.LINE_4)
-            cv2.putText(frame,
-                        f'Time: {self.dt * step:.2f} secs',
-                        (50, 85),
-                        cv2.FONT_HERSHEY_SIMPLEX, 1,
-                        (255, 255, 255),
-                        2,
-                        cv2.LINE_4)
+            if step > n_first_steps:
+                if step > len(self.step_img) - n_last_steps - 1:
+                    pass
+                else:
+                    step_text = step - n_first_steps
+                cv2.putText(frame,
+                            f'Step: {step_text}/{max_steps-n_first_steps-n_last_steps}',
+                            (50, 50),
+                            cv2.FONT_HERSHEY_SIMPLEX, 1,
+                            (255, 255, 255),
+                            2,
+                            cv2.LINE_4)
+                cv2.putText(frame,
+                            f'Time: {self.dt * step_text:.2f} secs',
+                            (50, 85),
+                            cv2.FONT_HERSHEY_SIMPLEX, 1,
+                            (255, 255, 255),
+                            2,
+                            cv2.LINE_4)
+
             video.write(frame)
+            # save frame for gif
+            image_l.append(frame)
 
         cv2.destroyAllWindows()
         video.release()
 
+        # create gif
+        if make_gif:
+            video = VideoFileClip(video_path)
+            # ensure that the file has the .gif extension
+            gif_path, _ = os.path.splitext(video_path)
+            gif_path = gif_path + '.gif'
+            video.write_gif(gif_path, fps=video.fps)
 
 class PandaMotionPlanningIsaacGymEnv:
 
@@ -114,6 +172,8 @@ class PandaMotionPlanningIsaacGymEnv:
         self.all_robots_in_one_env = all_robots_in_one_env
         self.color_robots = color_robots
 
+        self.show_collision_spheres = False
+
         ###############################################################################################################
         # ISAAC
         ###############################################################################################################
@@ -132,7 +192,7 @@ class PandaMotionPlanningIsaacGymEnv:
         sim_params = gymapi.SimParams()
         sim_params.up_axis = gymapi.UP_AXIS_Z
         sim_params.gravity = gymapi.Vec3(0.0, 0.0, -9.8)
-        sim_params.dt = 1.0 / 50.0  # upper level policy frequency
+        sim_params.dt = 1.0 / 25.0  # upper level policy frequency
         sim_params.substeps = 20  # 1/dt * substeps = lower level controller frequency
         # e.g. dt = 1/50 and substeps = 20, means a lower-level controller running at 1000 Hz
         sim_params.use_gpu_pipeline = self.gym_args.use_gpu_pipeline
@@ -190,7 +250,9 @@ class PandaMotionPlanningIsaacGymEnv:
         if self.controller_type == 'position':
             franka_dof_props["driveMode"][:7].fill(gymapi.DOF_MODE_POS)
             franka_dof_props["stiffness"][:7].fill(400.0)
-            franka_dof_props["damping"][:7].fill(40.0)
+            # franka_dof_props["damping"][:7].fill(40.0)
+            # franka_dof_props["stiffness"][:7] = np.array([400.0, 300.0, 300.0, 200.0, 150.0, 100.0, 50.0])
+            franka_dof_props["damping"][:7] = 2. * np.sqrt(franka_dof_props["stiffness"][:7])
         elif self.controller_type == 'velocity':
             franka_dof_props["driveMode"][:7].fill(gymapi.DOF_MODE_VEL)
             franka_dof_props["stiffness"][:7].fill(0.0)
@@ -271,13 +333,13 @@ class PandaMotionPlanningIsaacGymEnv:
                 self.obj_idxs.append(obj_idx)
 
             # add franka
-            franka_handle = self.gym.create_actor(env, franka_asset, franka_pose, "franka", i, 2)
+            franka_handle = self.gym.create_actor(env, franka_asset, franka_pose, "franka", i, 0)
             self.franka_handles.append(franka_handle)
 
             # color franka
             n_rigid_bodies = self.gym.get_actor_rigid_body_count(env, franka_handle)
             if self.show_goal_configuration and i == self.num_envs - 1:
-                color = gymapi.Vec3(128/255., 0., 128/255.)
+                color = gymapi.Vec3(128/255., 0., 128/255.)  # purple
                 for j in range(n_rigid_bodies):
                     self.gym.set_rigid_body_color(env, franka_handle, j, gymapi.MESH_VISUAL_AND_COLLISION, color)
 
@@ -294,8 +356,10 @@ class PandaMotionPlanningIsaacGymEnv:
         ###############################################################################################################
         # CAMERA
         # point camera at middle env
-        cam_pos = gymapi.Vec3(2., 0, 1.5)
-        cam_target = gymapi.Vec3(-3, 0, -1)
+        cam_pos = gymapi.Vec3(1.75, 0, 1.25)
+        cam_target = gymapi.Vec3(-3, 0, -1.25)
+        # cam_pos = gymapi.Vec3(0.2, 0, 1.25)
+        # cam_target = gymapi.Vec3(-0.1, 0, -0.5)
         if len(self.envs) == 1:
             self.middle_env = self.envs[0]
         else:
@@ -303,8 +367,10 @@ class PandaMotionPlanningIsaacGymEnv:
         self.gym.viewer_camera_look_at(self.viewer, self.middle_env, cam_pos, cam_target)
 
         camera_props = gymapi.CameraProperties()
-        camera_props.width = 1920
-        camera_props.height = 1080
+        # camera_props.width = 1920
+        # camera_props.height = 1080
+        camera_props.width = 1280
+        camera_props.height = 720
         self.viewer_camera_handle = self.gym.create_camera_sensor(self.middle_env, camera_props)
         self.gym.set_camera_location(self.viewer_camera_handle, env, cam_pos, cam_target)
 
@@ -313,7 +379,7 @@ class PandaMotionPlanningIsaacGymEnv:
         ###############################################################################################################
         # DEBUGGING visualization
         self.axes_geom = gymutil.AxesGeometry(0.15)
-        self.sphere_geom = gymutil.WireframeSphereGeometry(0.005, 6, 6, gymapi.Transform(), color=(0, 0, 1))
+        self.sphere_geom = gymutil.WireframeSphereGeometry(0.15, 6, 6, gymapi.Transform(), color=(0, 0, 1))
 
         ###############################################################################################################
         # ==== prepare tensors =====
@@ -384,6 +450,14 @@ class PandaMotionPlanningIsaacGymEnv:
         # # set position targets
         # self.gym.set_dof_position_target_tensor(self.sim, gymtorch.unwrap_tensor(dof_pos_tensor))
 
+        # refresh tensors
+        self.gym.refresh_dof_state_tensor(self.sim)
+        # Get current joint states
+        joint_states_curr = gymtorch.wrap_tensor(self.gym.acquire_dof_state_tensor(self.sim)).view(self.num_envs, 9, 2)
+        if self.show_goal_configuration:
+            joint_states_curr = joint_states_curr[:-1, ...]
+        return joint_states_curr
+
     def step(self, actions, visualize=True, render_viewer_camera=False):
         # step the physics
         self.gym.simulate(self.sim)
@@ -397,7 +471,12 @@ class PandaMotionPlanningIsaacGymEnv:
         action_dof = torch.zeros_like(self.dof_pos).squeeze(-1)
         if self.show_goal_configuration:
             action_dof[:-1, :7] = actions[..., :7]
-            action_dof[-1, :7] = self.goal_joint_position
+            if self.controller_type == 'position':
+                action_dof[-1, :7] = self.goal_joint_position
+            elif self.controller_type == 'velocity':
+                action_dof[-1, :7] = torch.zeros_like(self.goal_joint_position)
+            else:
+                raise NotImplementedError
         else:
             action_dof[..., :7] = actions[..., :7]
 
@@ -430,8 +509,18 @@ class PandaMotionPlanningIsaacGymEnv:
                 ee_transform = gymapi.Transform(p=gymapi.Vec3(*ee_pose[0]), r=gymapi.Quat(*ee_pose[1]))
                 # reference frame
                 gymutil.draw_lines(self.axes_geom, self.gym, self.viewer, env, ee_transform)
-                # sphere
-                # gymutil.draw_lines(self.sphere_geom, self.gym, self.viewer, env, ee_transform)
+
+                # collision spheres
+                if self.show_collision_spheres:
+                    # TODO - tensor version. It is currently very slow.
+                    joint_state_curr = self.gym.get_actor_dof_states(env, franka_handle, gymapi.STATE_ALL)
+                    joint_pos_curr = to_torch(joint_state_curr['pos'][:7], **self.tensor_args)
+                    fk_link_pos = self.robot.fk_map_collision(joint_pos_curr)
+                    fk_link_pos = interpolate_links(fk_link_pos, self.robot.num_interpolated_points_for_object_collision_checking).squeeze(0)
+                    for j, (link_pos, margin) in enumerate(zip(fk_link_pos, self.robot.link_margins_for_object_collision_checking_tensor)):
+                        link_transform = gymapi.Transform(p=gymapi.Vec3(*link_pos))
+                        sphere_geom = gymutil.WireframeSphereGeometry(margin, 16, 16, gymapi.Transform(), color=(0, 0, 1))
+                        gymutil.draw_lines(sphere_geom, self.gym, self.viewer, env, link_transform)
 
             # update viewer
             self.gym.step_graphics(self.sim)
@@ -447,6 +536,12 @@ class PandaMotionPlanningIsaacGymEnv:
                 self.viewer_recorder.append(self.step_idx, viewer_img)
 
         self.step_idx += 1
+
+        # Get current joint states
+        joint_states_curr = gymtorch.wrap_tensor(self.gym.acquire_dof_state_tensor(self.sim)).view(self.num_envs, 9, 2)
+        if self.show_goal_configuration:
+            joint_states_curr = joint_states_curr[:-1, ...]
+        return joint_states_curr
 
     def check_viewer_has_closed(self):
         return self.gym.query_viewer_has_closed(self.viewer)
@@ -466,30 +561,63 @@ class MotionPlanningController:
             self,
             trajectories,  # shape: (H, B, D)
             start_states_joint_pos=None, goal_state_joint_pos=None,
+            n_first_steps=0,
+            n_last_steps=0,
             visualize=True,
             render_viewer_camera=False,
             make_video=False,
-            video_path='./trajs_replay.mp4'
+            video_path='./trajs_replay.mp4',
+            make_gif=False
     ):
         assert start_states_joint_pos is not None
         assert goal_state_joint_pos is not None
 
         # start at the initial position
-        self.mp_env.reset(start_joint_positions=start_states_joint_pos, goal_joint_position=goal_state_joint_pos)
+        joint_states = self.mp_env.reset(start_joint_positions=start_states_joint_pos, goal_joint_position=goal_state_joint_pos)
 
-        # execute trajectory
+        # first steps -- keep robot in place
+        joint_positions_start = joint_states[:, :, 0]
+        joint_velocities_zero = torch.zeros_like(joint_states[:, :, 1])
+        for _ in range(n_first_steps):
+            if self.mp_env.check_viewer_has_closed():
+                break
+            if self.mp_env.controller_type == 'position':
+                _ = self.mp_env.step(joint_positions_start, visualize=visualize, render_viewer_camera=render_viewer_camera)
+            elif self.mp_env.controller_type == 'velocity':
+                _ = self.mp_env.step(joint_velocities_zero, visualize=visualize, render_viewer_camera=render_viewer_camera)
+            else:
+                raise NotImplementedError
+
+        # execute planned trajectory
         for actions in trajectories:
             if self.mp_env.check_viewer_has_closed():
                 break
+            joint_states = self.mp_env.step(actions, visualize=visualize, render_viewer_camera=render_viewer_camera)
 
-            self.mp_env.step(actions, visualize=visualize, render_viewer_camera=render_viewer_camera)
+        # last steps -- keep robot in place
+        if self.mp_env.controller_type == 'position':
+            # stay the current position after the trajectory has finished
+            joint_positions_last = joint_states[:, :, 0]
+            for _ in range(n_last_steps):
+                if self.mp_env.check_viewer_has_closed():
+                    break
+                _ = self.mp_env.step(joint_positions_last, visualize=visualize, render_viewer_camera=render_viewer_camera)
+        elif self.mp_env.controller_type == 'velocity':
+            # apply zero velocity
+            for _ in range(n_last_steps):
+                if self.mp_env.check_viewer_has_closed():
+                    break
+                _ = self.mp_env.step(joint_velocities_zero, visualize=visualize, render_viewer_camera=render_viewer_camera)
+        else:
+            raise NotImplementedError
 
         # clean up isaac
         self.mp_env.clean_up()
 
         # create video
         if make_video:
-            self.mp_env.viewer_recorder.make_video(video_path=video_path)
+            self.mp_env.viewer_recorder.make_video(
+                video_path=video_path, n_first_steps=n_first_steps, n_last_steps=n_last_steps, make_gif=make_gif)
 
 
 if __name__ == '__main__':

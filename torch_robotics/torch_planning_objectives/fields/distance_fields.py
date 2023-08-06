@@ -2,8 +2,11 @@ from abc import ABC, abstractmethod
 
 import einops
 import torch
+from matplotlib import pyplot as plt
 
 from torch_robotics.torch_kinematics_tree.geometrics.utils import SE3_distance
+from torch_robotics.visualizers.planning_visualizer import create_fig_and_axes
+import torch.nn.functional as Functional
 
 
 class DistanceField(ABC):
@@ -20,28 +23,27 @@ class DistanceField(ABC):
     def compute_distance(self, *args, **kwargs):
         pass
 
-    def compute_cost(self, link_tensor_pos, *args, **kwargs):
-        link_orig_shape = link_tensor_pos.shape
+    def compute_cost(self, link_pos, *args, **kwargs):
+        link_orig_shape = link_pos.shape
         if len(link_orig_shape) == 2:
             h = 1
             b, d = link_orig_shape
-            link_tensor_pos = einops.rearrange(link_tensor_pos, "b d -> b 1 d")  # add dimension of task space link
+            link_pos = einops.rearrange(link_pos, "b d -> b 1 d")  # add dimension of task space link
         elif len(link_orig_shape) == 3:
             h = 1
             b, t, d = link_orig_shape
         elif len(link_orig_shape) == 4:  # batch, horizon, num_links, 3  # position tensor
             b, h, t, d = link_orig_shape
-            link_tensor_pos = einops.rearrange(link_tensor_pos, "b h t d -> (b h) t d")
+            link_pos = einops.rearrange(link_pos, "b h t d -> (b h) t d")
         elif len(link_orig_shape) == 5:  # batch, horizon, num_links, 4, 4  # homogeneous transform tensor
             b, h, t, d, d = link_orig_shape
-            link_tensor_pos = einops.rearrange(link_tensor_pos, "b h t d d -> (b h) t d d")
+            link_pos = einops.rearrange(link_pos, "b h t d d -> (b h) t d d")
         else:
             raise NotImplementedError
 
         # link_tensor_pos
         # position: (batch horizon) x num_links x 3
-        # homogeneous transformation: (batch horizon) x num_links x 4 x 4
-        cost = self.compute_costs_impl(link_tensor_pos, *args, **kwargs)
+        cost = self.compute_costs_impl(link_pos, *args, **kwargs)
         if len(link_orig_shape) == 4 or len(link_orig_shape) == 5:
             cost = einops.rearrange(cost, "(b h) -> b h", b=b, h=h)
         return cost
@@ -55,39 +57,38 @@ class DistanceField(ABC):
         pass
 
 
+def interpolate_links(link_pos, num_interpolated_points):
+    # https://github.com/SamsungLabs/RAMP/blob/c3bd23b2c296c94cdd80d6575390fd96c4f83d83/mppi_planning/cost/collision_cost.py#L89
+    link_pos = Functional.interpolate(link_pos.transpose(-2, -1), size=num_interpolated_points, mode='linear', align_corners=True).transpose(-2, -1)
+    return link_pos
+
+
 class EmbodimentDistanceFieldBase(DistanceField):
 
     def __init__(self,
-                 num_interpolate=0, link_interpolate_range=[2, 7],
-                 margin=0.001,
+                 robot,
+                 num_interpolated_points=30,
+                 collision_margins=0.,
+                 cutoff_margin=0.001,
                  field_type='sdf', clamp_sdf=True,
                  **kwargs):
         super().__init__(**kwargs)
-        self.num_interpolate = num_interpolate
-        self.link_interpolate_range = link_interpolate_range
-        self.margin = margin
+        assert robot is not None, "You need to pass a robot instance to the embodiment distance fields"
+        self.robot = robot
+        self.num_interpolated_points = num_interpolated_points
+        self.collision_margins = collision_margins
+        self.cutoff_margin = cutoff_margin
         self.field_type = field_type
         self.clamp_sdf = clamp_sdf
 
-    def interpolate_links(self, link_pos):
-        if self.num_interpolate > 0:
-            link_dim = link_pos.shape[:-1]
-            alpha = torch.linspace(0, 1, self.num_interpolate + 2).type_as(link_pos)[1:self.num_interpolate + 1]
-            alpha = alpha.view(tuple([1] * len(link_dim) + [-1, 1]))  # 1 x 1 x 1 x ... x num_interpolate x 1
-            X = link_pos[..., self.link_interpolate_range[0]:self.link_interpolate_range[1] + 1, :].unsqueeze(-2)  # batch_dim x num_interp_link x 1 x 3
-            X_diff = torch.diff(X, dim=-3)  # batch_dim x (num_interp_link - 1) x 1 x 3
-            X_interp = X[..., :-1, :, :] + X_diff * alpha  # batch_dim x (num_interp_link - 1) x num_interpolate x 3
-            link_pos = torch.cat([link_pos, X_interp.flatten(-3, -2)], dim=-2)  # batch_dim x (num_link + (num_interp_link - 1) * num_interpolate) x 3
-        return link_pos
-
     def compute_embodiment_cost(self, link_pos, field_type=None, **kwargs):  # position tensor
-        margin = kwargs.get('margin', self.margin)
         if field_type is None:
             field_type = self.field_type
         if field_type == 'rbf':
             return self.compute_embodiment_rbf_distances(link_pos, **kwargs).sum((-1, -2))
         elif field_type == 'sdf':  # this computes the negative cost from the DISTANCE FUNCTION
             # get the closest link distance to all objects
+            margin = self.collision_margins + self.cutoff_margin
             margin_minus_sdf = -(self.compute_embodiment_signed_distances(link_pos, **kwargs) - margin).min(-1)[0]
             if len(margin_minus_sdf.shape) == 2:  # cover the multiple objects case
                 margin_minus_sdf = margin_minus_sdf.max(-1)[0]
@@ -101,21 +102,28 @@ class EmbodimentDistanceFieldBase(DistanceField):
         else:
             raise NotImplementedError('field_type {} not implemented'.format(field_type))
 
-    def compute_costs_impl(self, link_pos, grasped_object_coll_points_pos=None, **kwargs):
+    def compute_costs_impl(self, link_pos, **kwargs):
         # position link_pos tensor # batch x num_links x 3
         # interpolate to approximate link spheres
-        link_pos = self.interpolate_links(link_pos)
+        if self.robot.grasped_object is not None:
+            n_robot_points = self.robot.n_links_for_object_collision_checking
+            link_pos_robot = link_pos[..., :n_robot_points, :]
+            link_pos_grasped_object = link_pos[..., n_robot_points:, :]
+        else:
+            link_pos_robot = link_pos
+
+        link_pos = interpolate_links(link_pos_robot, self.num_interpolated_points)
 
         # stack collision points from grasped object
         # these points do not need to be interpolated
-        if grasped_object_coll_points_pos is not None:
-            link_pos = torch.cat((link_pos, grasped_object_coll_points_pos), dim=-2)
+        if self.robot.grasped_object is not None:
+            link_pos = torch.cat((link_pos, link_pos_grasped_object), dim=-2)
 
         embodiment_cost = self.compute_embodiment_cost(link_pos, **kwargs)
         return embodiment_cost
 
     def compute_distance(self, link_pos, **kwargs):
-        link_pos = self.interpolate_links(link_pos)
+        link_pos = interpolate_links(link_pos, self.num_interpolated_points)
         self_distances = self.compute_embodiment_signed_distances(link_pos, **kwargs).min(-1)[0]  # batch_dim
         return self_distances
 
@@ -138,11 +146,12 @@ class EmbodimentDistanceFieldBase(DistanceField):
 
 class CollisionSelfField(EmbodimentDistanceFieldBase):
 
-    def __init__(self, margin=0.005, **kwargs):
-        super().__init__(margin=margin, **kwargs)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, collision_margins=0., **kwargs)
 
     def compute_embodiment_rbf_distances(self, link_pos, **kwargs):  # position tensor
-        margin = kwargs.get('margin', self.margin)
+        raise NotImplementedError
+        margin = kwargs.get('margin', self.cutoff_margin)
         rbf_distance = torch.exp(torch.square(link_pos.unsqueeze(-2) -
                                               link_pos.unsqueeze(-3)).sum(-1) / (-margin ** 2 * 2))
         return rbf_distance
@@ -153,13 +162,13 @@ class CollisionSelfField(EmbodimentDistanceFieldBase):
             # implementation guarantees gradient computation
             return torch.abs(link_pos).sum(-1) * 1e9
         dist_mat = torch.linalg.norm(link_pos.unsqueeze(-2) - link_pos.unsqueeze(-3), dim=-1)  # batch_dim x links x links
-        # select lower triangular
+        # select lower triangular -- distance between link points
         lower_indices = torch.tril_indices(dist_mat.shape[-1], dist_mat.shape[-1], offset=-1).unbind()
         distances = dist_mat[..., lower_indices[0], lower_indices[1]]  # batch_dim x (links * (links - 1) / 2)
         return distances
 
     def compute_embodiment_collision(self, link_pos, **kwargs):  # position tensor
-        margin = kwargs.get('margin', self.margin)
+        margin = kwargs.get('margin', self.cutoff_margin)
         distances = self.compute_embodiment_signed_distances(link_pos, **kwargs)  # batch_dim x links x links
         any_self_collision = torch.any(distances < margin, dim=-1)
         return any_self_collision
@@ -167,10 +176,11 @@ class CollisionSelfField(EmbodimentDistanceFieldBase):
 
 class CollisionObjectBase(EmbodimentDistanceFieldBase):
 
-    def __init__(self, margin=0.01, **kwargs):
-        super().__init__(margin=margin, **kwargs)
+    def __init__(self, *args, link_margins_for_object_collision_checking_tensor=None, **kwargs):
+        super().__init__(*args, collision_margins=link_margins_for_object_collision_checking_tensor, **kwargs)
 
     def compute_embodiment_rbf_distances(self, link_pos, **kwargs):  # position tensor
+        raise NotImplementedError
         margin = kwargs.get('margin', self.margin)
         rbf_distance = torch.exp(torch.square(self.object_signed_distances(link_pos, **kwargs)) / (-margin ** 2 * 2))
         return rbf_distance
@@ -179,11 +189,12 @@ class CollisionObjectBase(EmbodimentDistanceFieldBase):
         return self.object_signed_distances(link_pos, **kwargs)
 
     def compute_embodiment_collision(self, link_pos, **kwargs):
-        margin = kwargs.get('margin', self.margin)
         # position tensor
+        margin = kwargs.get('margin', self.collision_margins + self.cutoff_margin)
         signed_distances = self.object_signed_distances(link_pos, **kwargs)
-        signed_distances = signed_distances.min(-1)[0].min(-1)[0]
-        any_collision = signed_distances < margin
+        collisions = signed_distances < margin
+        # reduce over points (dim -1) and over objects (dim -2)
+        any_collision = torch.any(torch.any(collisions, dim=-1), dim=-1)
         return any_collision
 
     @abstractmethod
@@ -194,9 +205,10 @@ class CollisionObjectBase(EmbodimentDistanceFieldBase):
 class CollisionObjectDistanceField(CollisionObjectBase):
 
     def __init__(self,
+                 *args,
                  df_obj_list_fn=None,
                  **kwargs):
-        super().__init__(**kwargs)
+        super().__init__(*args, **kwargs)
         self.df_obj_list_fn = df_obj_list_fn
 
     def object_signed_distances(self, link_pos, **kwargs):
@@ -213,8 +225,8 @@ class CollisionObjectDistanceField(CollisionObjectBase):
 
 class CollisionWorkspaceBoundariesDistanceField(CollisionObjectBase):
 
-    def __init__(self, ws_bounds_min=None, ws_bounds_max=None, **kwargs):
-        super().__init__(**kwargs)
+    def __init__(self, *args, ws_bounds_min=None, ws_bounds_max=None, **kwargs):
+        super().__init__(*args, **kwargs)
         self.ws_min = ws_bounds_min
         self.ws_max = ws_bounds_max
 
@@ -224,7 +236,7 @@ class CollisionWorkspaceBoundariesDistanceField(CollisionObjectBase):
         signed_distances_bounds_max = self.ws_max - link_pos
         signed_distances_bounds_max = torch.sign(signed_distances_bounds_max) * torch.abs(signed_distances_bounds_max)
         signed_distances_bounds = torch.cat((signed_distances_bounds_min, signed_distances_bounds_max), dim=-1)
-        return signed_distances_bounds
+        return signed_distances_bounds.transpose(-2, -1)    # batch_dim x num_sdfs x links
 
 
 class EESE3DistanceField(DistanceField):

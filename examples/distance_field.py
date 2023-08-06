@@ -35,7 +35,7 @@ def df_obj_list_fn():
 # Collision field
 collision_df = CollisionObjectDistanceField(
     df_obj_list_fn=df_obj_list_fn,
-    num_interpolate=4, link_interpolate_range=[2, 7],
+    num_interpolated_points=50,
     tensor_args=tensor_args
 )
 

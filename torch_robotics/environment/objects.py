@@ -55,6 +55,7 @@ class GraspedObjectPandaBox(GraspedObject):
             **kwargs)
 
         self.base_points_for_collision = self.get_base_points_for_collision()
+        self.n_base_points_for_collision = len(self.base_points_for_collision)
 
     def get_base_points_for_collision(self):
         # points on vertices and centers of faces

@@ -16,6 +16,7 @@ from torch_robotics.torch_utils.torch_utils import DEFAULT_TENSOR_ARGS, to_torch
 from torch_robotics.visualizers.planning_visualizer import create_fig_and_axes
 
 
+
 class PrimitiveShapeField(ABC):
     """
     Represents a primitive object in N-D.
@@ -166,7 +167,10 @@ class MultiSphereField(PrimitiveShapeField):
         for center, radius in zip(self.centers, self.radii):
             center = to_numpy(center)
             radius = to_numpy(radius)
-            pos = to_numpy(pos)
+            if pos is None:
+                pos = np.zeros(self.dim)
+            else:
+                pos = to_numpy(pos)
             # orientation is not needed, because the shape is symmetric
             if ax.name == '3d':
                 u, v = np.mgrid[0:2 * np.pi:30j, 0:np.pi:20j]
