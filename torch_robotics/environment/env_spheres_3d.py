@@ -12,13 +12,13 @@ class EnvSpheres3D(EnvBase):
 
     def __init__(self, name='EnvDense2D', tensor_args=None, **kwargs):
         spheres = MultiSphereField(torch.tensor([
-                    [-0.3, 0.3, 0.7],
+                    [-0.3, 0.3, 0.85],
                     [-0.35, -0.25, 0.45],
                     [-0.45, 0.15, 0.0],
                     [0.45, 0.35, 0.],
-                    [0.45, 0.35, 0.55],
-                    [0.45, -0.5, 0.25],
-                    [0.45, -0.4, 0.5],
+                    [0.65, 0.35, 0.55],
+                    [0.65, -0.5, 0.25],
+                    [0.2, -0.4, 0.5],
                     [0.35, 0.0, 1.0],
                     [0., -0.3, 0.0],
                     [0.0, 0.45, 0.35],
@@ -50,7 +50,7 @@ class EnvSpheres3D(EnvBase):
 
     def get_gpmp_params(self, robot_name='NA'):
         params = dict(
-            opt_iters=150,
+            opt_iters=300,
             num_samples=64,
             sigma_start=1e-3,
             sigma_gp=1e-1,

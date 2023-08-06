@@ -27,22 +27,6 @@ class RobotPanda(RobotBase):
 
         #############################################
         # Differentiable robot model
-
-        # https://media.cheggcdn.com/media%2Fce1%2Fce100d57-2fdf-4cd7-8f4a-111a156d6339%2Fphp1EL2S4.png
-        # https://www.researchgate.net/profile/Jesse-Haviland/publication/361785335/figure/fig1/AS:1174695604953098@1657080665902/The-Elementary-Transform-Sequence-of-the-7-degree-offreedom-Franka-Emika-Panda.png
-        link_names_for_object_collision_checking = [
-            'panda_link1', 'panda_link3', 'panda_link4', 'panda_link5',
-            # 'panda_link7',
-            'panda_hand',
-        ]
-        # these margins correspond to link_names_for_collision_checking
-        link_margins_for_object_collision_checking = [
-            0.1, 0.1, 0.05, 0.1,
-            # 0.05,
-            0.095,
-        ]
-        assert len(link_names_for_object_collision_checking) == len(link_margins_for_object_collision_checking)
-
         self.link_name_ee = 'ee_link'
         self.link_name_grasped_object = 'grasped_object'
 
@@ -52,6 +36,25 @@ class RobotPanda(RobotBase):
 
         self.jl_lower, self.jl_upper, _, _ = self.diff_panda.get_joint_limit_array()
         q_limits = torch.tensor(np.array([self.jl_lower, self.jl_upper]), **tensor_args)
+
+        #############################################
+        # Robot collision model for object avoidance
+        # https://media.cheggcdn.com/media%2Fce1%2Fce100d57-2fdf-4cd7-8f4a-111a156d6339%2Fphp1EL2S4.png
+        # https://www.researchgate.net/profile/Jesse-Haviland/publication/361785335/figure/fig1/AS:1174695604953098@1657080665902/The-Elementary-Transform-Sequence-of-the-7-degree-offreedom-Franka-Emika-Panda.png
+        link_names_for_object_collision_checking = [
+            'panda_link1', 'panda_link3', 'panda_link4', 'panda_link5',
+            # 'panda_link7',
+            'panda_hand',
+            # self.link_name_ee,
+        ]
+        # these margins correspond to link_names_for_collision_checking
+        link_margins_for_object_collision_checking = [
+            0.1, 0.1, 0.05, 0.1,
+            # 0.05,
+            0.095,
+            # 0.05,
+        ]
+        assert len(link_names_for_object_collision_checking) == len(link_margins_for_object_collision_checking)
 
         super().__init__(
             name='RobotPanda',

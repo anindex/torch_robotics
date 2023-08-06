@@ -172,7 +172,7 @@ class PandaMotionPlanningIsaacGymEnv:
         self.all_robots_in_one_env = all_robots_in_one_env
         self.color_robots = color_robots
 
-        self.show_collision_spheres = False
+        self.show_collision_spheres = False  # TODO - very slow implementation
 
         ###############################################################################################################
         # ISAAC

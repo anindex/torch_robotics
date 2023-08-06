@@ -1,5 +1,6 @@
 import abc
 from abc import ABC
+from math import ceil
 
 import torch
 
@@ -41,6 +42,9 @@ class RobotBase(ABC):
 
         # Collision field
         assert num_interpolated_points_for_object_collision_checking >= len(link_names_for_object_collision_checking)
+        if num_interpolated_points_for_object_collision_checking % len(link_names_for_object_collision_checking) != 0:
+            points_per_link = ceil(num_interpolated_points_for_object_collision_checking / len(link_names_for_object_collision_checking))
+            num_interpolated_points_for_object_collision_checking = points_per_link * len(link_names_for_object_collision_checking)
         self.self_collision_margin = self_collision_margin
         self.num_interpolated_points_for_object_collision_checking = num_interpolated_points_for_object_collision_checking
         self.link_names_for_object_collision_checking = link_names_for_object_collision_checking
