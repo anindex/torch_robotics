@@ -80,6 +80,7 @@ class EmbodimentDistanceFieldBase(DistanceField):
 
     def __init__(self,
                  robot,
+                 link_idxs_for_collision_checking=None,
                  num_interpolated_points=30,
                  collision_margins=0.,
                  cutoff_margin=0.001,
@@ -88,6 +89,8 @@ class EmbodimentDistanceFieldBase(DistanceField):
         super().__init__(**kwargs)
         assert robot is not None, "You need to pass a robot instance to the embodiment distance fields"
         self.robot = robot
+        assert link_idxs_for_collision_checking is not None
+        self.link_idxs_for_collision_checking = link_idxs_for_collision_checking
         self.num_interpolated_points = num_interpolated_points
         self.collision_margins = collision_margins
         self.cutoff_margin = cutoff_margin
@@ -164,6 +167,8 @@ class EmbodimentDistanceFieldBase(DistanceField):
         else:
             link_pos_robot = link_pos
 
+        # select the robot links used for collision checking
+        link_pos_robot = link_pos_robot[..., self.link_idxs_for_collision_checking, :]
         link_pos = interpolate_links(link_pos_robot, self.num_interpolated_points)
 
         # stack collision points from grasped object
@@ -198,8 +203,10 @@ class EmbodimentDistanceFieldBase(DistanceField):
 
 class CollisionSelfField(EmbodimentDistanceFieldBase):
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, idxs_links_distance_matrix=None, **kwargs):
         super().__init__(*args, collision_margins=0., **kwargs)
+        self.idxs_links_distance_matrix = idxs_links_distance_matrix
+        self.idxs_links_distance_matrix_tuple = tuple(zip(*idxs_links_distance_matrix))
 
     def compute_embodiment_rbf_distances(self, link_pos, **kwargs):  # position tensor
         raise NotImplementedError
@@ -214,14 +221,19 @@ class CollisionSelfField(EmbodimentDistanceFieldBase):
             # implementation guarantees gradient computation
             return torch.abs(link_pos).sum(-1) * 1e9
         dist_mat = torch.linalg.norm(link_pos.unsqueeze(-2) - link_pos.unsqueeze(-3), dim=-1)  # batch_dim x links x links
+
         # select lower triangular -- distance between link points
-        lower_indices = torch.tril_indices(dist_mat.shape[-1], dist_mat.shape[-1], offset=-1).unbind()
-        distances = dist_mat[..., lower_indices[0], lower_indices[1]]  # batch_dim x (links * (links - 1) / 2)
+        # lower_indices = torch.tril_indices(dist_mat.shape[-1], dist_mat.shape[-1], offset=-1).unbind()
+        # distances = dist_mat[..., lower_indices[0], lower_indices[1]]  # batch_dim x (links * (links - 1) / 2)
+
+        # select only distances between pairs of specified links
+        distances = dist_mat[..., self.idxs_links_distance_matrix_tuple[0], self.idxs_links_distance_matrix_tuple[1]]
+
         return distances
 
     def compute_embodiment_collision(self, link_pos, **kwargs):  # position tensor
         margin = kwargs.get('margin', self.cutoff_margin)
-        distances = self.compute_embodiment_signed_distances(link_pos, **kwargs)  # batch_dim x links x links
+        distances = self.compute_embodiment_signed_distances(link_pos, **kwargs)
         any_self_collision = torch.any(distances < margin, dim=-1)
         return any_self_collision
 

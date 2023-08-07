@@ -49,6 +49,7 @@ class PlanningTask(Task):
         self.df_collision_objects = CollisionObjectDistanceField(
             self.robot,
             df_obj_list_fn=self.env.get_df_obj_list,
+            link_idxs_for_collision_checking=self.robot.link_idxs_for_object_collision_checking,
             num_interpolated_points=self.robot.num_interpolated_points_for_object_collision_checking,
             link_margins_for_object_collision_checking_tensor=self.robot.link_margins_for_object_collision_checking_tensor,
             cutoff_margin=obstacle_cutoff_margin,
@@ -58,6 +59,7 @@ class PlanningTask(Task):
         # collision field for workspace boundaries
         self.df_collision_ws_boundaries = CollisionWorkspaceBoundariesDistanceField(
             self.robot,
+            link_idxs_for_collision_checking=self.robot.link_idxs_for_object_collision_checking,
             num_interpolated_points=self.robot.num_interpolated_points_for_object_collision_checking,
             link_margins_for_object_collision_checking_tensor=self.robot.link_margins_for_object_collision_checking_tensor,
             cutoff_margin=obstacle_cutoff_margin,

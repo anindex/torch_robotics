@@ -56,15 +56,41 @@ class RobotPanda(RobotBase):
         ]
         assert len(link_names_for_object_collision_checking) == len(link_margins_for_object_collision_checking)
 
+        link_idxs_for_object_collision_checking = []
+        for link_name in link_names_for_object_collision_checking:
+            idx = self.diff_panda._name_to_idx_map[link_name]
+            link_idxs_for_object_collision_checking.append(idx)
+
+        #############################################
+        # Robot collision model for self collision
+        link_names_for_self_collision_checking = self.diff_panda.get_link_names()
+        link_names_pairs_for_self_collision_checking = {
+            'panda_hand': {'panda_link0', 'panda_link1', 'panda_link2'},
+            'panda_link6': {'panda_link0', 'panda_link1', 'panda_link2'},
+            'panda_link5': {'panda_link0', 'panda_link1', 'panda_link2'},
+            'panda_link4': {'panda_link1'}
+        }
+
+        link_idxs_for_self_collision_checking = []
+        for link_name in link_names_for_self_collision_checking:
+            idx = self.diff_panda._name_to_idx_map[link_name]
+            link_idxs_for_self_collision_checking.append(idx)
+
+        #############################################
         super().__init__(
             name='RobotPanda',
             q_limits=q_limits,
             grasped_object=grasped_object,
             link_names_for_object_collision_checking=link_names_for_object_collision_checking,
             link_margins_for_object_collision_checking=link_margins_for_object_collision_checking,
+            link_idxs_for_object_collision_checking=link_idxs_for_object_collision_checking,
             margin_for_grasped_object_collision_checking=0.005,  # small margin for object placement
-            self_collision_margin=0.001,
             num_interpolated_points_for_object_collision_checking=25,
+            link_names_for_self_collision_checking=link_names_for_self_collision_checking,
+            link_names_pairs_for_self_collision_checking=link_names_pairs_for_self_collision_checking,
+            link_idxs_for_self_collision_checking=link_idxs_for_self_collision_checking,
+            num_interpolated_points_for_self_collision_checking=25,
+            self_collision_margin=0.1,
             tensor_args=tensor_args,
             **kwargs
         )
@@ -81,7 +107,8 @@ class RobotPanda(RobotBase):
             raise NotImplementedError
 
         link_pose_dict = self.diff_panda.compute_forward_kinematics_all_links(q, return_dict=True)
-        link_tensor = convert_link_dict_to_tensor(link_pose_dict, self.link_names_for_object_collision_checking)
+        # link_tensor = convert_link_dict_to_tensor(link_pose_dict, self.link_names_for_object_collision_checking)
+        link_tensor = convert_link_dict_to_tensor(link_pose_dict, self.diff_panda.get_link_names())
 
         # Transform collision points of the grasp object with the forward kinematics
         grasped_object_points_in_robot_base_frame = None
