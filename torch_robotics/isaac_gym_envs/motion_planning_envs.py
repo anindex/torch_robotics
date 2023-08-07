@@ -19,7 +19,7 @@ from torch_robotics.environment.env_spheres_3d import EnvSpheres3D
 from torch_robotics.environment.primitives import MultiSphereField
 from torch_robotics.robot.robot_panda import RobotPanda
 from torch_robotics.task.tasks import PlanningTask
-from torch_robotics.torch_planning_objectives.fields.distance_fields import interpolate_links
+from torch_robotics.torch_planning_objectives.fields.distance_fields import interpolate_links_v1
 from torch_robotics.torch_utils.seed import fix_random_seed
 from torch_robotics.torch_utils.torch_utils import get_torch_device, to_numpy
 
@@ -160,7 +160,8 @@ class PandaMotionPlanningIsaacGymEnv:
                  color_robots=False,
                  use_pipeline_gpu=False,
                  show_goal_configuration=True,
-                 sync_with_real_time=False
+                 sync_with_real_time=False,
+                 show_collision_spheres=False  # very slow implementation. use only one robot
                  ):
 
         self.env = env
@@ -172,7 +173,7 @@ class PandaMotionPlanningIsaacGymEnv:
         self.all_robots_in_one_env = all_robots_in_one_env
         self.color_robots = color_robots
 
-        self.show_collision_spheres = False  # TODO - very slow implementation
+        self.show_collision_spheres = show_collision_spheres
 
         ###############################################################################################################
         # ISAAC
@@ -516,10 +517,11 @@ class PandaMotionPlanningIsaacGymEnv:
                     joint_state_curr = self.gym.get_actor_dof_states(env, franka_handle, gymapi.STATE_ALL)
                     joint_pos_curr = to_torch(joint_state_curr['pos'][:7], **self.tensor_args)
                     fk_link_pos = self.robot.fk_map_collision(joint_pos_curr)
-                    fk_link_pos = interpolate_links(fk_link_pos, self.robot.num_interpolated_points_for_object_collision_checking).squeeze(0)
+                    fk_link_pos = fk_link_pos[..., self.robot.link_idxs_for_object_collision_checking, :]
+                    fk_link_pos = interpolate_links_v1(fk_link_pos, self.robot.num_interpolated_points_for_object_collision_checking).squeeze(0)
                     for j, (link_pos, margin) in enumerate(zip(fk_link_pos, self.robot.link_margins_for_object_collision_checking_tensor)):
                         link_transform = gymapi.Transform(p=gymapi.Vec3(*link_pos))
-                        sphere_geom = gymutil.WireframeSphereGeometry(margin, 16, 16, gymapi.Transform(), color=(0, 0, 1))
+                        sphere_geom = gymutil.WireframeSphereGeometry(margin, 5, 5, gymapi.Transform(), color=(0, 0, 1))
                         gymutil.draw_lines(sphere_geom, self.gym, self.viewer, env, link_transform)
 
             # update viewer

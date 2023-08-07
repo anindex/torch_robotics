@@ -11,7 +11,7 @@ from torch_robotics.torch_kinematics_tree.geometrics.utils import link_pos_from_
     link_quat_from_link_tensor
 from torch_robotics.torch_kinematics_tree.models.robot_tree import convert_link_dict_to_tensor
 from torch_robotics.torch_kinematics_tree.models.robots import DifferentiableFrankaPanda
-from torch_robotics.torch_planning_objectives.fields.distance_fields import interpolate_links
+from torch_robotics.torch_planning_objectives.fields.distance_fields import interpolate_links_v1
 from torch_robotics.torch_utils.torch_utils import to_numpy
 from torch_robotics.visualizers.plot_utils import plot_coordinate_frame
 
@@ -42,17 +42,29 @@ class RobotPanda(RobotBase):
         # https://media.cheggcdn.com/media%2Fce1%2Fce100d57-2fdf-4cd7-8f4a-111a156d6339%2Fphp1EL2S4.png
         # https://www.researchgate.net/profile/Jesse-Haviland/publication/361785335/figure/fig1/AS:1174695604953098@1657080665902/The-Elementary-Transform-Sequence-of-the-7-degree-offreedom-Franka-Emika-Panda.png
         link_names_for_object_collision_checking = [
-            'panda_link1', 'panda_link3', 'panda_link4', 'panda_link5',
-            # 'panda_link7',
+            # 'panda_link0',
+            # 'panda_link1',
+            'panda_link2',
+            'panda_link3',
+            # 'panda_link4',
+            'panda_link5',
+            # 'panda_link6',
+            'panda_link7',
             'panda_hand',
             # self.link_name_ee,
         ]
         # these margins correspond to link_names_for_collision_checking
         link_margins_for_object_collision_checking = [
-            0.1, 0.1, 0.05, 0.1,
-            # 0.05,
-            0.095,
-            # 0.05,
+            # 0.1,
+            # 0.1,
+            0.125,
+            0.125,
+            # 0.075,
+            0.125,
+            # 0.1,
+            0.08,
+            0.08,
+            # 0.025,
         ]
         assert len(link_names_for_object_collision_checking) == len(link_margins_for_object_collision_checking)
 
@@ -85,15 +97,19 @@ class RobotPanda(RobotBase):
             link_margins_for_object_collision_checking=link_margins_for_object_collision_checking,
             link_idxs_for_object_collision_checking=link_idxs_for_object_collision_checking,
             margin_for_grasped_object_collision_checking=0.005,  # small margin for object placement
-            num_interpolated_points_for_object_collision_checking=25,
+            num_interpolated_points_for_object_collision_checking=len(link_names_for_object_collision_checking)*5,
             link_names_for_self_collision_checking=link_names_for_self_collision_checking,
             link_names_pairs_for_self_collision_checking=link_names_pairs_for_self_collision_checking,
             link_idxs_for_self_collision_checking=link_idxs_for_self_collision_checking,
             num_interpolated_points_for_self_collision_checking=25,
-            self_collision_margin=0.1,
+            self_collision_margin=0.125,
             tensor_args=tensor_args,
             **kwargs
         )
+
+        #############################################
+        # Override self collision distance field with the one from STORM - https://arxiv.org/abs/2104.13542
+        # self.df_collision_self = WrapperCollisionSelfFieldSTORM()
 
     def fk_map_collision_impl(self, q, **kwargs):
         q_orig_shape = q.shape
@@ -156,7 +172,7 @@ class RobotPanda(RobotBase):
         if draw_links_spheres:
             link_tensor = convert_link_dict_to_tensor(fks_dict, self.link_names_for_object_collision_checking)
             link_pos = link_pos_from_link_tensor(link_tensor)
-            link_pos = interpolate_links(link_pos, self.num_interpolated_points_for_object_collision_checking).squeeze(0)
+            link_pos = interpolate_links_v1(link_pos, self.num_interpolated_points_for_object_collision_checking).squeeze(0)
             spheres = MultiSphereField(
                 link_pos,
                 self.link_margins_for_object_collision_checking_robot_tensor.view(-1, 1),
