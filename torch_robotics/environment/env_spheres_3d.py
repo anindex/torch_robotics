@@ -50,7 +50,7 @@ class EnvSpheres3D(EnvBase):
 
     def get_gpmp_params(self, robot_name='NA'):
         params = dict(
-            opt_iters=300,
+            opt_iters=150,
             num_samples=64,
             sigma_start=1e-3,
             sigma_gp=1e-1,

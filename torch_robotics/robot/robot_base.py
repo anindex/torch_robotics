@@ -4,6 +4,7 @@ from math import ceil
 
 import torch
 
+from torch_robotics.torch_planning_objectives.fields.distance_fields import CollisionSelfField
 from torch_robotics.torch_utils.torch_utils import to_numpy
 
 
@@ -36,15 +37,19 @@ class RobotBase(ABC):
         self.q_distribution = torch.distributions.uniform.Uniform(self.q_min, self.q_max)
         self.q_dim = len(self.q_min)
 
+        ################################################################################################
         # Grasped object
         self.grasped_object = grasped_object
         self.margin_for_grasped_object_collision_checking = margin_for_grasped_object_collision_checking
 
-        # Collision field
+        ################################################################################################
+        # Objects collision field
         assert num_interpolated_points_for_object_collision_checking >= len(link_names_for_object_collision_checking)
         if num_interpolated_points_for_object_collision_checking % len(link_names_for_object_collision_checking) != 0:
-            points_per_link = ceil(num_interpolated_points_for_object_collision_checking / len(link_names_for_object_collision_checking))
-            num_interpolated_points_for_object_collision_checking = points_per_link * len(link_names_for_object_collision_checking)
+            self.points_per_link_collision_checking = ceil(num_interpolated_points_for_object_collision_checking / len(link_names_for_object_collision_checking))
+            num_interpolated_points_for_object_collision_checking = self.points_per_link_collision_checking * len(link_names_for_object_collision_checking)
+        else:
+            self.points_per_link_collision_checking = int(num_interpolated_points_for_object_collision_checking / len(link_names_for_object_collision_checking))
         self.self_collision_margin = self_collision_margin
         self.num_interpolated_points_for_object_collision_checking = num_interpolated_points_for_object_collision_checking
         self.link_names_for_object_collision_checking = link_names_for_object_collision_checking
@@ -61,6 +66,15 @@ class RobotBase(ABC):
                 (self.link_margins_for_object_collision_checking_tensor,
                  torch.ones(self.grasped_object.n_base_points_for_collision, **self.tensor_args) * self.margin_for_grasped_object_collision_checking)
             )
+
+        ################################################################################################
+        # Self collision field
+        self.df_collision_self = CollisionSelfField(
+            self,
+            num_interpolated_points=self.num_interpolated_points_for_object_collision_checking,
+            cutoff_margin=self.self_collision_margin,
+            tensor_args=self.tensor_args
+        )
 
     def random_q(self, n_samples=10):
         # Random position in configuration space

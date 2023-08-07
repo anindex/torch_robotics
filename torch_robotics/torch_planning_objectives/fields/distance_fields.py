@@ -94,7 +94,7 @@ class EmbodimentDistanceFieldBase(DistanceField):
         self.field_type = field_type
         self.clamp_sdf = clamp_sdf
 
-    def compute_embodiment_cost(self, link_pos, field_type=None, **kwargs):  # position tensor
+    def compute_embodiment_cost(self, link_pos, field_type=None, sum_over_link_points_sdf=False, **kwargs):  # position tensor
         if field_type is None:
             field_type = self.field_type
         if field_type == 'rbf':
@@ -102,12 +102,51 @@ class EmbodimentDistanceFieldBase(DistanceField):
         elif field_type == 'sdf':  # this computes the negative cost from the DISTANCE FUNCTION
             # get the closest link distance to all objects
             margin = self.collision_margins + self.cutoff_margin
-            margin_minus_sdf = -(self.compute_embodiment_signed_distances(link_pos, **kwargs) - margin).min(-1)[0]
-            if len(margin_minus_sdf.shape) == 2:  # cover the multiple objects case
-                margin_minus_sdf = margin_minus_sdf.max(-1)[0]
+            if sum_over_link_points_sdf:
+                margin_minus_sdf = -(self.compute_embodiment_signed_distances(link_pos, **kwargs) - margin)
+                if self.clamp_sdf:
+                    clamped_sdf = torch.relu(margin_minus_sdf)
+                else:
+                    clamped_sdf = margin_minus_sdf
+                if len(clamped_sdf.shape) == 3:  # cover the multiple objects case
+                    clamped_sdf = clamped_sdf.max(-2)[0]
+                # sum over link points for gradient computation
+                return clamped_sdf.sum(-1)
+            else:
+                # the minimum gets the distance of the link that is closer to any object -- the definition of sdf
+                margin_minus_sdf = -(self.compute_embodiment_signed_distances(link_pos, **kwargs) - margin).min(-1)[0]
+                if len(margin_minus_sdf.shape) == 2:  # cover the multiple objects case
+                    margin_minus_sdf = margin_minus_sdf.max(-1)[0]
+                if self.clamp_sdf:
+                    return torch.relu(margin_minus_sdf)
+                return margin_minus_sdf
+        elif field_type == 'occupancy':
+            return self.compute_embodiment_collision(link_pos, **kwargs)
+            # distances = self.self_distances(link_pos, **kwargs)  # batch_dim x (links * (links - 1) / 2)
+            # return (distances < margin).sum(-1)
+        else:
+            raise NotImplementedError('field_type {} not implemented'.format(field_type))
+
+    def compute_embodiment_cost(self, link_pos, field_type=None, **kwargs):  # position tensor
+        if field_type is None:
+            field_type = self.field_type
+        if field_type == 'rbf':
+            return self.compute_embodiment_rbf_distances(link_pos, **kwargs).sum((-1, -2))
+        elif field_type == 'sdf':  # this computes the negative cost from the DISTANCE FUNCTION
+            margin = self.collision_margins + self.cutoff_margin
+            # computes sdf of all links to all objects (or sdf map)
+            margin_minus_sdf = -(self.compute_embodiment_signed_distances(link_pos, **kwargs) - margin)
             if self.clamp_sdf:
-                return torch.relu(margin_minus_sdf)
-            return margin_minus_sdf
+                clamped_sdf = torch.relu(margin_minus_sdf)
+            else:
+                clamped_sdf = margin_minus_sdf
+
+            if len(clamped_sdf.shape) == 3:  # cover the multiple objects case
+                clamped_sdf = clamped_sdf.max(-2)[0]
+
+            # sum over link points for gradient computation
+            return clamped_sdf.sum(-1)
+
         elif field_type == 'occupancy':
             return self.compute_embodiment_collision(link_pos, **kwargs)
             # distances = self.self_distances(link_pos, **kwargs)  # batch_dim x (links * (links - 1) / 2)

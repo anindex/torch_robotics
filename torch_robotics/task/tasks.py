@@ -43,12 +43,7 @@ class PlanningTask(Task):
         ################################################################################################
         # Collision fields
         # collision field for self-collision
-        self.df_collision_self = CollisionSelfField(
-            self.robot,
-            num_interpolated_points=self.robot.num_interpolated_points_for_object_collision_checking,
-            cutoff_margin=self.robot.self_collision_margin,
-            tensor_args=self.tensor_args
-        )
+        self.df_collision_self = self.robot.df_collision_self
 
         # collision field for objects
         self.df_collision_objects = CollisionObjectDistanceField(
