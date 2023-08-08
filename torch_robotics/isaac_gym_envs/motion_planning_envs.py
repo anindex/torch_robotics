@@ -115,6 +115,7 @@ class ViewerRecorder:
         step_text = 0
         for step, frame in self.step_img:
             frame = np.ascontiguousarray(frame, dtype=np.uint8)
+            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             if step > n_first_steps:
                 if step > len(self.step_img) - n_last_steps - 1:
                     pass
@@ -161,8 +162,9 @@ class PandaMotionPlanningIsaacGymEnv:
                  use_pipeline_gpu=False,
                  show_goal_configuration=True,
                  sync_with_real_time=False,
-                 show_collision_spheres=False  # very slow implementation. use only one robot
-                 ):
+                 show_collision_spheres=False,  # very slow implementation. use only one robot
+                 show_contact_forces=False,
+    ):
 
         self.env = env
         self.robot = robot
@@ -174,6 +176,7 @@ class PandaMotionPlanningIsaacGymEnv:
         self.color_robots = color_robots
 
         self.show_collision_spheres = show_collision_spheres
+        self.show_contact_forces = show_contact_forces
 
         ###############################################################################################################
         # ISAAC
@@ -311,6 +314,10 @@ class PandaMotionPlanningIsaacGymEnv:
         self.show_goal_configuration = show_goal_configuration
         self.goal_joint_position = None
 
+        # maps the global rigid body index to the environment index
+        # useful to know which trajectories are in collision
+        self.map_rigid_body_idxs_to_env_idx = {}
+
         for i in range(self.num_envs):
             # create env
             if not self.all_robots_in_one_env:
@@ -324,6 +331,7 @@ class PandaMotionPlanningIsaacGymEnv:
                 # get global index of object in rigid body state tensor
                 obj_idx = self.gym.get_actor_rigid_body_index(env, object_handle, 0, gymapi.DOMAIN_SIM)
                 self.obj_idxs.append(obj_idx)
+                self.map_rigid_body_idxs_to_env_idx[obj_idx] = i
 
             # add objects movable
             for obj_asset, obj_pose in zip(object_movable_assets_l, object_movable_poses_l):
@@ -332,10 +340,15 @@ class PandaMotionPlanningIsaacGymEnv:
                 # get global index of object in rigid body state tensor
                 obj_idx = self.gym.get_actor_rigid_body_index(env, object_handle, 0, gymapi.DOMAIN_SIM)
                 self.obj_idxs.append(obj_idx)
+                self.map_rigid_body_idxs_to_env_idx[obj_idx] = i
 
             # add franka
             franka_handle = self.gym.create_actor(env, franka_asset, franka_pose, "franka", i, 0)
             self.franka_handles.append(franka_handle)
+            rb_names = self.gym.get_actor_rigid_body_names(env, franka_handle)
+            for j in range(len(rb_names)):
+                rb_idx = self.gym.get_actor_rigid_body_index(env, franka_handle, j, gymapi.DOMAIN_SIM)
+                self.map_rigid_body_idxs_to_env_idx[rb_idx] = i
 
             # color franka
             n_rigid_bodies = self.gym.get_actor_rigid_body_count(env, franka_handle)
@@ -460,6 +473,7 @@ class PandaMotionPlanningIsaacGymEnv:
         return joint_states_curr
 
     def step(self, actions, visualize=True, render_viewer_camera=False):
+        ###############################################################################################################
         # step the physics
         self.gym.simulate(self.sim)
         self.gym.fetch_results(self.sim, True)
@@ -484,14 +498,41 @@ class PandaMotionPlanningIsaacGymEnv:
         # gripper is open
         action_dof[..., 7:9] = torch.Tensor([[0.04, 0.04]] * self.num_envs)
 
+        ###############################################################################################################
         # Deploy actions
         if self.controller_type == 'position':
             self.gym.set_dof_position_target_tensor(self.sim, gymtorch.unwrap_tensor(action_dof))
         elif self.controller_type == 'velocity':
             self.gym.set_dof_velocity_target_tensor(self.sim, gymtorch.unwrap_tensor(action_dof))
 
+        ###############################################################################################################
         # Check collisions between robot and objects
+        # TODO - implement vectorized version
+        if self.all_robots_in_one_env:
+            envs = self.envs * self.num_envs
+        else:
+            envs = self.envs
 
+        envs_with_robot_in_contact = []
+        for env, franka_handle in zip(envs, self.franka_handles):
+            rigid_contacts = self.gym.get_env_rigid_contacts(env)
+            if self.all_robots_in_one_env:
+                for contact in rigid_contacts:
+                    body1_idx = contact[2]
+                    env_idx = self.map_rigid_body_idxs_to_env_idx[body1_idx]
+                    if env_idx in envs_with_robot_in_contact:
+                        pass
+                    else:
+                        envs_with_robot_in_contact.append(env_idx)
+            else:
+                if len(rigid_contacts) > 0:
+                    env_idx = rigid_contacts[0][0]
+                    if env_idx in envs_with_robot_in_contact:
+                        pass
+                    else:
+                        envs_with_robot_in_contact.append(env_idx)
+
+        ###############################################################################################################
         if visualize:
             # clean up
             self.gym.clear_lines(self.viewer)
@@ -503,13 +544,20 @@ class PandaMotionPlanningIsaacGymEnv:
             else:
                 envs = self.envs
 
-            for env, franka_handle in zip(envs, self.franka_handles):
+            for k, (env, franka_handle) in enumerate(zip(envs, self.franka_handles)):
                 body_dict = self.gym.get_actor_rigid_body_dict(env, franka_handle)
                 props = self.gym.get_actor_rigid_body_states(env, franka_handle, gymapi.STATE_POS)
                 ee_pose = props['pose'][:][body_dict[self.franka_hand]]
                 ee_transform = gymapi.Transform(p=gymapi.Vec3(*ee_pose[0]), r=gymapi.Quat(*ee_pose[1]))
                 # reference frame
                 gymutil.draw_lines(self.axes_geom, self.gym, self.viewer, env, ee_transform)
+
+                # color frankas in collision
+                if k in envs_with_robot_in_contact:
+                    n_rigid_bodies = self.gym.get_actor_rigid_body_count(env, franka_handle)
+                    color = gymapi.Vec3(1., 0., 0.)
+                    for j in range(n_rigid_bodies):
+                        self.gym.set_rigid_body_color(env, franka_handle, j, gymapi.MESH_VISUAL_AND_COLLISION, color)
 
                 # collision spheres
                 if self.show_collision_spheres:
@@ -523,6 +571,9 @@ class PandaMotionPlanningIsaacGymEnv:
                         link_transform = gymapi.Transform(p=gymapi.Vec3(*link_pos))
                         sphere_geom = gymutil.WireframeSphereGeometry(margin, 5, 5, gymapi.Transform(), color=(0, 0, 1))
                         gymutil.draw_lines(sphere_geom, self.gym, self.viewer, env, link_transform)
+
+                if self.show_contact_forces:
+                    self.gym.draw_env_rigid_contacts(self.viewer, env, gymapi.Vec3(1, 0, 0), 0.5, True)
 
             # update viewer
             self.gym.step_graphics(self.sim)
@@ -543,7 +594,7 @@ class PandaMotionPlanningIsaacGymEnv:
         joint_states_curr = gymtorch.wrap_tensor(self.gym.acquire_dof_state_tensor(self.sim)).view(self.num_envs, 9, 2)
         if self.show_goal_configuration:
             joint_states_curr = joint_states_curr[:-1, ...]
-        return joint_states_curr
+        return joint_states_curr, envs_with_robot_in_contact
 
     def check_viewer_has_closed(self):
         return self.gym.query_viewer_has_closed(self.viewer)
@@ -574,6 +625,8 @@ class MotionPlanningController:
         assert start_states_joint_pos is not None
         assert goal_state_joint_pos is not None
 
+        H, B, D = trajectories.shape
+
         # start at the initial position
         joint_states = self.mp_env.reset(start_joint_positions=start_states_joint_pos, goal_joint_position=goal_state_joint_pos)
 
@@ -584,17 +637,25 @@ class MotionPlanningController:
             if self.mp_env.check_viewer_has_closed():
                 break
             if self.mp_env.controller_type == 'position':
-                _ = self.mp_env.step(joint_positions_start, visualize=visualize, render_viewer_camera=render_viewer_camera)
+                _, _ = self.mp_env.step(joint_positions_start, visualize=visualize, render_viewer_camera=render_viewer_camera)
             elif self.mp_env.controller_type == 'velocity':
-                _ = self.mp_env.step(joint_velocities_zero, visualize=visualize, render_viewer_camera=render_viewer_camera)
+                _, _ = self.mp_env.step(joint_velocities_zero, visualize=visualize, render_viewer_camera=render_viewer_camera)
             else:
                 raise NotImplementedError
 
         # execute planned trajectory
-        for actions in trajectories:
+        envs_with_robot_in_contact_l = []
+        for i, actions in enumerate(trajectories):
             if self.mp_env.check_viewer_has_closed():
                 break
-            joint_states = self.mp_env.step(actions, visualize=visualize, render_viewer_camera=render_viewer_camera)
+            joint_states, envs_with_robot_in_contact = self.mp_env.step(actions, visualize=visualize, render_viewer_camera=render_viewer_camera)
+            envs_with_robot_in_contact_l.append(envs_with_robot_in_contact)
+            # stop the trajectory if the robot was in contact with the environment
+            if len(envs_with_robot_in_contact) > 0:
+                if self.mp_env.controller_type == 'position':
+                    trajectories[i:, envs_with_robot_in_contact, :] = actions[None, envs_with_robot_in_contact, :]
+                elif self.mp_env.controller_type == 'velocity':
+                    trajectories[i:, envs_with_robot_in_contact, :] = actions[None, envs_with_robot_in_contact, :] * 0.
 
         # last steps -- keep robot in place
         if self.mp_env.controller_type == 'position':
@@ -603,13 +664,13 @@ class MotionPlanningController:
             for _ in range(n_last_steps):
                 if self.mp_env.check_viewer_has_closed():
                     break
-                _ = self.mp_env.step(joint_positions_last, visualize=visualize, render_viewer_camera=render_viewer_camera)
+                _, _ = self.mp_env.step(joint_positions_last, visualize=visualize, render_viewer_camera=render_viewer_camera)
         elif self.mp_env.controller_type == 'velocity':
             # apply zero velocity
             for _ in range(n_last_steps):
                 if self.mp_env.check_viewer_has_closed():
                     break
-                _ = self.mp_env.step(joint_velocities_zero, visualize=visualize, render_viewer_camera=render_viewer_camera)
+                _, _ = self.mp_env.step(joint_velocities_zero, visualize=visualize, render_viewer_camera=render_viewer_camera)
         else:
             raise NotImplementedError
 
@@ -620,6 +681,16 @@ class MotionPlanningController:
         if make_video:
             self.mp_env.viewer_recorder.make_video(
                 video_path=video_path, n_first_steps=n_first_steps, n_last_steps=n_last_steps, make_gif=make_gif)
+
+        # STATISTICS
+        # trajectories that resulted in contact
+        envs_with_robot_in_contact_unique = []
+        for envs_idxs in envs_with_robot_in_contact_l:
+            for idx in envs_idxs:
+                if idx not in envs_with_robot_in_contact_unique:
+                    envs_with_robot_in_contact_unique.append(idx)
+
+        print(f'trajectories in collision: {len(envs_with_robot_in_contact_unique)}/{B}')
 
 
 if __name__ == '__main__':
