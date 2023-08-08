@@ -294,7 +294,7 @@ class CollisionSelfFieldWrapperSTORM(EmbodimentDistanceFieldBase):
         if len(q_orig_shape) == 3:
             sdf_self_collision = einops.rearrange(sdf_self_collision, "(b h) 1 -> b h", b=b, h=h)
 
-        any_self_collision = sdf_self_collision < 0.02  # trained on 0.02
+        any_self_collision = sdf_self_collision < 0.05  # trained on 0.02
         return any_self_collision
 
 

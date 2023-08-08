@@ -627,6 +627,8 @@ class MotionPlanningController:
 
         H, B, D = trajectories.shape
 
+        trajectories_copy = trajectories.clone()
+
         # start at the initial position
         joint_states = self.mp_env.reset(start_joint_positions=start_states_joint_pos, goal_joint_position=goal_state_joint_pos)
 
@@ -645,7 +647,7 @@ class MotionPlanningController:
 
         # execute planned trajectory
         envs_with_robot_in_contact_l = []
-        for i, actions in enumerate(trajectories):
+        for i, actions in enumerate(trajectories_copy):
             if self.mp_env.check_viewer_has_closed():
                 break
             joint_states, envs_with_robot_in_contact = self.mp_env.step(actions, visualize=visualize, render_viewer_camera=render_viewer_camera)
@@ -653,9 +655,9 @@ class MotionPlanningController:
             # stop the trajectory if the robot was in contact with the environment
             if len(envs_with_robot_in_contact) > 0:
                 if self.mp_env.controller_type == 'position':
-                    trajectories[i:, envs_with_robot_in_contact, :] = actions[None, envs_with_robot_in_contact, :]
+                    trajectories_copy[i:, envs_with_robot_in_contact, :] = actions[envs_with_robot_in_contact, :]
                 elif self.mp_env.controller_type == 'velocity':
-                    trajectories[i:, envs_with_robot_in_contact, :] = actions[None, envs_with_robot_in_contact, :] * 0.
+                    trajectories_copy[i:, envs_with_robot_in_contact, :] = 0.
 
         # last steps -- keep robot in place
         if self.mp_env.controller_type == 'position':

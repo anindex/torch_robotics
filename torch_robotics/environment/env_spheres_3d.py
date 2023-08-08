@@ -77,7 +77,7 @@ class EnvSpheres3D(EnvBase):
     def get_rrt_connect_params(self, robot_name='NA'):
         params = dict(
             n_iters=10000,
-            step_size=torch.pi/80,
+            step_size=torch.pi/30,
             n_radius=torch.pi/4,
             n_pre_samples=50000,
 
