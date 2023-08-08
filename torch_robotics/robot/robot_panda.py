@@ -11,7 +11,7 @@ from torch_robotics.torch_kinematics_tree.geometrics.utils import link_pos_from_
     link_quat_from_link_tensor
 from torch_robotics.torch_kinematics_tree.models.robot_tree import convert_link_dict_to_tensor
 from torch_robotics.torch_kinematics_tree.models.robots import DifferentiableFrankaPanda
-from torch_robotics.torch_planning_objectives.fields.distance_fields import interpolate_links_v1
+from torch_robotics.torch_planning_objectives.fields.distance_fields import interpolate_links_v1, CollisionSelfFieldWrapperSTORM
 from torch_robotics.torch_utils.torch_utils import to_numpy
 from torch_robotics.visualizers.plot_utils import plot_coordinate_frame
 
@@ -19,6 +19,7 @@ from torch_robotics.visualizers.plot_utils import plot_coordinate_frame
 class RobotPanda(RobotBase):
 
     def __init__(self,
+                 use_self_collision_storm=False,
                  grasped_object=None,
                  tensor_args=None,
                  **kwargs):
@@ -109,7 +110,10 @@ class RobotPanda(RobotBase):
 
         #############################################
         # Override self collision distance field with the one from STORM - https://arxiv.org/abs/2104.13542
-        # self.df_collision_self = WrapperCollisionSelfFieldSTORM()
+        if use_self_collision_storm:
+            assert grasped_object is None, "STORM self collision model does not work if objects are grasped"
+            self.df_collision_self = CollisionSelfFieldWrapperSTORM(
+                self, 'robot_self/franka_self_sdf.pt', self.q_dim, tensor_args=self.tensor_args)
 
     def fk_map_collision_impl(self, q, **kwargs):
         q_orig_shape = q.shape

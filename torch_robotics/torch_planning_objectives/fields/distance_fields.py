@@ -4,6 +4,7 @@ import einops
 import torch
 from matplotlib import pyplot as plt
 
+from storm_kit.geom.nn_model.robot_self_collision import RobotSelfCollisionNet
 from torch_robotics.torch_kinematics_tree.geometrics.utils import SE3_distance
 from torch_robotics.visualizers.planning_visualizer import create_fig_and_axes
 import torch.nn.functional as Functional
@@ -23,7 +24,8 @@ class DistanceField(ABC):
     def compute_distance(self, *args, **kwargs):
         pass
 
-    def compute_cost(self, link_pos, *args, **kwargs):
+    def compute_cost(self, q, link_pos, *args, **kwargs):
+        q_orig_shape = q.shape
         link_orig_shape = link_pos.shape
         if len(link_orig_shape) == 2:
             h = 1
@@ -43,9 +45,14 @@ class DistanceField(ABC):
 
         # link_tensor_pos
         # position: (batch horizon) x num_links x 3
-        cost = self.compute_costs_impl(link_pos, *args, **kwargs)
-        if len(link_orig_shape) == 4 or len(link_orig_shape) == 5:
+        cost = self.compute_costs_impl(q, link_pos, *args, **kwargs)
+
+        if cost.ndim == 1:
             cost = einops.rearrange(cost, "(b h) -> b h", b=b, h=h)
+
+        # if len(link_orig_shape) == 4 or len(link_orig_shape) == 5:
+        #     cost = einops.rearrange(cost, "(b h) -> b h", b=b, h=h)
+
         return cost
 
     @abstractmethod
@@ -85,19 +92,20 @@ class EmbodimentDistanceFieldBase(DistanceField):
                  collision_margins=0.,
                  cutoff_margin=0.001,
                  field_type='sdf', clamp_sdf=True,
+                 interpolate_link_pos=True,
                  **kwargs):
         super().__init__(**kwargs)
         assert robot is not None, "You need to pass a robot instance to the embodiment distance fields"
         self.robot = robot
-        assert link_idxs_for_collision_checking is not None
         self.link_idxs_for_collision_checking = link_idxs_for_collision_checking
         self.num_interpolated_points = num_interpolated_points
         self.collision_margins = collision_margins
         self.cutoff_margin = cutoff_margin
         self.field_type = field_type
         self.clamp_sdf = clamp_sdf
+        self.interpolate_link_pos = interpolate_link_pos
 
-    def compute_embodiment_cost(self, link_pos, field_type=None, sum_over_link_points_sdf=False, **kwargs):  # position tensor
+    def compute_embodiment_cost(self, q, link_pos, field_type=None, sum_over_link_points_sdf=False, **kwargs):  # position tensor
         if field_type is None:
             field_type = self.field_type
         if field_type == 'rbf':
@@ -106,7 +114,7 @@ class EmbodimentDistanceFieldBase(DistanceField):
             # get the closest link distance to all objects
             margin = self.collision_margins + self.cutoff_margin
             if sum_over_link_points_sdf:
-                margin_minus_sdf = -(self.compute_embodiment_signed_distances(link_pos, **kwargs) - margin)
+                margin_minus_sdf = -(self.compute_embodiment_signed_distances(q, link_pos, **kwargs) - margin)
                 if self.clamp_sdf:
                     clamped_sdf = torch.relu(margin_minus_sdf)
                 else:
@@ -117,20 +125,20 @@ class EmbodimentDistanceFieldBase(DistanceField):
                 return clamped_sdf.sum(-1)
             else:
                 # the minimum gets the distance of the link that is closer to any object -- the definition of sdf
-                margin_minus_sdf = -(self.compute_embodiment_signed_distances(link_pos, **kwargs) - margin).min(-1)[0]
+                margin_minus_sdf = -(self.compute_embodiment_signed_distances(q, link_pos, **kwargs) - margin).min(-1)[0]
                 if len(margin_minus_sdf.shape) == 2:  # cover the multiple objects case
                     margin_minus_sdf = margin_minus_sdf.max(-1)[0]
                 if self.clamp_sdf:
                     return torch.relu(margin_minus_sdf)
                 return margin_minus_sdf
         elif field_type == 'occupancy':
-            return self.compute_embodiment_collision(link_pos, **kwargs)
+            return self.compute_embodiment_collision(q, link_pos, **kwargs)
             # distances = self.self_distances(link_pos, **kwargs)  # batch_dim x (links * (links - 1) / 2)
             # return (distances < margin).sum(-1)
         else:
             raise NotImplementedError('field_type {} not implemented'.format(field_type))
 
-    def compute_embodiment_cost(self, link_pos, field_type=None, **kwargs):  # position tensor
+    def compute_embodiment_cost(self, q, link_pos, field_type=None, **kwargs):  # position tensor
         if field_type is None:
             field_type = self.field_type
         if field_type == 'rbf':
@@ -138,7 +146,7 @@ class EmbodimentDistanceFieldBase(DistanceField):
         elif field_type == 'sdf':  # this computes the negative cost from the DISTANCE FUNCTION
             margin = self.collision_margins + self.cutoff_margin
             # computes sdf of all links to all objects (or sdf map)
-            margin_minus_sdf = -(self.compute_embodiment_signed_distances(link_pos, **kwargs) - margin)
+            margin_minus_sdf = -(self.compute_embodiment_signed_distances(q, link_pos, **kwargs) - margin)
             if self.clamp_sdf:
                 clamped_sdf = torch.relu(margin_minus_sdf)
             else:
@@ -151,13 +159,13 @@ class EmbodimentDistanceFieldBase(DistanceField):
             return clamped_sdf.sum(-1)
 
         elif field_type == 'occupancy':
-            return self.compute_embodiment_collision(link_pos, **kwargs)
+            return self.compute_embodiment_collision(q, link_pos, **kwargs)
             # distances = self.self_distances(link_pos, **kwargs)  # batch_dim x (links * (links - 1) / 2)
             # return (distances < margin).sum(-1)
         else:
             raise NotImplementedError('field_type {} not implemented'.format(field_type))
 
-    def compute_costs_impl(self, link_pos, **kwargs):
+    def compute_costs_impl(self, q, link_pos, **kwargs):
         # position link_pos tensor # batch x num_links x 3
         # interpolate to approximate link spheres
         if self.robot.grasped_object is not None:
@@ -167,21 +175,23 @@ class EmbodimentDistanceFieldBase(DistanceField):
         else:
             link_pos_robot = link_pos
 
-        # select the robot links used for collision checking
         link_pos_robot = link_pos_robot[..., self.link_idxs_for_collision_checking, :]
-        link_pos = interpolate_links_v1(link_pos_robot, self.num_interpolated_points)
+        if self.interpolate_link_pos:
+            # select the robot links used for collision checking
+            link_pos = interpolate_links_v1(link_pos_robot, self.num_interpolated_points)
 
         # stack collision points from grasped object
         # these points do not need to be interpolated
         if self.robot.grasped_object is not None:
             link_pos = torch.cat((link_pos, link_pos_grasped_object), dim=-2)
 
-        embodiment_cost = self.compute_embodiment_cost(link_pos, **kwargs)
+        embodiment_cost = self.compute_embodiment_cost(q, link_pos, **kwargs)
         return embodiment_cost
 
-    def compute_distance(self, link_pos, **kwargs):
+    def compute_distance(self, q, link_pos, **kwargs):
+        raise NotImplementedError
         link_pos = interpolate_links_v1(link_pos, self.num_interpolated_points)
-        self_distances = self.compute_embodiment_signed_distances(link_pos, **kwargs).min(-1)[0]  # batch_dim
+        self_distances = self.compute_embodiment_signed_distances(q, link_pos, **kwargs).min(-1)[0]  # batch_dim
         return self_distances
 
     def zero_grad(self):
@@ -215,7 +225,7 @@ class CollisionSelfField(EmbodimentDistanceFieldBase):
                                               link_pos.unsqueeze(-3)).sum(-1) / (-margin ** 2 * 2))
         return rbf_distance
 
-    def compute_embodiment_signed_distances(self, link_pos, **kwargs):  # position tensor
+    def compute_embodiment_signed_distances(self, q, link_pos, **kwargs):  # position tensor
         if link_pos.shape[-2] == 1:
             # if there is only one link, the self distance is very large
             # implementation guarantees gradient computation
@@ -231,10 +241,60 @@ class CollisionSelfField(EmbodimentDistanceFieldBase):
 
         return distances
 
-    def compute_embodiment_collision(self, link_pos, **kwargs):  # position tensor
+    def compute_embodiment_collision(self, q, link_pos, **kwargs):  # position tensor
         margin = kwargs.get('margin', self.cutoff_margin)
-        distances = self.compute_embodiment_signed_distances(link_pos, **kwargs)
+        distances = self.compute_embodiment_signed_distances(q, link_pos, **kwargs)
         any_self_collision = torch.any(distances < margin, dim=-1)
+        return any_self_collision
+
+
+def reshape_q(q):
+    q_orig_shape = q.shape
+    if len(q_orig_shape) == 2:
+        h = 1
+        b, d = q_orig_shape
+    elif len(q_orig_shape) == 3:
+        b, h, d = q_orig_shape
+        q = einops.rearrange(q, "b h d -> (b h) d")
+    else:
+        raise NotImplementedError
+    return q, q_orig_shape, b, h, d
+
+
+class CollisionSelfFieldWrapperSTORM(EmbodimentDistanceFieldBase):
+
+    def __init__(self, robot, weights_fname, n_joints, *args, **kwargs):
+        super().__init__(robot, *args, collision_margins=0., interpolate_link_pos=False, **kwargs)
+        self.robot_self_collision_net = RobotSelfCollisionNet(n_joints)
+        self.robot_self_collision_net.load_weights(weights_fname, self.tensor_args)
+
+    def compute_costs_impl(self, q, link_pos, **kwargs):
+        embodiment_cost = self.compute_embodiment_cost(q, link_pos, **kwargs)
+        return embodiment_cost
+
+    def compute_embodiment_rbf_distances(self, *args, **kwargs):  # position tensor
+        raise NotImplementedError
+
+    def compute_embodiment_signed_distances(self, q, link_pos, **kwargs):  # position tensor
+        q, q_orig_shape, b, h, d = reshape_q(q)
+
+        # multiply by -1, because according to the paper (page 6, https://arxiv.org/pdf/2104.13542.pdf)
+        # "Distance is positive when two links are penetrating and negative when not colliding"
+        sdf_self_collision = -1. * self.robot_self_collision_net.compute_signed_distance(q, with_grad=True)
+
+        return sdf_self_collision
+
+    def compute_embodiment_collision(self, q, link_pos, **kwargs):  # position tensor
+        q, q_orig_shape, b, h, d = reshape_q(q)
+
+        # multiply by -1, because according to the paper (page 6, https://arxiv.org/pdf/2104.13542.pdf)
+        # "Distance is positive when two links are penetrating and negative when not colliding"
+        sdf_self_collision = -1. * self.robot_self_collision_net.compute_signed_distance(q, with_grad=True)
+
+        if len(q_orig_shape) == 3:
+            sdf_self_collision = einops.rearrange(sdf_self_collision, "(b h) 1 -> b h", b=b, h=h)
+
+        any_self_collision = sdf_self_collision < 0.02  # trained on 0.02
         return any_self_collision
 
 
@@ -249,10 +309,10 @@ class CollisionObjectBase(EmbodimentDistanceFieldBase):
         rbf_distance = torch.exp(torch.square(self.object_signed_distances(link_pos, **kwargs)) / (-margin ** 2 * 2))
         return rbf_distance
 
-    def compute_embodiment_signed_distances(self, link_pos, **kwargs):
+    def compute_embodiment_signed_distances(self, q, link_pos, **kwargs):
         return self.object_signed_distances(link_pos, **kwargs)
 
-    def compute_embodiment_collision(self, link_pos, **kwargs):
+    def compute_embodiment_collision(self, q, link_pos, **kwargs):
         # position tensor
         margin = kwargs.get('margin', self.collision_margins + self.cutoff_margin)
         signed_distances = self.object_signed_distances(link_pos, **kwargs)
@@ -320,7 +380,7 @@ class EESE3DistanceField(DistanceField):
         # -1: get EE as last link  # TODO - get EE from its name id
         return SE3_distance(link_tensor[..., -1, :, :], self.target_H, w_pos=self.w_pos, w_rot=self.w_rot)
 
-    def compute_costs_impl(self, link_tensor, **kwargs):  # position tensor
+    def compute_costs_impl(self, q, link_tensor, **kwargs):  # position tensor
         dist = self.compute_distance(link_tensor).squeeze()
         if self.square:
             dist = torch.square(dist)

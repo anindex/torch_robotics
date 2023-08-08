@@ -188,13 +188,13 @@ class PlanningTask(Task):
 
             ########################
             # Self collision
-            cost_collision_self = self.df_collision_self.compute_cost(fk_collision_pos, field_type=field_type, **kwargs)
+            cost_collision_self = self.df_collision_self.compute_cost(q, fk_collision_pos, field_type=field_type, **kwargs)
 
             # Object collision
-            cost_collision_objects = self.df_collision_objects.compute_cost(fk_collision_pos, field_type=field_type, **kwargs)
+            cost_collision_objects = self.df_collision_objects.compute_cost(q, fk_collision_pos, field_type=field_type, **kwargs)
 
             # Workspace boundaries
-            cost_collision_border = self.df_collision_ws_boundaries.compute_cost(fk_collision_pos, field_type=field_type, **kwargs)
+            cost_collision_border = self.df_collision_ws_boundaries.compute_cost(q, fk_collision_pos, field_type=field_type, **kwargs)
 
             if field_type == 'occupancy':
                 collisions = cost_collision_self | cost_collision_objects | cost_collision_border
