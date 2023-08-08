@@ -16,10 +16,10 @@ class EnvSpheres3D(EnvBase):
                     [-0.35, -0.25, 0.45],
                     [-0.45, 0.15, 0.0],
                     [0.45, 0.35, 0.],
-                    [0.65, 0.35, 0.55],
-                    [0.65, -0.5, 0.25],
-                    [0.2, -0.4, 0.5],
-                    [0.35, 0.0, 1.0],
+                    [0.55, 0.35, 0.55],
+                    [0.65, -0.4, 0.25],
+                    [0.2, -0.35, 0.5],
+                    [0.35, 0.0, 0.9],
                     [0., -0.3, 0.0],
                     [0.0, 0.45, 0.35],
                     ]),
@@ -50,7 +50,7 @@ class EnvSpheres3D(EnvBase):
 
     def get_gpmp_params(self, robot_name='NA'):
         params = dict(
-            opt_iters=150,
+            opt_iters=250,
             num_samples=64,
             sigma_start=1e-3,
             sigma_gp=1e-1,

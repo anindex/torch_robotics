@@ -246,7 +246,7 @@ class PlanningTask(Task):
             if trajs_free_idxs_try.nelement() == 0:
                 trajs_coll_idxs = trajs_free_idxs.clone()
             else:
-                trajs_coll_idxs_joint_limits = trajs_free_idxs_try[torch.argwhere(torch.logical_not(trajs_free_inside_joint_limits_idxs)).squeeze()]
+                trajs_coll_idxs_joint_limits = trajs_free_idxs[torch.argwhere(torch.logical_not(trajs_free_inside_joint_limits_idxs)).squeeze()]
                 if trajs_coll_idxs_joint_limits.ndim == 1:
                     trajs_coll_idxs_joint_limits = trajs_coll_idxs_joint_limits[..., None]
                 trajs_coll_idxs = torch.cat((trajs_coll_idxs, trajs_coll_idxs_joint_limits))

@@ -357,10 +357,10 @@ class PandaMotionPlanningIsaacGymEnv:
         ###############################################################################################################
         # CAMERA
         # point camera at middle env
-        cam_pos = gymapi.Vec3(1.75, 0, 1.25)
-        cam_target = gymapi.Vec3(-3, 0, -1.25)
-        # cam_pos = gymapi.Vec3(0.2, 0, 1.25)
-        # cam_target = gymapi.Vec3(-0.1, 0, -0.5)
+        # cam_pos = gymapi.Vec3(1.75, 0, 1.25)
+        # cam_target = gymapi.Vec3(-3, 0, -1.25)
+        cam_pos = gymapi.Vec3(0, 1.75, 1.25)
+        cam_target = gymapi.Vec3(0, -3, -1.25)
         if len(self.envs) == 1:
             self.middle_env = self.envs[0]
         else:
