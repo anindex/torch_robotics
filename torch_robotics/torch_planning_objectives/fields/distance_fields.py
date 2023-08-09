@@ -169,9 +169,9 @@ class EmbodimentDistanceFieldBase(DistanceField):
         # position link_pos tensor # batch x num_links x 3
         # interpolate to approximate link spheres
         if self.robot.grasped_object is not None:
-            n_robot_points = self.robot.n_links_for_object_collision_checking
-            link_pos_robot = link_pos[..., :n_robot_points, :]
-            link_pos_grasped_object = link_pos[..., n_robot_points:, :]
+            n_grasped_object_points = self.robot.grasped_object.n_base_points_for_collision
+            link_pos_robot = link_pos[..., :-n_grasped_object_points, :]
+            link_pos_grasped_object = link_pos[..., -n_grasped_object_points:, :]
         else:
             link_pos_robot = link_pos
 

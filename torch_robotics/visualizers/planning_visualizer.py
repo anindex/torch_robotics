@@ -124,6 +124,7 @@ class PlanningVisualizer:
             trajs=None,
             pos_start_state=None, pos_goal_state=None,
             vel_start_state=None, vel_goal_state=None,
+            set_joint_limits=False,
             **kwargs
     ):
         if trajs is None:
@@ -185,7 +186,8 @@ class PlanningVisualizer:
             # Y label
             ax[0].set_ylabel(f'q_{i}')
             # Set limits
-            ax[0].set_ylim(self.robot.q_min_np[i], self.robot.q_max_np[i])
+            if set_joint_limits:
+                ax[0].set_ylim(self.robot.q_min_np[i], self.robot.q_max_np[i])
 
         return fig, axs
 

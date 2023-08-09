@@ -235,8 +235,8 @@
       </collision>
    </link>
    <joint name="grasped_object_fixed_joint" type="fixed">
-      <origin xyz="0.0 0.0 0.05" rpy="1.5707965 0.0 0.0"/>
-      <parent link="ee_link"/>
+      <origin xyz="0.0 0.0 0.11" rpy="3.1415927 -1.5707964 0.0"/>
+      <parent link="panda_hand"/>
       <child link="grasped_object"/>
    </joint>
    <link name="grasped_object">

@@ -6,7 +6,7 @@ from math import ceil
 import torch
 
 from torch_robotics.torch_planning_objectives.fields.distance_fields import CollisionSelfField
-from torch_robotics.torch_utils.torch_utils import to_numpy
+from torch_robotics.torch_utils.torch_utils import to_numpy, to_torch
 
 
 class RobotBase(ABC):
@@ -23,7 +23,9 @@ class RobotBase(ABC):
             link_names_for_self_collision_checking=None,
             link_names_pairs_for_self_collision_checking=None,
             link_idxs_for_self_collision_checking=None,
-            self_collision_margin=0.001,
+            self_collision_margin_robot=0.001,
+            link_names_for_self_collision_checking_with_grasped_object=None,
+            self_collision_margin_grasped_object=0.05,
             num_interpolated_points_for_self_collision_checking=50,
             num_interpolated_points_for_object_collision_checking=50,
             tensor_args=None,
@@ -56,7 +58,7 @@ class RobotBase(ABC):
             num_interpolated_points_for_object_collision_checking = self.points_per_link_object_collision_checking * len(link_names_for_object_collision_checking)
         else:
             self.points_per_link_object_collision_checking = int(num_interpolated_points_for_object_collision_checking / len(link_names_for_object_collision_checking))
-        self.self_collision_margin = self_collision_margin
+        self.self_collision_margin_robot = self_collision_margin_robot
         self.num_interpolated_points_for_object_collision_checking = num_interpolated_points_for_object_collision_checking
         self.link_names_for_object_collision_checking = link_names_for_object_collision_checking
         self.n_links_for_object_collision_checking = len(link_names_for_object_collision_checking)
@@ -89,22 +91,45 @@ class RobotBase(ABC):
 
         self.link_idxs_for_self_collision_checking = link_idxs_for_self_collision_checking
 
+        self.link_names_for_self_collision_checking_with_grasped_object = link_names_for_self_collision_checking_with_grasped_object
+
+        self.self_collision_margin_grasped_object = self_collision_margin_grasped_object
+
         # build indices to retrieve distances from self collision distance matrix
+        # including the grasped object
         idxs_links_distance_matrix = []
         p = self.points_per_link_self_collision_checking
+        total_self_distances_robot = 0
         for i, link_1 in enumerate(self.link_names_for_self_collision_checking):
             if link_1 in self.link_names_pairs_for_self_collision_checking:
                 for link_2 in self.link_names_pairs_for_self_collision_checking[link_1]:
                     j = self.link_names_for_self_collision_checking.index(link_2)
                     idxs = [(i*p + m, j*p + n) for m, n in list(itertools.product(range(p), range(p)))]
                     idxs_links_distance_matrix.extend(idxs)
+                    total_self_distances_robot += len(idxs)
+
+        self_collision_margin_vector = [self.self_collision_margin_robot] * total_self_distances_robot
+
+        if self.grasped_object is not None:
+            total_self_distances_grasped_object = 0
+            self_collision_robot_last_row_idx = len(self.link_names_for_self_collision_checking) * p
+            n_grasped_points = self.grasped_object.n_base_points_for_collision
+            for link_1 in self.link_names_for_self_collision_checking_with_grasped_object:
+                j = self.link_names_for_self_collision_checking.index(link_1)
+                idxs = [(self_collision_robot_last_row_idx + m, j * p + n) for m, n in list(itertools.product(range(n_grasped_points), range(p)))]
+                idxs_links_distance_matrix.extend(idxs)
+                total_self_distances_grasped_object += len(idxs)
+
+            self_collision_margin_vector.extend([self.self_collision_margin_grasped_object] * total_self_distances_grasped_object)
+
+        self_collision_margin_vector = to_torch(self_collision_margin_vector, **self.tensor_args)
 
         self.df_collision_self = CollisionSelfField(
             self,
             link_idxs_for_collision_checking=self.link_idxs_for_self_collision_checking,
             idxs_links_distance_matrix=idxs_links_distance_matrix,
             num_interpolated_points=num_interpolated_points_for_self_collision_checking,
-            cutoff_margin=self.self_collision_margin,
+            cutoff_margin=self_collision_margin_vector,
             tensor_args=self.tensor_args
         )
 

@@ -19,6 +19,7 @@ from torch_robotics.environment.env_spheres_3d import EnvSpheres3D
 from torch_robotics.environment.primitives import MultiSphereField
 from torch_robotics.robot.robot_panda import RobotPanda
 from torch_robotics.task.tasks import PlanningTask
+from torch_robotics.torch_kinematics_tree.models.robots import modidy_franka_panda_urdf_grasped_object
 from torch_robotics.torch_planning_objectives.fields.distance_fields import interpolate_links_v1
 from torch_robotics.torch_utils.seed import fix_random_seed
 from torch_robotics.torch_utils.torch_utils import get_torch_device, to_numpy
@@ -155,6 +156,7 @@ class PandaMotionPlanningIsaacGymEnv:
 
     def __init__(self, env, robot, task,
                  asset_root="/home/carvalho/Projects/MotionPlanningDiffusion/mpd/isaacgym/assets",
+                 franka_asset_file="urdf/franka_description/robots/franka_panda.urdf",
                  controller_type='position',
                  num_envs=8,
                  all_robots_in_one_env=False,
@@ -177,6 +179,15 @@ class PandaMotionPlanningIsaacGymEnv:
 
         self.show_collision_spheres = show_collision_spheres
         self.show_contact_forces = show_contact_forces
+
+        # Modify the urdf to append the link of the grasped object
+        if self.robot.grasped_object is not None:
+            franka_asset_file_abs_path = os.path.join(asset_root, franka_asset_file)
+            franka_asset_file_abs_path_new = modidy_franka_panda_urdf_grasped_object(
+                franka_asset_file_abs_path,
+                self.robot.grasped_object
+            )
+            franka_asset_file = os.path.join(os.path.split(franka_asset_file)[0], os.path.split(franka_asset_file_abs_path_new)[-1])
 
         ###############################################################################################################
         # ISAAC
@@ -233,7 +244,6 @@ class PandaMotionPlanningIsaacGymEnv:
         # Robot asset
 
         # load franka asset
-        franka_asset_file = "urdf/franka_description/robots/franka_panda.urdf"
         asset_options = gymapi.AssetOptions()
         asset_options.armature = 0.01
         asset_options.fix_base_link = True
@@ -545,6 +555,7 @@ class PandaMotionPlanningIsaacGymEnv:
                 envs = self.envs
 
             for k, (env, franka_handle) in enumerate(zip(envs, self.franka_handles)):
+                # End-effector frame
                 body_dict = self.gym.get_actor_rigid_body_dict(env, franka_handle)
                 props = self.gym.get_actor_rigid_body_states(env, franka_handle, gymapi.STATE_POS)
                 ee_pose = props['pose'][:][body_dict[self.franka_hand]]
@@ -692,7 +703,7 @@ class MotionPlanningController:
                 if idx not in envs_with_robot_in_contact_unique:
                     envs_with_robot_in_contact_unique.append(idx)
 
-        print(f'trajectories in collision: {len(envs_with_robot_in_contact_unique)}/{B}')
+        print(f'trajectories free: {B-len(envs_with_robot_in_contact_unique)}/{B}')
 
 
 if __name__ == '__main__':

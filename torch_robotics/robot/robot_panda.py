@@ -1,3 +1,5 @@
+from collections import OrderedDict
+
 import einops
 import numpy as np
 import torch
@@ -76,13 +78,27 @@ class RobotPanda(RobotBase):
 
         #############################################
         # Robot collision model for self collision
-        link_names_for_self_collision_checking = self.diff_panda.get_link_names()
-        link_names_pairs_for_self_collision_checking = {
-            'panda_hand': {'panda_link0', 'panda_link1', 'panda_link2'},
-            'panda_link6': {'panda_link0', 'panda_link1', 'panda_link2'},
-            'panda_link5': {'panda_link0', 'panda_link1', 'panda_link2'},
-            'panda_link4': {'panda_link1'}
-        }
+        link_names_pairs_for_self_collision_checking = OrderedDict({
+            'panda_hand': ['panda_link0', 'panda_link1', 'panda_link2'],
+            'panda_link6': ['panda_link0', 'panda_link1', 'panda_link2'],
+            'panda_link5': ['panda_link0', 'panda_link1', 'panda_link2'],
+            'panda_link4': ['panda_link1']
+        })
+
+        # self collision due to grasped object
+        link_names_for_self_collision_checking_with_grasped_object = [
+            'panda_link0', 'panda_link1', 'panda_link2', 'panda_link3',
+            # 'panda_link5'
+        ]
+
+        # retrieve unique names
+        # link_names_for_self_collision_checking = self.diff_panda.get_link_names()
+        link_names_for_self_collision_checking = []
+        for k, v in link_names_pairs_for_self_collision_checking.items():
+            link_names_for_self_collision_checking.append(k)
+            link_names_for_self_collision_checking.extend(v)
+        link_names_for_self_collision_checking.extend(link_names_for_self_collision_checking_with_grasped_object)
+        link_names_for_self_collision_checking = sorted(list(set(link_names_for_self_collision_checking)))
 
         link_idxs_for_self_collision_checking = []
         for link_name in link_names_for_self_collision_checking:
@@ -97,13 +113,15 @@ class RobotPanda(RobotBase):
             link_names_for_object_collision_checking=link_names_for_object_collision_checking,
             link_margins_for_object_collision_checking=link_margins_for_object_collision_checking,
             link_idxs_for_object_collision_checking=link_idxs_for_object_collision_checking,
-            margin_for_grasped_object_collision_checking=0.005,  # small margin for object placement
+            margin_for_grasped_object_collision_checking=0.001,  # small margin for object placement
             num_interpolated_points_for_object_collision_checking=len(link_names_for_object_collision_checking)*5,
             link_names_for_self_collision_checking=link_names_for_self_collision_checking,
             link_names_pairs_for_self_collision_checking=link_names_pairs_for_self_collision_checking,
             link_idxs_for_self_collision_checking=link_idxs_for_self_collision_checking,
             num_interpolated_points_for_self_collision_checking=25,
-            self_collision_margin=0.125,
+            self_collision_margin_robot=0.10,
+            link_names_for_self_collision_checking_with_grasped_object=link_names_for_self_collision_checking_with_grasped_object,
+            self_collision_margin_grasped_object=0.05,
             tensor_args=tensor_args,
             **kwargs
         )
@@ -111,7 +129,9 @@ class RobotPanda(RobotBase):
         #############################################
         # Override self collision distance field with the one from STORM - https://arxiv.org/abs/2104.13542
         if use_self_collision_storm:
-            assert grasped_object is None, "STORM self collision model does not work if objects are grasped"
+            assert grasped_object is None, ("STORM self collision model does not work if objects are grasped. "
+                                            "Learn a self collision model of the robot grasping the object "
+                                            "(e.g. using the object mesh).")
             self.df_collision_self = CollisionSelfFieldWrapperSTORM(
                 self, 'robot_self/franka_self_sdf.pt', self.q_dim, tensor_args=self.tensor_args)
 

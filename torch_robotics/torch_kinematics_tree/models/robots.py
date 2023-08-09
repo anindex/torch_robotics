@@ -21,6 +21,38 @@ class DifferentiableKUKAiiwa(DifferentiableTree):
         super().__init__(self.model_path, self.name, link_list=link_list, device=device)
 
 
+def modidy_franka_panda_urdf_grasped_object(robot_file, grasped_object):
+    robot_urdf = URDF.from_xml_file(robot_file)
+    joint = Joint(
+        name='grasped_object_fixed_joint',
+        parent='panda_hand',
+        child='grasped_object',
+        joint_type='fixed',
+        origin=Pose(xyz=to_numpy(grasped_object.pos.squeeze()),
+                    rpy=to_numpy(q_to_euler(grasped_object.ori).squeeze())
+                    )
+    )
+    robot_urdf.add_joint(joint)
+
+    geometry_grasped_object = grasped_object.geometry_urdf
+    link = Link(
+        name='grasped_object',
+        visual=Visual(geometry_grasped_object),
+        # inertial=None,
+        collision=Collision(geometry_grasped_object),
+        origin=Pose(xyz=[0., 0., 0.], rpy=[0., 0., 0.])
+    )
+    robot_urdf.add_link(link)
+
+    # replace the robot file
+    robot_file = Path(str(robot_file).replace('.urdf', '_grasped_object.urdf'))
+    xmlstr = minidom.parseString(ET.tostring(robot_urdf.to_xml())).toprettyxml(indent="   ")
+    with open(str(robot_file), "w") as f:
+        f.write(xmlstr)
+
+    return robot_file
+
+
 class DifferentiableFrankaPanda(DifferentiableTree):
     def __init__(self, link_list: Optional[str] = None, gripper=False, device='cpu', grasped_object=None):
         if gripper:
@@ -30,33 +62,7 @@ class DifferentiableFrankaPanda(DifferentiableTree):
 
         # Modify the urdf to append the link of the grasped object
         if grasped_object is not None:
-            robot_urdf = URDF.from_xml_file(robot_file)
-            joint = Joint(
-                name='grasped_object_fixed_joint',
-                parent='ee_link',
-                child='grasped_object',
-                joint_type='fixed',
-                origin=Pose(xyz=to_numpy(grasped_object.pos.squeeze()),
-                            rpy=to_numpy(q_to_euler(grasped_object.ori).squeeze())
-                            )
-            )
-            robot_urdf.add_joint(joint)
-
-            geometry_grasped_object = grasped_object.geometry_urdf
-            link = Link(
-                name='grasped_object',
-                visual=Visual(geometry_grasped_object),
-                # inertial=None,
-                collision=Collision(geometry_grasped_object),
-                origin=Pose(xyz=[0., 0., 0.], rpy=[0., 0., 0.])
-            )
-            robot_urdf.add_link(link)
-
-            # replace the robot file
-            robot_file = Path(str(robot_file).replace('.urdf', '_grasped_object.urdf'))
-            xmlstr = minidom.parseString(ET.tostring(robot_urdf.to_xml())).toprettyxml(indent="   ")
-            with open(str(robot_file), "w") as f:
-                f.write(xmlstr)
+            robot_file = modidy_franka_panda_urdf_grasped_object(robot_file, grasped_object)
 
         self.model_path = robot_file.as_posix()
         self.name = "differentiable_franka_panda"
