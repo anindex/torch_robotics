@@ -2,21 +2,22 @@ import numpy as np
 import torch
 
 from torch_robotics.robot.robot_base import RobotBase
-from torch_robotics.torch_utils.torch_utils import to_numpy, tensor_linspace_v1
+from torch_robotics.torch_utils.torch_utils import to_numpy, tensor_linspace_v1, to_torch
 
 
 class RobotPlanar2Link(RobotBase):
 
     def __init__(self,
-                 tensor_args=None,
+                 name='RobotPlanar2Link',
+                 q_limits=torch.tensor([[-torch.pi, -torch.pi + 0.01], [torch.pi, torch.pi - 0.01]]),  # configuration space limits
                  **kwargs):
-
-        q_limits = torch.tensor([[-torch.pi, -torch.pi + 0.01], [torch.pi, torch.pi - 0.01]], **tensor_args)
-
         super().__init__(
-            name='RobotPlanar2Link',
-            q_limits=q_limits,
-            tensor_args=tensor_args,
+            name=name,
+            q_limits=to_torch(q_limits, **kwargs['tensor_args']),
+            link_names_for_object_collision_checking=['link_0', 'link_1', 'link_2'],
+            link_margins_for_object_collision_checking=[0.01, 0.01, 0.01],
+            link_idxs_for_object_collision_checking=[0, 1, 2],
+            num_interpolated_points_for_object_collision_checking=10,
             **kwargs
         )
 
@@ -25,39 +26,30 @@ class RobotPlanar2Link(RobotBase):
         self.l1 = 0.2
         self.l2 = 0.4
 
-    def end_link_positions(self, q):
-        pos_end_link1 = torch.zeros((*q.shape[0:-1], 2), **self.tensor_args)
-        pos_end_link2 = torch.zeros((*q.shape[0:-1], 2), **self.tensor_args)
+    def link_positions(self, q):
+        pos_link0 = torch.zeros((*q.shape[0:-1], 2), **self.tensor_args)
+        pos_link1 = torch.zeros_like(pos_link0)
+        pos_link2 = torch.zeros_like(pos_link0)
 
-        pos_end_link1[..., 0] = self.l1 * torch.cos(q[..., 0])
-        pos_end_link1[..., 1] = self.l1 * torch.sin(q[..., 0])
+        pos_link1[..., 0] = self.l1 * torch.cos(q[..., 0])
+        pos_link1[..., 1] = self.l1 * torch.sin(q[..., 0])
 
-        pos_end_link2[..., 0] = pos_end_link1[..., 0] + self.l2 * torch.cos(q[..., 0] + q[..., 1])
-        pos_end_link2[..., 1] = pos_end_link1[..., 1] + self.l2 * torch.sin(q[..., 0] + q[..., 1])
+        pos_link2[..., 0] = pos_link1[..., 0] + self.l2 * torch.cos(q[..., 0] + q[..., 1])
+        pos_link2[..., 1] = pos_link1[..., 1] + self.l2 * torch.sin(q[..., 0] + q[..., 1])
 
-        return pos_end_link1, pos_end_link2
+        return pos_link0, pos_link1, pos_link2
 
-    def fk_map_collision_impl(self, q, pos_only=False, return_dict=False):
+    def fk_map_collision_impl(self, q, **kwargs):
         if q.ndim == 1:
             q = q.unsqueeze(0)  # add batch dimension
         points_along_links = 25
-        p1, p2 = self.end_link_positions(q)
-        positions_link1 = tensor_linspace_v1(torch.zeros_like(p1), p1, points_along_links)
-        positions_link1 = positions_link1.swapaxes(-2, -1)
-        positions_link2 = tensor_linspace_v1(p1 + self.self_collision_margin, p2, points_along_links)
-        positions_link2 = positions_link2.swapaxes(-2, -1)
+        p0, p1, p2 = self.link_positions(q)
 
-        x_pos = torch.cat((positions_link1, positions_link2), dim=-2)
-        if pos_only:
-            if return_dict:
-                return {'link_tensor_pos': x_pos}
-            else:
-                return x_pos
-        else:
-            raise NotImplementedError
+        link_pos = torch.cat((p0, p1, p2), dim=-2)
+        return link_pos
 
     def render(self, ax, q=None, alpha=1.0, color='blue', linewidth=2.0, **kwargs):
-        p1, p2 = self.end_link_positions(q)
+        p0, p1, p2 = self.link_positions(q)
         p1, p2 = p1.squeeze(), p2.squeeze()
         l2 = to_numpy(torch.vstack((p1, p2)))
         p1, p2 = to_numpy(p1), to_numpy(p2)

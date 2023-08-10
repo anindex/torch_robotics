@@ -81,7 +81,7 @@ class EnvSpheres3D(EnvBase):
             n_radius=torch.pi/4,
             n_pre_samples=50000,
 
-            max_time=30
+            max_time=90
         )
         return params
 

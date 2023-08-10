@@ -25,7 +25,7 @@ class PlanningTask(Task):
             ws_limits=None,
             use_occupancy_map=False,
             cell_size=0.01,
-            obstacle_cutoff_margin=0.025,
+            obstacle_cutoff_margin=0.01,
             **kwargs
     ):
         super().__init__(**kwargs)
@@ -139,6 +139,7 @@ class PlanningTask(Task):
             raise NotImplementedError
 
         if self.use_occupancy_map:
+            raise NotImplementedError
             # ---------------------------------- For occupancy maps ----------------------------------
             ########################################
             # Configuration space boundaries
@@ -188,13 +189,22 @@ class PlanningTask(Task):
 
             ########################
             # Self collision
-            cost_collision_self = self.df_collision_self.compute_cost(q, fk_collision_pos, field_type=field_type, **kwargs)
+            if self.df_collision_self is not None:
+                cost_collision_self = self.df_collision_self.compute_cost(q, fk_collision_pos, field_type=field_type, **kwargs)
+            else:
+                cost_collision_self = 0
 
             # Object collision
-            cost_collision_objects = self.df_collision_objects.compute_cost(q, fk_collision_pos, field_type=field_type, **kwargs)
+            if self.df_collision_objects is not None:
+                cost_collision_objects = self.df_collision_objects.compute_cost(q, fk_collision_pos, field_type=field_type, **kwargs)
+            else:
+                cost_collision_objects = 0
 
             # Workspace boundaries
-            cost_collision_border = self.df_collision_ws_boundaries.compute_cost(q, fk_collision_pos, field_type=field_type, **kwargs)
+            if self.df_collision_ws_boundaries is not None:
+                cost_collision_border = self.df_collision_ws_boundaries.compute_cost(q, fk_collision_pos, field_type=field_type, **kwargs)
+            else:
+                cost_collision_border = 0
 
             if field_type == 'occupancy':
                 collisions = cost_collision_self | cost_collision_objects | cost_collision_border

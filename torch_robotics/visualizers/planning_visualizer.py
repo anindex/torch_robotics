@@ -28,6 +28,9 @@ class PlanningVisualizer:
         self.planner = planner
 
         self.colors = {'collision': 'black', 'free': 'orange'}
+        self.colors_robot = {'collision': 'black', 'free': 'darkorange'}
+        self.cmaps = {'collision': 'Greys', 'free': 'Oranges'}
+        self.cmaps_robot = {'collision': 'Greys', 'free': 'YlOrRd'}
 
     def render_robot_trajectories(self, fig=None, ax=None, render_planner=False, trajs=None, **kwargs):
         if fig is None or ax is None:
@@ -78,14 +81,16 @@ class PlanningVisualizer:
             for q in qs:
                 self.robot.render(
                     ax, q=q,
-                    color=self.colors['collision'] if self.task.compute_collision(q, margin=0.0) else self.colors['free'],
-                    arrow_length=0.1, arrow_alpha=0.5, arrow_linewidth=1., **kwargs
+                    color=self.colors_robot['collision'] if self.task.compute_collision(q, margin=0.0) else self.colors_robot['free'],
+                    arrow_length=0.1, arrow_alpha=0.5, arrow_linewidth=1.,
+                    cmap=self.cmaps['collision'] if self.task.compute_collision(q, margin=0.0) else self.cmaps['free'],
+                    **kwargs
                 )
 
             if start_state is not None:
-                self.robot.render(ax, start_state, color='green')
+                self.robot.render(ax, start_state, color='green', cmap='Greens')
             if goal_state is not None:
-                self.robot.render(ax, goal_state, color='purple')
+                self.robot.render(ax, goal_state, color='purple', cmap='Purples')
 
         create_animation_video(fig, animate_fn, n_frames=n_frames, **kwargs)
 
@@ -112,9 +117,9 @@ class PlanningVisualizer:
                 fig=fig, ax=ax, trajs=trajs_selection[i],  start_state=start_state, goal_state=goal_state, **kwargs
             )
             if start_state is not None:
-                self.robot.render(ax, start_state, color='green')
+                self.robot.render(ax, start_state, color='green', cmap='Greens')
             if goal_state is not None:
-                self.robot.render(ax, goal_state, color='purple')
+                self.robot.render(ax, goal_state, color='purple', cmap='Purples')
 
         create_animation_video(fig, animate_fn, n_frames=n_frames, **kwargs)
 

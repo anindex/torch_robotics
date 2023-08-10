@@ -47,13 +47,13 @@ class EnvSquare2D(EnvBase):
 
     def get_gpmp_params(self, robot_name='NA'):
         params = dict(
-            opt_iters=100,
+            opt_iters=200,
             num_samples=64,
             sigma_start=1e-5,
             sigma_gp=1e-2,
             sigma_goal_prior=1e-5,
             sigma_coll=1e-5,
-            step_size=5e-1,
+            step_size=9e-1,
             sigma_start_init=1e-4,
             sigma_goal_init=1e-4,
             sigma_gp_init=0.2,

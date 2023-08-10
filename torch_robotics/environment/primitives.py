@@ -75,6 +75,18 @@ class PrimitiveShapeField(ABC):
         raise NotImplementedError
 
 
+def plot_sphere(ax, center, pos, radius, cmap):
+    u, v = np.mgrid[0:2 * np.pi:30j, 0:np.pi:20j]
+    x = radius * (np.cos(u) * np.sin(v))
+    y = radius * (np.sin(u) * np.sin(v))
+    z = radius * np.cos(v)
+    ax.plot_surface(
+        x + center[0] + pos[0], y + center[1] + pos[1], z + center[2] + pos[2],
+        cmap=cmap,
+        alpha=1
+    )
+
+
 class MultiSphereField(PrimitiveShapeField):
 
     def __init__(self, centers, radii, tensor_args=None):
@@ -173,15 +185,7 @@ class MultiSphereField(PrimitiveShapeField):
                 pos = to_numpy(pos)
             # orientation is not needed, because the shape is symmetric
             if ax.name == '3d':
-                u, v = np.mgrid[0:2 * np.pi:30j, 0:np.pi:20j]
-                x = radius * (np.cos(u) * np.sin(v))
-                y = radius * (np.sin(u) * np.sin(v))
-                z = radius * np.cos(v)
-                ax.plot_surface(
-                    x + center[0] + pos[0], y + center[1] + pos[1], z + center[2] + pos[2],
-                    cmap=cmap,
-                    alpha=1
-                )
+                plot_sphere(ax, center, pos, radius, cmap)
             else:
                 circle = plt.Circle((center[0] + pos[0], center[1] + pos[1]), radius, color=color, linewidth=0, alpha=1)
                 ax.add_patch(circle)

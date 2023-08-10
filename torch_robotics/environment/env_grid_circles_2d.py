@@ -65,6 +65,7 @@ class EnvGridCircles2D(EnvBase):
             sigma_start_init=1e-4,
             sigma_goal_init=1e-4,
             sigma_gp_init=0.2,
+            sigma_gp_sample=0.2,
             sigma_start_sample=1e-4,
             sigma_goal_sample=1e-4,
             temperature=1.,

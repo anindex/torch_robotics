@@ -353,7 +353,9 @@ class PandaMotionPlanningIsaacGymEnv:
                 self.map_rigid_body_idxs_to_env_idx[obj_idx] = i
 
             # add franka
-            franka_handle = self.gym.create_actor(env, franka_asset, franka_pose, "franka", i, 0)
+            # Set to 0 to enable self-collision. By default we do not consider self-collision because the collision
+            # meshes are too conservative.
+            franka_handle = self.gym.create_actor(env, franka_asset, franka_pose, "franka", i, 2)
             self.franka_handles.append(franka_handle)
             rb_names = self.gym.get_actor_rigid_body_names(env, franka_handle)
             for j in range(len(rb_names)):

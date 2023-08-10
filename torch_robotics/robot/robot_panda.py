@@ -119,7 +119,7 @@ class RobotPanda(RobotBase):
             link_names_pairs_for_self_collision_checking=link_names_pairs_for_self_collision_checking,
             link_idxs_for_self_collision_checking=link_idxs_for_self_collision_checking,
             num_interpolated_points_for_self_collision_checking=25,
-            self_collision_margin_robot=0.10,
+            self_collision_margin_robot=0.05,
             link_names_for_self_collision_checking_with_grasped_object=link_names_for_self_collision_checking_with_grasped_object,
             self_collision_margin_grasped_object=0.05,
             tensor_args=tensor_args,
