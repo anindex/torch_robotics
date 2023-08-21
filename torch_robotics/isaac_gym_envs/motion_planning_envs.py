@@ -15,10 +15,11 @@ from isaacgym.torch_utils import *
 
 import torch
 
-from torch_robotics.environment.env_spheres_3d import EnvSpheres3D
-from torch_robotics.environment.primitives import MultiSphereField, MultiBoxField
-from torch_robotics.robot.robot_panda import RobotPanda
-from torch_robotics.task.tasks import PlanningTask
+from torch_robotics.environments import EnvTableShelf
+from torch_robotics.environments.env_spheres_3d import EnvSpheres3D
+from torch_robotics.environments.primitives import MultiSphereField, MultiBoxField
+from torch_robotics.robots.robot_panda import RobotPanda
+from torch_robotics.tasks.tasks import PlanningTask
 from torch_robotics.torch_kinematics_tree.models.robots import modidy_franka_panda_urdf_grasped_object
 from torch_robotics.torch_planning_objectives.fields.distance_fields import interpolate_links_v1
 from torch_robotics.torch_utils.seed import fix_random_seed
@@ -174,7 +175,7 @@ class ViewerRecorder:
 class PandaMotionPlanningIsaacGymEnv:
 
     def __init__(self, env, robot, task,
-                 asset_root="/home/carvalho/Projects/MotionPlanningDiffusion/mpd/isaacgym/assets",
+                 asset_root="/home/carvalho/Projects/MotionPlanningDiffusion/mpd/deps/isaacgym/assets",
                  franka_asset_file="urdf/franka_description/robots/franka_panda.urdf",
                  controller_type='position',
                  num_envs=8,
@@ -183,7 +184,7 @@ class PandaMotionPlanningIsaacGymEnv:
                  use_pipeline_gpu=False,
                  show_goal_configuration=True,
                  sync_with_real_time=False,
-                 show_collision_spheres=False,  # very slow implementation. use only one robot
+                 show_collision_spheres=False,  # very slow implementation. use only one robots
                  show_contact_forces=False,
     ):
 
@@ -323,7 +324,7 @@ class PandaMotionPlanningIsaacGymEnv:
         plane_params.normal = gymapi.Vec3(0, 0, 1)
         self.gym.add_ground(self.sim, plane_params)
 
-        # robot pose
+        # robots pose
         franka_pose = gymapi.Transform()
         franka_pose.p = gymapi.Vec3(0, 0, 0)
 
@@ -343,7 +344,7 @@ class PandaMotionPlanningIsaacGymEnv:
         self.show_goal_configuration = show_goal_configuration
         self.goal_joint_position = None
 
-        # maps the global rigid body index to the environment index
+        # maps the global rigid body index to the environments index
         # useful to know which trajectories are in collision
         self.map_rigid_body_idxs_to_env_idx = {}
 
@@ -537,7 +538,7 @@ class PandaMotionPlanningIsaacGymEnv:
             self.gym.set_dof_velocity_target_tensor(self.sim, gymtorch.unwrap_tensor(action_dof))
 
         ###############################################################################################################
-        # Check collisions between robot and objects
+        # Check collisions between robots and objects
         # TODO - implement vectorized version
         if self.all_robots_in_one_env:
             envs = self.envs * self.num_envs
@@ -546,7 +547,7 @@ class PandaMotionPlanningIsaacGymEnv:
 
         franka_handles = self.franka_handles
         if self.show_goal_configuration:
-            # remove last environment, since it should not have physics
+            # remove last environments, since it should not have physics
             envs = envs[:-1]
             franka_handles = franka_handles[:-1]
 
@@ -671,7 +672,7 @@ class MotionPlanningController:
         # start at the initial position
         joint_states = self.mp_env.reset(start_joint_positions=start_states_joint_pos, goal_joint_position=goal_state_joint_pos)
 
-        # first steps -- keep robot in place
+        # first steps -- keep robots in place
         joint_positions_start = joint_states[:, :, 0]
         joint_velocities_zero = torch.zeros_like(joint_states[:, :, 1])
         for _ in range(n_first_steps):
@@ -691,14 +692,14 @@ class MotionPlanningController:
                 break
             joint_states, envs_with_robot_in_contact = self.mp_env.step(actions, visualize=visualize, render_viewer_camera=render_viewer_camera)
             envs_with_robot_in_contact_l.append(envs_with_robot_in_contact)
-            # stop the trajectory if the robot was in contact with the environment
+            # stop the trajectory if the robots was in contact with the environments
             if len(envs_with_robot_in_contact) > 0:
                 if self.mp_env.controller_type == 'position':
                     trajectories_copy[i:, envs_with_robot_in_contact, :] = actions[envs_with_robot_in_contact, :]
                 elif self.mp_env.controller_type == 'velocity':
                     trajectories_copy[i:, envs_with_robot_in_contact, :] = 0.
 
-        # last steps -- keep robot in place
+        # last steps -- keep robots in place
         if self.mp_env.controller_type == 'position':
             # stay the current position after the trajectory has finished
             joint_positions_last = joint_states[:, :, 0]
@@ -747,6 +748,12 @@ if __name__ == '__main__':
         sdf_cell_size=0.01,
         tensor_args=tensor_args
     )
+
+    # env = EnvTableShelf(
+    #     precompute_sdf_obj_fixed=True,
+    #     sdf_cell_size=0.01,
+    #     tensor_args=tensor_args
+    # )
 
     robot = RobotPanda(tensor_args=tensor_args)
 

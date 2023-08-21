@@ -126,7 +126,7 @@ class DifferentiableTree(torch.nn.Module):
             self._bodies[parent_body_idx].add_child(body)
     
     def reset(self):
-        '''Reset the robot FK after stateful update'''
+        '''Reset the robots FK after stateful update'''
         for body in self._bodies:
             body.reset()
 
@@ -135,7 +135,7 @@ class DifferentiableTree(torch.nn.Module):
 
     def update_kinematic_state(self, q: torch.Tensor, qd: torch.Tensor) -> None:
         """
-        Updates the kinematic state of the robot in a stateful way
+        Updates the kinematic state of the robots in a stateful way
         Args:
             q: joint angles [batch_size x n_dofs]
             qd: joint velocities [batch_size x n_dofs]

@@ -35,7 +35,7 @@ class PlanningTask(Task):
 
         # Optional: use an occupancy map for collision checking -- useful for sampling-based algorithms
         # A precomputed collision map is faster when checking for collisions, in comparison to computing the distances
-        # from task spaces to objects
+        # from tasks spaces to objects
         self.use_occupancy_map = use_occupancy_map
         if use_occupancy_map:
             self.env.build_occupancy_map(cell_size=cell_size)
@@ -158,14 +158,14 @@ class PlanningTask(Task):
             x_pos = self.robot.fk_map_collision(q_try, pos_only=True)  # I, taskspaces, x_dim
 
             # workspace boundaries
-            # configuration is not valid if any points in the task spaces is out of workspace boundaries
+            # configuration is not valid if any points in the tasks spaces is out of workspace boundaries
             idxs_ws_in_boundaries = torch.argwhere(torch.all(torch.all(torch.logical_and(
                 torch.greater_equal(x_pos, self.ws_min), torch.less_equal(x_pos, self.ws_max)), dim=-1),
                 dim=-1)).squeeze()  # I_ws
 
             idxs_coll_free = idxs_coll_free[idxs_ws_in_boundaries].view(-1, 2)
 
-            # collision in task space
+            # collision in tasks space
             x_pos_in_ws = x_pos[idxs_ws_in_boundaries]  # I_ws, x_dim
             collisions_pos_x = self.env.occupancy_map.get_collisions(x_pos_in_ws, **kwargs)
             if len(collisions_pos_x.shape) == 1:
@@ -228,7 +228,8 @@ class PlanningTask(Task):
         trajs_interpolated = interpolate_traj_via_points(trajs_new, num_interpolation=num_interpolation)
         # Set 0 margin for collision checking, which means we allow trajectories to pass very close to objects.
         # While the optimized trajectory via points are not at a 0 margin from the object, the interpolated via points
-        # might be. A 0 margin guarantees that we do not discard those trajectories.
+        # might be. A 0 margin guarantees that we do not discard those trajectories, while ensuring they are not in
+        # collision (margin < 0).
         trajs_waypoints_collisions = self.compute_collision(trajs_interpolated, margin=0.)
 
         if trajs.ndim == 4:

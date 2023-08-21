@@ -44,7 +44,7 @@ def modidy_franka_panda_urdf_grasped_object(robot_file, grasped_object):
     )
     robot_urdf.add_link(link)
 
-    # replace the robot file
+    # replace the robots file
     robot_file = Path(str(robot_file).replace('.urdf', '_grasped_object.urdf'))
     xmlstr = minidom.parseString(ET.tostring(robot_urdf.to_xml())).toprettyxml(indent="   ")
     with open(str(robot_file), "w") as f:

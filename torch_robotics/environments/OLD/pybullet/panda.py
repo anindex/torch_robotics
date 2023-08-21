@@ -325,7 +325,7 @@ class PandaEnv(object):
                         self.is_contact = True
                         break
             else:
-                warnings.warn("Connect robot")
+                warnings.warn("Connect robots")
                 # time.sleep(10)
                 self.is_contact = True
         else:

@@ -67,7 +67,7 @@ class PandaEnvBase(EnvBase):
         # Obstacles
         self.obst_primitives_l = obst_primitives_l
 
-        # optionally setup the obstacle map to use with the robot represented with spheres
+        # optionally setup the obstacle map to use with the robots represented with spheres
         self.compute_robot_collision_from_occupancy_grid = compute_robot_collision_from_occupancy_grid
         self.obstacle_map = None
         if self.compute_robot_collision_from_occupancy_grid:
@@ -188,7 +188,7 @@ class PandaEnvBase(EnvBase):
         return self.compute_cost_collision_internal(q, field_type=field_type, **kwargs)
 
     def collision_robot_occupancy_grid(self, q, batch_dim=1):
-        # Computes the collisions between the robot spheres and the occupancy grid
+        # Computes the collisions between the robots spheres and the occupancy grid
         links_dict = self.diff_panda.compute_forward_kinematics_all_links(q, return_dict=True)
         # TODO: build_batch_features only when batch dimension changes
         self.panda_collision.build_batch_features(batch_dim=[batch_dim, ], clone_objs=True)

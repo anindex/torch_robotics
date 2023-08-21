@@ -1,7 +1,7 @@
 import numpy as np
 import torch
 
-from torch_robotics.robot.robot_base import RobotBase
+from torch_robotics.robots.robot_base import RobotBase
 from torch_robotics.torch_utils.torch_utils import to_numpy, tensor_linspace_v1, to_torch
 
 

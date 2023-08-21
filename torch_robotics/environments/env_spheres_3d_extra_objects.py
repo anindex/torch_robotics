@@ -2,9 +2,9 @@ import numpy as np
 import torch
 from matplotlib import pyplot as plt
 
-from torch_robotics.environment.env_base import EnvBase
-from torch_robotics.environment.env_spheres_3d import EnvSpheres3D
-from torch_robotics.environment.primitives import ObjectField, MultiSphereField, MultiBoxField
+from torch_robotics.environments.env_base import EnvBase
+from torch_robotics.environments.env_spheres_3d import EnvSpheres3D
+from torch_robotics.environments.primitives import ObjectField, MultiSphereField, MultiBoxField
 from torch_robotics.torch_utils.torch_utils import DEFAULT_TENSOR_ARGS
 from torch_robotics.visualizers.planning_visualizer import create_fig_and_axes
 

@@ -131,7 +131,7 @@ class Skeleton():
 
 
 def get_skeleton_from_model(model, q_calib, link_list=None):
-    '''Get Skeleton from robot model'''
+    '''Get Skeleton from robots model'''
     if isinstance(q_calib, np.ndarray) or isinstance(q_calib, list):
         q_calib = torch.tensor(q_calib, device=model._device)
     if q_calib.ndim == 1:

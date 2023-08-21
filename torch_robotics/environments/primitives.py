@@ -512,7 +512,7 @@ class ObjectField(PrimitiveShapeField):
 
     def __init__(self, primitive_fields, name='object', pos=None, ori=None, reference_frame='base'):
         """
-        Holds an object made of primitives and manages its position and orientation in the environment.
+        Holds an object made of primitives and manages its position and orientation in the environments.
         """
         self.name = name
 
@@ -530,7 +530,7 @@ class ObjectField(PrimitiveShapeField):
         self.reference_frame = reference_frame
 
         # precomputed sdf and gradients
-        # holds the sdf (and its gradient) of this object for all points in the environment workspace
+        # holds the sdf (and its gradient) of this object for all points in the environments workspace
         self.grid_map_sdf = None
 
     def __repr__(self):

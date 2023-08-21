@@ -4,8 +4,8 @@ import einops
 import numpy as np
 import torch
 
-from torch_robotics.environment.primitives import MultiSphereField
-from torch_robotics.robot.robot_base import RobotBase
+from torch_robotics.environments.primitives import MultiSphereField
+from torch_robotics.robots.robot_base import RobotBase
 from torch_robotics.torch_kinematics_tree.geometrics.frame import Frame
 from torch_robotics.torch_kinematics_tree.geometrics.quaternion import q_convert_wxyz
 from torch_robotics.torch_kinematics_tree.geometrics.skeleton import get_skeleton_from_model
@@ -29,7 +29,7 @@ class RobotPanda(RobotBase):
         self.gripper = False
 
         #############################################
-        # Differentiable robot model
+        # Differentiable robots model
         self.link_name_ee = 'ee_link'
         self.link_name_grasped_object = 'grasped_object'
 
@@ -130,7 +130,7 @@ class RobotPanda(RobotBase):
         # Override self collision distance field with the one from STORM - https://arxiv.org/abs/2104.13542
         if use_self_collision_storm:
             assert grasped_object is None, ("STORM self collision model does not work if objects are grasped. "
-                                            "Learn a self collision model of the robot grasping the object "
+                                            "Learn a self collision model of the robots grasping the object "
                                             "(e.g. using the object mesh).")
             self.df_collision_self = CollisionSelfFieldWrapperSTORM(
                 self, 'robot_self/franka_self_sdf.pt', self.q_dim, tensor_args=self.tensor_args)
@@ -155,7 +155,7 @@ class RobotPanda(RobotBase):
         if self.grasped_object:
             grasped_object_points_in_object_frame = self.grasped_object.base_points_for_collision
             frame_grasped_object = link_pose_dict[self.link_name_grasped_object]
-            # TODO - by default assumes that world frame is the robot base frame
+            # TODO - by default assumes that world frame is the robots base frame
             grasped_object_points_in_robot_base_frame = frame_grasped_object.transform_point(grasped_object_points_in_object_frame)
 
         if len(q_orig_shape) == 3:

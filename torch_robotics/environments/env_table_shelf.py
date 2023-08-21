@@ -4,8 +4,8 @@ import numpy as np
 import torch
 from matplotlib import pyplot as plt
 
-from torch_robotics.environment.env_base import EnvBase
-from torch_robotics.environment.primitives import ObjectField, MultiBoxField
+from torch_robotics.environments.env_base import EnvBase
+from torch_robotics.environments.primitives import ObjectField, MultiBoxField
 from torch_robotics.torch_utils.torch_utils import DEFAULT_TENSOR_ARGS
 from torch_robotics.visualizers.planning_visualizer import create_fig_and_axes
 
@@ -94,7 +94,7 @@ class EnvTableShelf(EnvBase):
 
         super().__init__(
             name=self.__class__.__name__,
-            limits=torch.tensor([[-1, -1, -1], [1.5, 1., 1.5]], **tensor_args),  # environment limits
+            limits=torch.tensor([[-1, -1, -1], [1.5, 1., 1.5]], **tensor_args),  # environments limits
             obj_fixed_list=obj_list,
             tensor_args=tensor_args,
             **kwargs

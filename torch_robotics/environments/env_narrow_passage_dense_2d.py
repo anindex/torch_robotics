@@ -2,9 +2,9 @@ import numpy as np
 import torch
 from matplotlib import pyplot as plt
 
-from torch_robotics.environment.env_base import EnvBase
-from torch_robotics.environment.primitives import ObjectField, MultiSphereField, MultiBoxField
-from torch_robotics.environment.utils import create_grid_spheres
+from torch_robotics.environments.env_base import EnvBase
+from torch_robotics.environments.primitives import ObjectField, MultiSphereField, MultiBoxField
+from torch_robotics.environments.utils import create_grid_spheres
 from torch_robotics.torch_utils.torch_utils import DEFAULT_TENSOR_ARGS
 from torch_robotics.visualizers.planning_visualizer import create_fig_and_axes
 
@@ -70,7 +70,7 @@ class EnvNarrowPassageDense2D(EnvBase):
 
         super().__init__(
             name=name,
-            limits=torch.tensor([[-1, -1], [1, 1]], **tensor_args),  # environment limits
+            limits=torch.tensor([[-1, -1], [1, 1]], **tensor_args),  # environments limits
             obj_fixed_list=[ObjectField(obj_list, 'dense2d')],
             tensor_args=tensor_args,
             **kwargs
@@ -84,11 +84,17 @@ class EnvNarrowPassageDense2D(EnvBase):
             n_pre_samples=50000,
             max_time=15
         )
+
+        if robot_name == 'RobotPointMass':
+            return params
+
         return params
 
     def get_gpmp_params(self, robot_name='NA'):
         params = dict(
-            opt_iters=75,
+            traj_len=64,
+            dt=0.04,
+            opt_iters=300,
             num_samples=64,
             sigma_start=1e-5,
             sigma_gp=1e-2,
@@ -106,13 +112,16 @@ class EnvNarrowPassageDense2D(EnvBase):
                 'method': 'cholesky',
             },
         )
+        if robot_name == 'RobotPointMass':
+            return params
+
         return params
 
 
 if __name__ == '__main__':
     env = EnvNarrowPassageDense2D(
         precompute_sdf_obj_fixed=True,
-        sdf_cell_size=0.01,
+        sdf_cell_size=0.005,
         tensor_args=DEFAULT_TENSOR_ARGS
     )
     fig, ax = create_fig_and_axes(env.dim)

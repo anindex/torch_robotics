@@ -878,7 +878,7 @@
   <!-- THREE FINGER MACRO -->
   <!-- [[END]] THREE FINGER MACRO -->
   <!-- ======================================ALLEGRO======================================= -->
-  <!-- Load Gazebo lib and set the robot namespace -->
+  <!-- Load Gazebo lib and set the robots namespace -->
   <gazebo>
     <plugin filename="libgazebo_ros_control.so" name="gazebo_ros_control">
       <robotNamespace>/iiwa</robotNamespace>

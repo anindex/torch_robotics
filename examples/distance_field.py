@@ -2,7 +2,7 @@ import numpy as np
 import torch
 from torch.autograd.functional import jacobian
 
-from torch_robotics.environment.primitives import ObjectField, MultiSphereField
+from torch_robotics.environments.primitives import ObjectField, MultiSphereField
 from torch_robotics.torch_kinematics_tree.geometrics.utils import link_pos_from_link_tensor
 from torch_robotics.torch_kinematics_tree.models.robots import DifferentiableFrankaPanda
 from torch_robotics.torch_planning_objectives.fields.distance_fields import CollisionObjectDistanceField

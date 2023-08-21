@@ -6,9 +6,9 @@ import torch
 from matplotlib import pyplot as plt
 from torch.autograd.functional import jacobian
 
-from torch_robotics.environment.grid_map_sdf import GridMapSDF
-from torch_robotics.environment.occupancy_map import OccupancyMap
-from torch_robotics.environment.primitives import ObjectField, MultiSphereField, MultiBoxField
+from torch_robotics.environments.grid_map_sdf import GridMapSDF
+from torch_robotics.environments.occupancy_map import OccupancyMap
+from torch_robotics.environments.primitives import ObjectField, MultiSphereField, MultiBoxField
 from torch_robotics.torch_utils.torch_timer import TimerCUDA
 from torch_robotics.torch_utils.torch_utils import to_numpy, DEFAULT_TENSOR_ARGS
 from torch_robotics.visualizers.planning_visualizer import create_fig_and_axes
@@ -87,7 +87,7 @@ class EnvBase(ABC):
         return df_obj_l
 
     def add_obj(self, obj):
-        # Adds an object to the environment
+        # Adds an object to the environments
         raise NotImplementedError
         self.simplify_primitives()
 
@@ -221,8 +221,8 @@ class EnvBase(ABC):
 
     def render_grad_sdf(self, ax=None, fig=None):
         # draw gradient of sdf
-        xs = torch.linspace(self.limits_np[0][0], self.limits_np[1][0], steps=20, **self.tensor_args)
-        ys = torch.linspace(self.limits_np[0][1], self.limits_np[1][1], steps=20, **self.tensor_args)
+        xs = torch.linspace(self.limits_np[0][0], self.limits_np[1][0], steps=30, **self.tensor_args)
+        ys = torch.linspace(self.limits_np[0][1], self.limits_np[1][1], steps=30, **self.tensor_args)
         if self.dim == 3:
             zs = torch.linspace(self.limits_np[0][2], self.limits_np[1][2], steps=20, **self.tensor_args)
             X, Y, Z = torch.meshgrid(xs, ys, zs, indexing='xy')

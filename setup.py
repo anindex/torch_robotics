@@ -15,7 +15,7 @@ with open(path.join(here, 'requirements.txt'), encoding='utf-8') as f:
 setup(name='torch_robotics',
       description='Full Differentiable Kinematics Tree Implementation constructed from URDF or MJCF',
       author='An Thai Le, Joao Carvalho',
-      author_email='an@robot-learning.de, joao@robot-learning.de',
+      author_email='an@robots-learning.de, joao@robots-learning.de',
       packages=['torch_robotics'],
       install_requires=requires_list,
       )
