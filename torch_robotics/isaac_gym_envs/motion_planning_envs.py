@@ -16,13 +16,21 @@ from isaacgym.torch_utils import *
 import torch
 
 from torch_robotics.environment.env_spheres_3d import EnvSpheres3D
-from torch_robotics.environment.primitives import MultiSphereField
+from torch_robotics.environment.primitives import MultiSphereField, MultiBoxField
 from torch_robotics.robot.robot_panda import RobotPanda
 from torch_robotics.task.tasks import PlanningTask
 from torch_robotics.torch_kinematics_tree.models.robots import modidy_franka_panda_urdf_grasped_object
 from torch_robotics.torch_planning_objectives.fields.distance_fields import interpolate_links_v1
 from torch_robotics.torch_utils.seed import fix_random_seed
 from torch_robotics.torch_utils.torch_utils import get_torch_device, to_numpy
+
+
+def set_position_and_orientation(center, obj_pos, obj_ori):
+    # set position and orientation
+    obj_pose = gymapi.Transform()
+    obj_pose.p = gymapi.Vec3(*(center + obj_pos))
+    obj_pose.r = gymapi.Quat(obj_ori[1], obj_ori[2], obj_ori[3], obj_ori[0])
+    return obj_pose
 
 
 def create_assets_from_primitive_shapes(sim, gym, obj_list):
@@ -48,10 +56,21 @@ def create_assets_from_primitive_shapes(sim, gym, obj_list):
                     object_assets_l.append(sphere_asset)
 
                     # set position and orientation
-                    obj_pose = gymapi.Transform()
-                    obj_pose.p = gymapi.Vec3(*(center_np + obj_pos))
-                    obj_pose.r = gymapi.Quat(obj_ori[1], obj_ori[2], obj_ori[3], obj_ori[0])
-                    object_poses_l.append(obj_pose)
+                    object_poses_l.append(set_position_and_orientation(center_np, obj_pos, obj_ori))
+
+            elif isinstance(obj_field, MultiBoxField):
+                for center, size in zip(obj_field.centers, obj_field.sizes):
+                    center_np = to_numpy(center)
+                    size_np = to_numpy(size)
+
+                    # create box asset
+                    asset_options = gymapi.AssetOptions()
+                    asset_options.fix_base_link = True
+                    sphere_asset = gym.create_box(sim, size_np[0], size_np[1], size_np[2], asset_options)
+                    object_assets_l.append(sphere_asset)
+
+                    # set position and orientation
+                    object_poses_l.append(set_position_and_orientation(center_np, obj_pos, obj_ori))
             else:
                 raise NotImplementedError
 
@@ -525,8 +544,14 @@ class PandaMotionPlanningIsaacGymEnv:
         else:
             envs = self.envs
 
+        franka_handles = self.franka_handles
+        if self.show_goal_configuration:
+            # remove last environment, since it should not have physics
+            envs = envs[:-1]
+            franka_handles = franka_handles[:-1]
+
         envs_with_robot_in_contact = []
-        for env, franka_handle in zip(envs, self.franka_handles):
+        for env, franka_handle in zip(envs, franka_handles):
             rigid_contacts = self.gym.get_env_rigid_contacts(env)
             if self.all_robots_in_one_env:
                 for contact in rigid_contacts:
@@ -568,7 +593,8 @@ class PandaMotionPlanningIsaacGymEnv:
                 # color frankas in collision
                 if k in envs_with_robot_in_contact:
                     n_rigid_bodies = self.gym.get_actor_rigid_body_count(env, franka_handle)
-                    color = gymapi.Vec3(1., 0., 0.)
+                    # color = gymapi.Vec3(1., 0., 0.)
+                    color = gymapi.Vec3(0., 0., 0.)
                     for j in range(n_rigid_bodies):
                         self.gym.set_rigid_body_color(env, franka_handle, j, gymapi.MESH_VISUAL_AND_COLLISION, color)
 
@@ -741,7 +767,7 @@ if __name__ == '__main__':
     )
 
     motion_planning_controller = MotionPlanningController(motion_planning_isaac_env)
-    trajectories_joint_pos = torch.zeros((100, 8, 7), **tensor_args) + 1.
+    trajectories_joint_pos = torch.zeros((10000, 8, 7), **tensor_args) + 1.
     motion_planning_controller.run_trajectories(
         trajectories_joint_pos,
         start_states_joint_pos=trajectories_joint_pos[0], goal_state_joint_pos=trajectories_joint_pos[-1][0],
