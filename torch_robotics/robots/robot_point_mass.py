@@ -60,12 +60,14 @@ class RobotPointMass(RobotBase):
             else:
                 raise NotImplementedError
 
-    def render_trajectories(self, ax, trajs=None, start_state=None, goal_state=None, colors=['blue'], **kwargs):
+    def render_trajectories(
+            self, ax, trajs=None, start_state=None, goal_state=None, colors=['blue'],
+            linestyle='solid', **kwargs):
         if trajs is not None:
             trajs_np = to_numpy(trajs)
             if self.q_dim == 3:
                 segments = np.array(list(zip(trajs_np[..., 0], trajs_np[..., 1], trajs_np[..., 2]))).swapaxes(1, 2)
-                line_segments = Line3DCollection(segments, colors=colors, linestyle='solid')
+                line_segments = Line3DCollection(segments, colors=colors, linestyle=linestyle)
                 ax.add_collection(line_segments)
                 points = np.reshape(trajs_np, (-1, 3))
                 colors_scatter = []
@@ -74,7 +76,7 @@ class RobotPointMass(RobotBase):
                 ax.scatter(points[:, 0], points[:, 1], points[:, 2], color=colors_scatter, s=2**2)
             else:
                 segments = np.array(list(zip(trajs_np[..., 0], trajs_np[..., 1]))).swapaxes(1, 2)
-                line_segments = mcoll.LineCollection(segments, colors=colors, linestyle='solid')
+                line_segments = mcoll.LineCollection(segments, colors=colors, linestyle=linestyle)
                 ax.add_collection(line_segments)
                 points = np.reshape(trajs_np, (-1, 2))
                 colors_scatter = []

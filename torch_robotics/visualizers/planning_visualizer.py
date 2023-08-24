@@ -177,7 +177,7 @@ class PlanningVisualizer:
                 for j, trajs_filtered_ in enumerate(trajs_filtered):
                     if trajs_filtered_.size > 0:
                         timesteps_ = np.repeat(timesteps, trajs_filtered_.shape[0], axis=0)
-                        plot_multiline(ax[j], timesteps_, trajs_filtered_[..., i], color=color)
+                        plot_multiline(ax[j], timesteps_, trajs_filtered_[..., i], color=color, **kwargs)
 
             # Start and goal
             if pos_start_state is not None:
@@ -240,9 +240,9 @@ def create_animation_video(fig, animate_fn, anim_time=5, n_frames=100, video_fil
     print(f'...finished {str_start}')
 
 
-def plot_multiline(ax, X, Y, color='blue', **kwargs):
+def plot_multiline(ax, X, Y, color='blue', linestyle='solid', **kwargs):
     segments = np.stack((X, Y), axis=-1)
-    line_segments = mcoll.LineCollection(segments, colors=[color] * len(segments), linestyle='solid')
+    line_segments = mcoll.LineCollection(segments, colors=[color] * len(segments), linestyle=linestyle)
     ax.add_collection(line_segments)
     points = np.reshape(segments, (-1, 2))
     ax.scatter(points[:, 0], points[:, 1], color=color, s=2 ** 2)

@@ -145,7 +145,14 @@ class RobotBase(ABC):
         return x[..., :self.q_dim]
 
     def get_velocity(self, x):
-        return x[..., self.q_dim:2 * self.q_dim]
+        vel = x[..., self.q_dim:2 * self.q_dim]
+        # If there is no velocity in the state, then compute it via finite difference
+        if x.nelement() != 0 and vel.nelement() == 0:
+            vel = torch.empty_like(x)
+            vel[..., :-1, :] = torch.diff(x, dim=-2)
+            vel[..., -1, :] = vel[..., -2, :]
+            return vel
+        return vel
 
     def get_acceleration(self, x):
         raise NotImplementedError
