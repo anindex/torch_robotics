@@ -45,3 +45,17 @@ def interpolate_traj_via_points(trajs, num_interpolation=10):
     else:
         interpolated_trajs = trajs
     return interpolated_trajs
+
+
+def finite_difference_vector(x, dt=1., method='forward'):
+    # finite differences with zero padding at the borders
+    diff_vector = torch.zeros_like(x)
+    if method == 'forward':
+        diff_vector[..., :-1, :] = torch.diff(x, dim=-2) / dt
+    elif method == 'backward':
+        diff_vector[..., 1:, :] = (x[..., 1:, :] - x[..., :-1, :]) / dt
+    elif method == 'central':
+        diff_vector[..., 1:-1, :] = (x[..., 2:, :] - x[..., :-2, :]) / (2*dt)
+    else:
+        raise NotImplementedError
+    return diff_vector

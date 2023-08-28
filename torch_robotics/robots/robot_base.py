@@ -7,6 +7,7 @@ import torch
 
 from torch_robotics.torch_planning_objectives.fields.distance_fields import CollisionSelfField
 from torch_robotics.torch_utils.torch_utils import to_numpy, to_torch
+from torch_robotics.trajectory.utils import finite_difference_vector
 
 
 class RobotBase(ABC):
@@ -148,9 +149,7 @@ class RobotBase(ABC):
         vel = x[..., self.q_dim:2 * self.q_dim]
         # If there is no velocity in the state, then compute it via finite difference
         if x.nelement() != 0 and vel.nelement() == 0:
-            vel = torch.empty_like(x)
-            vel[..., :-1, :] = torch.diff(x, dim=-2)
-            vel[..., -1, :] = vel[..., -2, :]
+            vel = finite_difference_vector(x)
             return vel
         return vel
 
