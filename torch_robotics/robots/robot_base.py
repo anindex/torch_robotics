@@ -149,7 +149,7 @@ class RobotBase(ABC):
         vel = x[..., self.q_dim:2 * self.q_dim]
         # If there is no velocity in the state, then compute it via finite difference
         if x.nelement() != 0 and vel.nelement() == 0:
-            vel = finite_difference_vector(x)
+            vel = finite_difference_vector(x, method='central')
             return vel
         return vel
 
