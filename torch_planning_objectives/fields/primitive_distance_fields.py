@@ -150,7 +150,7 @@ class SphereField(PolytopeField):
         # Check if point p is inside the discretized sphere
         return np.linalg.norm(p - center) <= radius
 
-    def draw(self, ax, color='gray'):
+    def draw(self, ax, color='black'):
         for center, radius in zip(self.centers, self.radii):
             center = to_numpy(center)
             radius = to_numpy(radius)
@@ -231,7 +231,7 @@ class BoxField(PolytopeField):
                 ] += 1
         return obst_map
 
-    def draw(self, ax, color='gray'):
+    def draw(self, ax, color='black'):
         def get_cube():
             phi = np.arange(1, 10, 2) * np.pi / 4
             Phi, Theta = np.meshgrid(phi, phi)

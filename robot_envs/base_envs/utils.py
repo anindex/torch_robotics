@@ -17,9 +17,10 @@ def plot_trajectories(ax, trajs, color='red', plot_markers=False, label='', plot
                 ax.scatter3D(goal_state[0], goal_state[1], goal_state[2], color='blue', marker='o', zorder=1, s=s)
             else:
                 zorder = kwargs.get('zorder', 1)
-                ax.plot(traj[:, 0], traj[:, 1], marker='o', markersize=markersize, color=color, zorder=zorder, linewidth=linewidth)
-                ax.scatter(start_state[0], start_state[1],  color='green', marker='o', s=s, zorder=zorder)
-                ax.scatter(goal_state[0], goal_state[1],  color='blue', marker='o', s=s, zorder=zorder)
+                # ax.plot(traj[:, 0], traj[:, 1], marker='o', markersize=markersize, color=color, zorder=zorder, linewidth=linewidth)
+                ax.scatter(traj[:, 0], traj[:, 1], marker='o', s=20, color='blue', zorder=zorder)
+                # ax.scatter(start_state[0], start_state[1],  color='blue', marker='o', s=s, zorder=zorder)
+                # ax.scatter(goal_state[0], goal_state[1],  color='blue', marker='o', s=s, zorder=zorder)
 
         if plot_velocities:
             plot_velocities_fn(ax, trajs)
