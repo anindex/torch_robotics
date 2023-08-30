@@ -45,7 +45,7 @@ class EnvSquare2D(EnvBase):
         )
         return params
 
-    def get_gpmp_params(self, robot_name='NA'):
+    def get_gpmp2_params(self, robot_name='NA'):
         params = dict(
             opt_iters=200,
             num_samples=64,

@@ -100,7 +100,7 @@ class EnvTableShelf(EnvBase):
             **kwargs
         )
 
-    def get_gpmp_params(self, robot_name='NA'):
+    def get_gpmp2_params(self, robot_name='NA'):
         params = dict(
             opt_iters=250,
             num_samples=64,

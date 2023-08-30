@@ -90,7 +90,7 @@ class EnvNarrowPassageDense2D(EnvBase):
 
         return params
 
-    def get_gpmp_params(self, robot_name='NA'):
+    def get_gpmp2_params(self, robot_name='NA'):
         params = dict(
             traj_len=64,
             dt=0.04,

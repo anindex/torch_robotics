@@ -267,7 +267,7 @@ class EnvBase(ABC):
     def get_sgpmp_params(self, robot_name='NA'):
         raise NotImplementedError
 
-    def get_gpmp_params(self, robot_name='NA'):
+    def get_gpmp2_params(self, robot_name='NA'):
         raise NotImplementedError
 
 

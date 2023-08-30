@@ -74,7 +74,7 @@ class EnvMazeBoxes3D(EnvBase):
         )
         return params
 
-    def get_gpmp_params(self, robot_name='NA'):
+    def get_gpmp2_params(self, robot_name='NA'):
         params = dict(
             opt_iters=100,
             num_samples=64,
