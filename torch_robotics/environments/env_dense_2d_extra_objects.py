@@ -1,6 +1,7 @@
 import numpy as np
 import torch
 from matplotlib import pyplot as plt
+from torch.autograd.functional import jacobian
 
 from torch_robotics.environments.env_dense_2d import EnvDense2D
 from torch_robotics.environments.primitives import ObjectField, MultiSphereField, MultiBoxField

@@ -325,7 +325,8 @@ class MultiRoundedBoxField(MultiBoxField):
         # https://raphlinus.github.io/graphics/2020/04/21/blurred-rounded-rects.html
         distance_to_centers = torch.abs(x.unsqueeze(-2) - self.centers.unsqueeze(0))
         q = distance_to_centers - self.half_sizes.unsqueeze(0) + self.radius.unsqueeze(0).unsqueeze(-1)
-        sdfs = torch.linalg.norm(torch.relu(q), dim=-1) - self.radius.unsqueeze(0)
+        max_q = torch.amax(q, dim=-1)
+        sdfs = torch.minimum(max_q, torch.zeros_like(max_q)) + torch.linalg.norm(torch.relu(q), dim=-1) - self.radius.unsqueeze(0)
         return torch.min(sdfs, dim=-1)[0]
 
     def draw_box(self, ax, i, point, a, b, rot, trans, color='gray'):
@@ -620,6 +621,25 @@ if __name__ == '__main__':
     sdf_np = to_numpy(sdf)
     ctf = ax.contourf(to_numpy(X), to_numpy(Y), sdf_np)
     fig.colorbar(ctf, orientation='vertical')
+    ax.set_xlim(-1, 1)
+    ax.set_ylim(-1, 1)
+
+    # Render gradient sdf
+    xs = torch.linspace(-1, 1, steps=20, **tensor_args)
+    ys = torch.linspace(-1, 1, steps=20, **tensor_args)
+    X, Y = torch.meshgrid(xs, ys, indexing='xy')
+    X_flat = torch.flatten(X)
+    Y_flat = torch.flatten(Y)
+    stacked_tensors = torch.stack((X_flat, Y_flat), dim=-1).view(-1, 1, 2)
+
+    f_grad_sdf = lambda x: obj_field.compute_signed_distance(x).sum()
+    grad_sdf = jacobian(f_grad_sdf, stacked_tensors)
+
+    grad_sdf_np = to_numpy(grad_sdf).squeeze()
+    ax.quiver(to_numpy(X_flat), to_numpy(Y_flat),
+              grad_sdf_np[:, 0], grad_sdf_np[:, 1],
+              color='red')
+
     ax.set_xlim(-1, 1)
     ax.set_ylim(-1, 1)
     plt.show()

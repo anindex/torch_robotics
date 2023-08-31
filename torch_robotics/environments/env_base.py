@@ -221,8 +221,8 @@ class EnvBase(ABC):
 
     def render_grad_sdf(self, ax=None, fig=None):
         # draw gradient of sdf
-        xs = torch.linspace(self.limits_np[0][0], self.limits_np[1][0], steps=30, **self.tensor_args)
-        ys = torch.linspace(self.limits_np[0][1], self.limits_np[1][1], steps=30, **self.tensor_args)
+        xs = torch.linspace(self.limits_np[0][0], self.limits_np[1][0], steps=40, **self.tensor_args)
+        ys = torch.linspace(self.limits_np[0][1], self.limits_np[1][1], steps=40, **self.tensor_args)
         if self.dim == 3:
             zs = torch.linspace(self.limits_np[0][2], self.limits_np[1][2], steps=20, **self.tensor_args)
             X, Y, Z = torch.meshgrid(xs, ys, zs, indexing='xy')
