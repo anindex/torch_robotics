@@ -21,7 +21,7 @@ class EnvGridCircles2D(EnvBase):
             **kwargs
         )
 
-    def get_rrt_connect_params(self, robot_name='NA'):
+    def get_rrt_connect_params(self, robot='NA'):
         params = dict(
             n_iters=10000,
             step_size=0.01,
@@ -31,7 +31,7 @@ class EnvGridCircles2D(EnvBase):
         )
         return params
 
-    def get_gpmp2_params(self, robot_name='NA'):
+    def get_gpmp2_params(self, robot='NA'):
         params = dict(
             opt_iters=100,
             num_samples=64,
@@ -53,7 +53,7 @@ class EnvGridCircles2D(EnvBase):
         )
         return params
 
-    def get_sgpmp_params(self, robot_name='NA'):
+    def get_sgpmp_params(self, robot='NA'):
         params = dict(
             opt_iters=100,
             num_samples=64,

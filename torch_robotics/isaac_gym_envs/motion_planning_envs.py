@@ -258,7 +258,7 @@ class PandaMotionPlanningIsaacGymEnv:
         ###############################################################################################################
         # Environment assets
         object_fixed_assets_l, object_fixed_poses_l = create_assets_from_primitive_shapes(self.sim, self.gym, self.env.obj_fixed_list)
-        object_movable_assets_l, object_movable_poses_l = create_assets_from_primitive_shapes(self.sim, self.gym, self.env.obj_movable_list)
+        object_extra_assets_l, object_extra_poses_l = create_assets_from_primitive_shapes(self.sim, self.gym, self.env.obj_extra_list)
 
         ###############################################################################################################
         # Robot asset
@@ -334,7 +334,7 @@ class PandaMotionPlanningIsaacGymEnv:
         self.hand_idxs = []
 
         color_obj_fixed = gymapi.Vec3(220. / 255., 220. / 255., 220. / 255.)
-        color_obj_movable = gymapi.Vec3(1., 0., 0.)
+        color_obj_extra = gymapi.Vec3(1., 0., 0.)
 
         # create env
         if self.all_robots_in_one_env:
@@ -363,10 +363,10 @@ class PandaMotionPlanningIsaacGymEnv:
                 self.obj_idxs.append(obj_idx)
                 self.map_rigid_body_idxs_to_env_idx[obj_idx] = i
 
-            # add objects movable
-            for obj_asset, obj_pose in zip(object_movable_assets_l, object_movable_poses_l):
-                object_handle = self.gym.create_actor(env, obj_asset, obj_pose, "obj_movable", i, 0)
-                self.gym.set_rigid_body_color(env, object_handle, 0, gymapi.MESH_VISUAL_AND_COLLISION, color_obj_movable)
+            # add objects extra
+            for obj_asset, obj_pose in zip(object_extra_assets_l, object_extra_poses_l):
+                object_handle = self.gym.create_actor(env, obj_asset, obj_pose, "obj_extra", i, 0)
+                self.gym.set_rigid_body_color(env, object_handle, 0, gymapi.MESH_VISUAL_AND_COLLISION, color_obj_extra)
                 # get global index of object in rigid body state tensor
                 obj_idx = self.gym.get_actor_rigid_body_index(env, object_handle, 0, gymapi.DOMAIN_SIM)
                 self.obj_idxs.append(obj_idx)

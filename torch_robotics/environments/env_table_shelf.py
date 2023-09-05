@@ -100,7 +100,7 @@ class EnvTableShelf(EnvBase):
             **kwargs
         )
 
-    def get_gpmp2_params(self, robot_name='NA'):
+    def get_gpmp2_params(self, robot='NA'):
         params = dict(
             opt_iters=250,
             num_samples=64,
@@ -122,7 +122,7 @@ class EnvTableShelf(EnvBase):
         )
         return params
 
-    def get_rrt_connect_params(self, robot_name='NA'):
+    def get_rrt_connect_params(self, robot='NA'):
         params = dict(
             n_iters=10000,
             step_size=torch.pi/80,

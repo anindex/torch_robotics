@@ -12,7 +12,7 @@ from torch_robotics.visualizers.planning_visualizer import create_fig_and_axes
 class EnvSpheres3DExtraObjects(EnvSpheres3D):
 
     def __init__(self, tensor_args=None, **kwargs):
-        obj_movable_list = [
+        obj_extra_list = [
             MultiSphereField(
                 np.array(
                     [
@@ -53,7 +53,7 @@ class EnvSpheres3DExtraObjects(EnvSpheres3D):
 
         super().__init__(
             name=self.__class__.__name__,
-            obj_movable_list=[ObjectField(obj_movable_list, 'extra-objects')],
+            obj_extra_list=[ObjectField(obj_extra_list, 'extra-objects')],
             tensor_args=tensor_args,
             **kwargs
         )

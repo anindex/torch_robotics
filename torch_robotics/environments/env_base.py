@@ -20,7 +20,7 @@ class EnvBase(ABC):
                  name='NameEnvBase',
                  limits=None,
                  obj_fixed_list=None,
-                 obj_movable_list=None,
+                 obj_extra_list=None,
                  precompute_sdf_obj_fixed=False,
                  sdf_cell_size=0.005,
                  tensor_args=None,
@@ -41,15 +41,15 @@ class EnvBase(ABC):
         if obj_fixed_list is not None:
             for obj in obj_fixed_list:
                 assert (isinstance(obj, ObjectField)), "Objects must be instances of ObjectField class"
-        if obj_movable_list is not None:
-            for obj in obj_movable_list:
+        if obj_extra_list is not None:
+            for obj in obj_extra_list:
                 assert (isinstance(obj, ObjectField)), "Objects must be instances of ObjectField class"
 
         self.obj_fixed_list = obj_fixed_list
-        self.obj_movable_list = obj_movable_list
+        self.obj_extra_list = obj_extra_list
         self.obj_all_list = set(itertools.chain.from_iterable((
             self.obj_fixed_list if self.obj_fixed_list is not None else [],
-            self.obj_movable_list if self.obj_movable_list is not None else [])
+            self.obj_extra_list if self.obj_extra_list is not None else [])
         ))
         self.simplify_primitives()
 
@@ -72,17 +72,18 @@ class EnvBase(ABC):
     def get_obj_list(self):
         return self.obj_all_list
 
-    def get_df_obj_list(self):
+    def get_df_obj_list(self, return_extra_objects_only=False):
         df_obj_l = []
-        # fixed objects
-        if self.grid_map_sdf_obj_fixed is not None:
-            df_obj_l.append(self.grid_map_sdf_obj_fixed)
-        else:
-            df_obj_l.extend(self.obj_fixed_list)
+        if not return_extra_objects_only:
+            # fixed objects
+            if self.grid_map_sdf_obj_fixed is not None:
+                df_obj_l.append(self.grid_map_sdf_obj_fixed)
+            else:
+                df_obj_l.extend(self.obj_fixed_list)
 
-        # movable objects
-        if self.obj_movable_list is not None:
-            df_obj_l.extend(self.obj_movable_list)
+        # obj_extra_list objects
+        if self.obj_extra_list is not None:
+            df_obj_l.extend(self.obj_extra_list)
 
         return df_obj_l
 
@@ -123,8 +124,8 @@ class EnvBase(ABC):
             for obj in self.obj_fixed_list:
                 obj.render(ax)
 
-        if self.obj_movable_list is not None:
-            for obj in self.obj_movable_list:
+        if self.obj_extra_list is not None:
+            for obj in self.obj_extra_list:
                 obj.render(ax, color='red', cmap='Reds')
 
         ax.set_xlim(self.limits_np[0][0], self.limits_np[1][0])
@@ -165,9 +166,9 @@ class EnvBase(ABC):
                 else:
                     sdf = torch.minimum(sdf, sdf_obj)
 
-        # compute sdf of movable objects
-        if self.obj_movable_list is not None:
-            for obj in self.obj_movable_list:
+        # compute sdf of extra objects
+        if self.obj_extra_list is not None:
+            for obj in self.obj_extra_list:
                 sdf_obj = obj.compute_signed_distance(x)
                 if reshape_shape is not None:
                     sdf_obj = sdf_obj.reshape(reshape_shape)
@@ -261,13 +262,16 @@ class EnvBase(ABC):
         ax.set_xlabel('x')
         ax.set_ylabel('y')
 
-    def get_rrt_connect_params(self, robot_name='NA'):
+    def get_rrt_connect_params(self, robot=None):
         raise NotImplementedError
 
-    def get_sgpmp_params(self, robot_name='NA'):
+    def get_sgpmp_params(self, robot=None):
         raise NotImplementedError
 
-    def get_gpmp2_params(self, robot_name='NA'):
+    def get_gpmp2_params(self, robot=None):
+        raise NotImplementedError
+
+    def get_chomp_params(self, robot=None):
         raise NotImplementedError
 
 

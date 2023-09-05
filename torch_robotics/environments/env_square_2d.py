@@ -35,7 +35,7 @@ class EnvSquare2D(EnvBase):
             **kwargs
         )
 
-    def get_rrt_connect_params(self, robot_name='NA'):
+    def get_rrt_connect_params(self, robot='NA'):
         params = dict(
             n_iters=10000,
             step_size=0.01,
@@ -45,7 +45,7 @@ class EnvSquare2D(EnvBase):
         )
         return params
 
-    def get_gpmp2_params(self, robot_name='NA'):
+    def get_gpmp2_params(self, robot='NA'):
         params = dict(
             opt_iters=200,
             num_samples=64,

@@ -1,5 +1,6 @@
 import sys
 from abc import ABC
+from functools import partial
 
 import einops
 import numpy as np
@@ -56,6 +57,16 @@ class PlanningTask(Task):
             tensor_args=self.tensor_args
         )
 
+        self.df_collision_extra_objects = CollisionObjectDistanceField(
+            self.robot,
+            df_obj_list_fn=partial(self.env.get_df_obj_list, return_extra_objects_only=True),
+            link_idxs_for_collision_checking=self.robot.link_idxs_for_object_collision_checking,
+            num_interpolated_points=self.robot.num_interpolated_points_for_object_collision_checking,
+            link_margins_for_object_collision_checking_tensor=self.robot.link_margins_for_object_collision_checking_tensor,
+            cutoff_margin=obstacle_cutoff_margin,
+            tensor_args=self.tensor_args
+        )
+
         # collision field for workspace boundaries
         self.df_collision_ws_boundaries = CollisionWorkspaceBoundariesDistanceField(
             self.robot,
@@ -72,6 +83,9 @@ class PlanningTask(Task):
 
     def get_collision_fields(self):
         return self._collision_fields
+
+    def get_collision_fields_extra_objects(self):
+        return [self.df_collision_extra_objects]
 
     def distance_q(self, q1, q2):
         return self.robot.distance_q(q1, q2)

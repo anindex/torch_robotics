@@ -76,7 +76,7 @@ class EnvNarrowPassageDense2D(EnvBase):
             **kwargs
         )
 
-    def get_rrt_connect_params(self, robot_name='NA'):
+    def get_rrt_connect_params(self, robot='NA'):
         params = dict(
             n_iters=10000,
             step_size=0.01,
@@ -85,12 +85,12 @@ class EnvNarrowPassageDense2D(EnvBase):
             max_time=15
         )
 
-        if robot_name == 'RobotPointMass':
+        if robot == 'RobotPointMass':
             return params
 
         return params
 
-    def get_gpmp2_params(self, robot_name='NA'):
+    def get_gpmp2_params(self, robot='NA'):
         params = dict(
             traj_len=64,
             dt=0.04,
@@ -112,7 +112,7 @@ class EnvNarrowPassageDense2D(EnvBase):
                 'method': 'cholesky',
             },
         )
-        if robot_name == 'RobotPointMass':
+        if robot == 'RobotPointMass':
             return params
 
         return params

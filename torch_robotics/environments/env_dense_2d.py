@@ -5,6 +5,7 @@ from matplotlib import pyplot as plt
 from torch_robotics.environments.env_base import EnvBase
 from torch_robotics.environments.primitives import ObjectField, MultiSphereField, MultiBoxField
 from torch_robotics.environments.utils import create_grid_spheres
+from torch_robotics.robots import RobotPointMass
 from torch_robotics.torch_utils.torch_utils import DEFAULT_TENSOR_ARGS
 from torch_robotics.visualizers.planning_visualizer import create_fig_and_axes
 
@@ -75,7 +76,7 @@ class EnvDense2D(EnvBase):
             **kwargs
         )
 
-    def get_rrt_connect_params(self, robot_name='NA'):
+    def get_rrt_connect_params(self, robot='NA'):
         params = dict(
             n_iters=10000,
             step_size=0.01,
@@ -84,12 +85,12 @@ class EnvDense2D(EnvBase):
             max_time=50
         )
 
-        if robot_name == 'RobotPointMass':
+        if isinstance(robot, RobotPointMass):
             return params
+        else:
+            raise NotImplementedError
 
-        return params
-
-    def get_gpmp2_params(self, robot_name='NA'):
+    def get_gpmp2_params(self, robot='NA'):
         params = dict(
             traj_len=64,
             dt=0.04,
@@ -112,10 +113,29 @@ class EnvDense2D(EnvBase):
             },
         )
 
-        if robot_name == 'RobotPointMass':
+        if isinstance(robot, RobotPointMass):
             return params
+        else:
+            raise NotImplementedError
 
-        return params
+    def get_chomp_params(self, robot='NA'):
+        params = dict(
+            traj_len=64,
+            dt=0.04,
+            opt_iters=1,  # Keep this 1 for visualization
+            weight_prior_cost=1e-4,
+            step_size=0.05,
+            grad_clip=0.05,
+            sigma_start_init=0.001,
+            sigma_goal_init=0.001,
+            sigma_gp_init=0.3,
+            pos_only=False,
+        )
+
+        if isinstance(robot, RobotPointMass):
+            return params
+        else:
+            raise NotImplementedError
 
 
 if __name__ == '__main__':
