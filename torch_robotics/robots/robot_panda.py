@@ -232,7 +232,8 @@ class RobotPanda(RobotBase):
 
     def render_trajectories(self, ax, trajs=None, start_state=None, goal_state=None, colors=['gray'], **kwargs):
         if trajs is not None:
-            for traj, color in zip(trajs, colors):
+            trajs_pos = self.get_position(trajs)
+            for traj, color in zip(trajs_pos, colors):
                 for t in range(traj.shape[0]):
                     q = traj[t]
                     self.render(ax, q, color, **kwargs, arrow_length=0.1, arrow_alpha=0.5, arrow_linewidth=1.)

@@ -59,7 +59,8 @@ class RobotPlanar2Link(RobotBase):
 
     def render_trajectories(self, ax, trajs=None, start_state=None, goal_state=None, colors=['gray'], **kwargs):
         if trajs is not None:
-            for q, color in zip(trajs, colors):
+            trajs_pos = self.get_position(trajs)
+            for q, color in zip(trajs_pos, colors):
                 q = q.view(1, -1)
                 self.render(ax, q, alpha=0.8, color=color)
         if start_state is not None:

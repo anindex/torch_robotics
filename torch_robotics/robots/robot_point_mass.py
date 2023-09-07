@@ -31,7 +31,7 @@ class RobotPointMass(RobotBase):
         # Add tasks space dimension
         return q.unsqueeze(-2)
 
-    def render(self, ax, q=None, color='blue', cmap='Blues', margin_multiplier=5., **kwargs):
+    def render(self, ax, q=None, color='blue', cmap='Blues', margin_multiplier=1., **kwargs):
         if q is not None:
             margin = self.link_margins_for_object_collision_checking[0] * margin_multiplier
             q = to_numpy(q)
@@ -64,7 +64,8 @@ class RobotPointMass(RobotBase):
             self, ax, trajs=None, start_state=None, goal_state=None, colors=['blue'],
             linestyle='solid', **kwargs):
         if trajs is not None:
-            trajs_np = to_numpy(trajs)
+            trajs_pos = self.get_position(trajs)
+            trajs_np = to_numpy(trajs_pos)
             if self.q_dim == 3:
                 segments = np.array(list(zip(trajs_np[..., 0], trajs_np[..., 1], trajs_np[..., 2]))).swapaxes(1, 2)
                 line_segments = Line3DCollection(segments, colors=colors, linestyle=linestyle)
