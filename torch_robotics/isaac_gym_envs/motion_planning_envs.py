@@ -21,7 +21,7 @@ from torch_robotics.environments.primitives import MultiSphereField, MultiBoxFie
 from torch_robotics.robots.robot_panda import RobotPanda
 from torch_robotics.tasks.tasks import PlanningTask
 from torch_robotics.torch_kinematics_tree.models.robots import modidy_franka_panda_urdf_grasped_object
-from torch_robotics.torch_planning_objectives.fields.distance_fields import interpolate_links_v1
+from torch_robotics.torch_planning_objectives.fields.distance_fields import interpolate_points_v1
 from torch_robotics.torch_utils.seed import fix_random_seed
 from torch_robotics.torch_utils.torch_utils import get_torch_device, to_numpy
 
@@ -606,7 +606,7 @@ class PandaMotionPlanningIsaacGymEnv:
                     joint_pos_curr = to_torch(joint_state_curr['pos'][:7], **self.tensor_args)
                     fk_link_pos = self.robot.fk_map_collision(joint_pos_curr)
                     fk_link_pos = fk_link_pos[..., self.robot.link_idxs_for_object_collision_checking, :]
-                    fk_link_pos = interpolate_links_v1(fk_link_pos, self.robot.num_interpolated_points_for_object_collision_checking).squeeze(0)
+                    fk_link_pos = interpolate_points_v1(fk_link_pos, self.robot.num_interpolated_points_for_object_collision_checking).squeeze(0)
                     for j, (link_pos, margin) in enumerate(zip(fk_link_pos, self.robot.link_margins_for_object_collision_checking_tensor)):
                         link_transform = gymapi.Transform(p=gymapi.Vec3(*link_pos))
                         sphere_geom = gymutil.WireframeSphereGeometry(margin, 5, 5, gymapi.Transform(), color=(0, 0, 1))

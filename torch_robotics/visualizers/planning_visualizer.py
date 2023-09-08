@@ -32,7 +32,7 @@ class PlanningVisualizer:
         self.cmaps = {'collision': 'Greys', 'free': 'Oranges'}
         self.cmaps_robot = {'collision': 'Greys', 'free': 'YlOrRd'}
 
-    def render_robot_trajectories(self, fig=None, ax=None, render_planner=False, trajs=None, **kwargs):
+    def render_robot_trajectories(self, fig=None, ax=None, render_planner=False, trajs=None, traj_best=None, **kwargs):
         if fig is None or ax is None:
             fig, ax = create_fig_and_axes(dim=self.env.dim)
 
@@ -45,6 +45,9 @@ class PlanningVisualizer:
             for i in range(len(trajs_coll_idxs) + len(trajs_free_idxs)):
                 kwargs['colors'].append(self.colors['collision'] if i in trajs_coll_idxs else self.colors['free'])
         self.robot.render_trajectories(ax, trajs=trajs, **kwargs)
+        if traj_best is not None:
+            kwargs['colors'] = ['blue']
+            self.robot.render_trajectories(ax, trajs=traj_best.unsqueeze(0), **kwargs)
 
         return fig, ax
 
@@ -95,7 +98,7 @@ class PlanningVisualizer:
         create_animation_video(fig, animate_fn, n_frames=n_frames, **kwargs)
 
     def animate_opt_iters_robots(
-            self, trajs=None, start_state=None, goal_state=None,
+            self, trajs=None, traj_best=None, start_state=None, goal_state=None,
             n_frames=10,
             **kwargs
     ):
@@ -110,11 +113,12 @@ class PlanningVisualizer:
         trajs_selection = trajs[idxs]
 
         fig, ax = create_fig_and_axes(dim=self.env.dim)
+
         def animate_fn(i):
             ax.clear()
             ax.set_title(f"iter: {idxs[i]}/{S-1}")
             self.render_robot_trajectories(
-                fig=fig, ax=ax, trajs=trajs_selection[i],  start_state=start_state, goal_state=goal_state, **kwargs
+                fig=fig, ax=ax, trajs=trajs_selection[i], traj_best=traj_best, start_state=start_state, goal_state=goal_state, **kwargs
             )
             if start_state is not None:
                 self.robot.render(ax, start_state, color='green', cmap='Greens')
@@ -127,6 +131,7 @@ class PlanningVisualizer:
             self,
             fig=None, axs=None,
             trajs=None,
+            traj_best=None,
             pos_start_state=None, pos_goal_state=None,
             vel_start_state=None, vel_goal_state=None,
             set_joint_limits=False,
@@ -179,6 +184,14 @@ class PlanningVisualizer:
                         timesteps_ = np.repeat(timesteps, trajs_filtered_.shape[0], axis=0)
                         plot_multiline(ax[j], timesteps_, trajs_filtered_[..., i], color=color, **kwargs)
 
+            if traj_best is not None:
+                traj_best_pos = self.robot.get_position(traj_best)
+                traj_best_vel = self.robot.get_velocity(traj_best)
+                traj_best_pos_np = to_numpy(traj_best_pos)
+                traj_best_vel_np = to_numpy(traj_best_vel)
+                plot_multiline(ax[0], timesteps, traj_best_pos_np[..., i].reshape(1, -1), color='blue', **kwargs)
+                plot_multiline(ax[1], timesteps, traj_best_vel_np[..., i].reshape(1, -1), color='blue', **kwargs)
+
             # Start and goal
             if pos_start_state is not None:
                 ax[0].scatter(0, pos_start_state[i], color='green')
@@ -197,7 +210,7 @@ class PlanningVisualizer:
         return fig, axs
 
     def animate_opt_iters_joint_space_state(
-            self, trajs=None, n_frames=10, **kwargs
+            self, trajs=None, traj_best=None, n_frames=10, **kwargs
     ):
         # trajs: steps, batch, horizon, q_dim
         if trajs is None:
@@ -218,6 +231,12 @@ class PlanningVisualizer:
                 fig=fig, axs=axs,
                 trajs=trajs_selection[i], **kwargs
             )
+            if i == n_frames -1 and traj_best is not None:
+                self.plot_joint_space_state_trajectories(
+                    fig=fig, axs=axs,
+                    trajs=trajs_selection[i],
+                    traj_best=traj_best, **kwargs
+                )
 
         create_animation_video(fig, animate_fn, n_frames=n_frames, **kwargs)
 

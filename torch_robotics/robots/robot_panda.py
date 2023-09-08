@@ -13,7 +13,7 @@ from torch_robotics.torch_kinematics_tree.geometrics.utils import link_pos_from_
     link_quat_from_link_tensor
 from torch_robotics.torch_kinematics_tree.models.robot_tree import convert_link_dict_to_tensor
 from torch_robotics.torch_kinematics_tree.models.robots import DifferentiableFrankaPanda
-from torch_robotics.torch_planning_objectives.fields.distance_fields import interpolate_links_v1, CollisionSelfFieldWrapperSTORM
+from torch_robotics.torch_planning_objectives.fields.distance_fields import interpolate_points_v1, CollisionSelfFieldWrapperSTORM
 from torch_robotics.torch_utils.torch_utils import to_numpy
 from torch_robotics.visualizers.plot_utils import plot_coordinate_frame
 
@@ -196,7 +196,7 @@ class RobotPanda(RobotBase):
         if draw_links_spheres:
             link_tensor = convert_link_dict_to_tensor(fks_dict, self.link_names_for_object_collision_checking)
             link_pos = link_pos_from_link_tensor(link_tensor)
-            link_pos = interpolate_links_v1(link_pos, self.num_interpolated_points_for_object_collision_checking).squeeze(0)
+            link_pos = interpolate_points_v1(link_pos, self.num_interpolated_points_for_object_collision_checking).squeeze(0)
             spheres = MultiSphereField(
                 link_pos,
                 self.link_margins_for_object_collision_checking_robot_tensor.view(-1, 1),

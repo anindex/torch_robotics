@@ -64,23 +64,23 @@ class DistanceField(ABC):
         pass
 
 
-def interpolate_links_v1(link_pos, num_interpolated_points):
+def interpolate_points_v1(points, num_interpolated_points):
     # https://github.com/SamsungLabs/RAMP/blob/c3bd23b2c296c94cdd80d6575390fd96c4f83d83/mppi_planning/cost/collision_cost.py#L89
-    link_pos = Functional.interpolate(link_pos.transpose(-2, -1), size=num_interpolated_points, mode='linear', align_corners=True).transpose(-2, -1)
-    return link_pos
+    points = Functional.interpolate(points.transpose(-2, -1), size=num_interpolated_points, mode='linear', align_corners=True).transpose(-2, -1)
+    return points
 
 
 # Old implementation
-def interpolate_links_v2(link_pos, num_interpolate, link_interpolate_range):
+def interpolate_points_v2(points, num_interpolate, link_interpolate_range):
     if num_interpolate > 0:
-        link_dim = link_pos.shape[:-1]
-        alpha = torch.linspace(0, 1, num_interpolate + 2).type_as(link_pos)[1:num_interpolate + 1]
+        link_dim = points.shape[:-1]
+        alpha = torch.linspace(0, 1, num_interpolate + 2).type_as(points)[1:num_interpolate + 1]
         alpha = alpha.view(tuple([1] * len(link_dim) + [-1, 1]))  # 1 x 1 x 1 x ... x num_interpolate x 1
-        X = link_pos[..., link_interpolate_range[0]:link_interpolate_range[1] + 1, :].unsqueeze(-2)  # batch_dim x num_interp_link x 1 x 3
+        X = points[..., link_interpolate_range[0]:link_interpolate_range[1] + 1, :].unsqueeze(-2)  # batch_dim x num_interp_link x 1 x 3
         X_diff = torch.diff(X, dim=-3)  # batch_dim x (num_interp_link - 1) x 1 x 3
         X_interp = X[..., :-1, :, :] + X_diff * alpha  # batch_dim x (num_interp_link - 1) x num_interpolate x 3
-        link_pos = torch.cat([link_pos, X_interp.flatten(-3, -2)], dim=-2)  # batch_dim x (num_link + (num_interp_link - 1) * num_interpolate) x 3
-    return link_pos
+        points = torch.cat([points, X_interp.flatten(-3, -2)], dim=-2)  # batch_dim x (num_link + (num_interp_link - 1) * num_interpolate) x 3
+    return points
 
 
 class EmbodimentDistanceFieldBase(DistanceField):
@@ -178,7 +178,7 @@ class EmbodimentDistanceFieldBase(DistanceField):
         link_pos_robot = link_pos_robot[..., self.link_idxs_for_collision_checking, :]
         if self.interpolate_link_pos:
             # select the robot links used for collision checking
-            link_pos = interpolate_links_v1(link_pos_robot, self.num_interpolated_points)
+            link_pos = interpolate_points_v1(link_pos_robot, self.num_interpolated_points)
 
         # stack collision points from grasped object
         # these points do not need to be interpolated
@@ -190,7 +190,7 @@ class EmbodimentDistanceFieldBase(DistanceField):
 
     def compute_distance(self, q, link_pos, **kwargs):
         raise NotImplementedError
-        link_pos = interpolate_links_v1(link_pos, self.num_interpolated_points)
+        link_pos = interpolate_points_v1(link_pos, self.num_interpolated_points)
         self_distances = self.compute_embodiment_signed_distances(q, link_pos, **kwargs).min(-1)[0]  # batch_dim
         return self_distances
 

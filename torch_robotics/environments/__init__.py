@@ -1,4 +1,6 @@
 from .env_simple_2d import *
+from .env_simple_2d_extra_objects import *
+from .env_circle_2d import *
 from .env_dense_2d import *
 from .env_dense_2d_extra_objects import *
 from .env_grid_circles_2d import *
