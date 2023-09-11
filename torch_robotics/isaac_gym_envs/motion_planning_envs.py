@@ -322,7 +322,7 @@ class PandaMotionPlanningIsaacGymEnv:
         plane_params = gymapi.PlaneParams()
         plane_params.distance = 2
         plane_params.normal = gymapi.Vec3(0, 0, 1)
-        self.gym.add_ground(self.sim, plane_params)
+        # self.gym.add_ground(self.sim, plane_params)
 
         # robots pose
         franka_pose = gymapi.Transform()
@@ -404,8 +404,8 @@ class PandaMotionPlanningIsaacGymEnv:
         # point camera at middle env
         # cam_pos = gymapi.Vec3(1.75, 0, 1.25)
         # cam_target = gymapi.Vec3(-3, 0, -1.25)
-        cam_pos = gymapi.Vec3(0, 1.75, 1.25)
-        cam_target = gymapi.Vec3(0, -3, -1.25)
+        cam_pos = gymapi.Vec3(-1.75, -0.3, 1.25)
+        cam_target = gymapi.Vec3(3, 0, -1.25)
         if len(self.envs) == 1:
             self.middle_env = self.envs[0]
         else:
@@ -413,10 +413,10 @@ class PandaMotionPlanningIsaacGymEnv:
         self.gym.viewer_camera_look_at(self.viewer, self.middle_env, cam_pos, cam_target)
 
         camera_props = gymapi.CameraProperties()
-        # camera_props.width = 1920
-        # camera_props.height = 1080
-        camera_props.width = 1280
-        camera_props.height = 720
+        camera_props.width = 1920
+        camera_props.height = 1080
+        # camera_props.width = 1280
+        # camera_props.height = 720
         self.viewer_camera_handle = self.gym.create_camera_sensor(self.middle_env, camera_props)
         self.gym.set_camera_location(self.viewer_camera_handle, env, cam_pos, cam_target)
 
@@ -584,20 +584,20 @@ class PandaMotionPlanningIsaacGymEnv:
 
             for k, (env, franka_handle) in enumerate(zip(envs, self.franka_handles)):
                 # End-effector frame
-                body_dict = self.gym.get_actor_rigid_body_dict(env, franka_handle)
-                props = self.gym.get_actor_rigid_body_states(env, franka_handle, gymapi.STATE_POS)
-                ee_pose = props['pose'][:][body_dict[self.franka_hand]]
-                ee_transform = gymapi.Transform(p=gymapi.Vec3(*ee_pose[0]), r=gymapi.Quat(*ee_pose[1]))
-                # reference frame
-                gymutil.draw_lines(self.axes_geom, self.gym, self.viewer, env, ee_transform)
+                # body_dict = self.gym.get_actor_rigid_body_dict(env, franka_handle)
+                # props = self.gym.get_actor_rigid_body_states(env, franka_handle, gymapi.STATE_POS)
+                # ee_pose = props['pose'][:][body_dict[self.franka_hand]]
+                # ee_transform = gymapi.Transform(p=gymapi.Vec3(*ee_pose[0]), r=gymapi.Quat(*ee_pose[1]))
+                # # reference frame
+                # gymutil.draw_lines(self.axes_geom, self.gym, self.viewer, env, ee_transform)
 
                 # color frankas in collision
-                if k in envs_with_robot_in_contact:
-                    n_rigid_bodies = self.gym.get_actor_rigid_body_count(env, franka_handle)
-                    # color = gymapi.Vec3(1., 0., 0.)
-                    color = gymapi.Vec3(0., 0., 0.)
-                    for j in range(n_rigid_bodies):
-                        self.gym.set_rigid_body_color(env, franka_handle, j, gymapi.MESH_VISUAL_AND_COLLISION, color)
+                # if k in envs_with_robot_in_contact:
+                #     n_rigid_bodies = self.gym.get_actor_rigid_body_count(env, franka_handle)
+                #     # color = gymapi.Vec3(1., 0., 0.)
+                #     color = gymapi.Vec3(0., 0., 0.)
+                #     for j in range(n_rigid_bodies):
+                #         self.gym.set_rigid_body_color(env, franka_handle, j, gymapi.MESH_VISUAL_AND_COLLISION, color)
 
                 # collision spheres
                 if self.show_collision_spheres:
@@ -693,11 +693,11 @@ class MotionPlanningController:
             joint_states, envs_with_robot_in_contact = self.mp_env.step(actions, visualize=visualize, render_viewer_camera=render_viewer_camera)
             envs_with_robot_in_contact_l.append(envs_with_robot_in_contact)
             # stop the trajectory if the robots was in contact with the environments
-            if len(envs_with_robot_in_contact) > 0:
-                if self.mp_env.controller_type == 'position':
-                    trajectories_copy[i:, envs_with_robot_in_contact, :] = actions[envs_with_robot_in_contact, :]
-                elif self.mp_env.controller_type == 'velocity':
-                    trajectories_copy[i:, envs_with_robot_in_contact, :] = 0.
+            # if len(envs_with_robot_in_contact) > 0:
+            #     if self.mp_env.controller_type == 'position':
+            #         trajectories_copy[i:, envs_with_robot_in_contact, :] = actions[envs_with_robot_in_contact, :]
+            #     elif self.mp_env.controller_type == 'velocity':
+            #         trajectories_copy[i:, envs_with_robot_in_contact, :] = 0.
 
         # last steps -- keep robots in place
         if self.mp_env.controller_type == 'position':
