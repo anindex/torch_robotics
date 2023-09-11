@@ -39,26 +39,26 @@ class EnvSimple2DExtraObjects(EnvSimple2D):
                 ,
                 tensor_args=tensor_args
             ),
-            MultiBoxField(
-                np.array(
-                    [
-                        [0.45, -0.1],
-                        [0.35, 0.35],
-                        [-0.6, -0.85],
-                        [-0.65, -0.25],
-                    ]
-                ),
-                np.array(
-                    [
-                        [0.2, 0.2],
-                        [0.1, 0.15],
-                        [0.1, 0.25],
-                        [0.15, 0.1],
-                    ]
-                )
-                ,
-                tensor_args=tensor_args
-            )
+            # MultiBoxField(
+            #     np.array(
+            #         [
+            #             [0.45, -0.1],
+            #             [0.35, 0.35],
+            #             [-0.6, -0.85],
+            #             [-0.65, -0.25],
+            #         ]
+            #     ),
+            #     np.array(
+            #         [
+            #             [0.2, 0.2],
+            #             [0.1, 0.15],
+            #             [0.1, 0.25],
+            #             [0.15, 0.1],
+            #         ]
+            #     )
+            #     ,
+            #     tensor_args=tensor_args
+            # )
         ]
 
         super().__init__(

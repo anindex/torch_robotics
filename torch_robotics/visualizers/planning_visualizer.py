@@ -118,7 +118,9 @@ class PlanningVisualizer:
             ax.clear()
             ax.set_title(f"iter: {idxs[i]}/{S-1}")
             self.render_robot_trajectories(
-                fig=fig, ax=ax, trajs=trajs_selection[i], traj_best=traj_best, start_state=start_state, goal_state=goal_state, **kwargs
+                fig=fig, ax=ax, trajs=trajs_selection[i],
+                traj_best=traj_best if i == n_frames - 1 else None,
+                start_state=start_state, goal_state=goal_state, **kwargs
             )
             if start_state is not None:
                 self.robot.render(ax, start_state, color='green', cmap='Greens')
@@ -134,7 +136,7 @@ class PlanningVisualizer:
             traj_best=None,
             pos_start_state=None, pos_goal_state=None,
             vel_start_state=None, vel_goal_state=None,
-            set_joint_limits=False,
+            set_joint_limits=True,
             **kwargs
     ):
         if trajs is None:
@@ -206,6 +208,7 @@ class PlanningVisualizer:
             # Set limits
             if set_joint_limits:
                 ax[0].set_ylim(self.robot.q_min_np[i], self.robot.q_max_np[i])
+                # ax[1].set_ylim(self.robot.q_vel_min_np[i], self.robot.q_vel_max_np[i])
 
         return fig, axs
 
