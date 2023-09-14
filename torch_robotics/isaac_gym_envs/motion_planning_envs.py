@@ -137,6 +137,11 @@ class ViewerRecorder:
         for step, frame in self.step_img:
             frame = np.ascontiguousarray(frame, dtype=np.uint8)
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+
+            # change background
+            idxs_black = np.argwhere(np.all(np.equal(frame, np.zeros(3)), axis=-1))
+            frame[idxs_black[:, 0], idxs_black[:, 1]] = np.ones(3) * 255.
+
             if step > n_first_steps:
                 if step > len(self.step_img) - n_last_steps - 1:
                     pass
@@ -333,7 +338,8 @@ class PandaMotionPlanningIsaacGymEnv:
         self.obj_idxs = []
         self.hand_idxs = []
 
-        color_obj_fixed = gymapi.Vec3(220. / 255., 220. / 255., 220. / 255.)
+        # color_obj_fixed = gymapi.Vec3(220. / 255., 220. / 255., 220. / 255.)
+        color_obj_fixed = gymapi.Vec3(0., 0., 1.)
         color_obj_extra = gymapi.Vec3(1., 0., 0.)
 
         # create env
