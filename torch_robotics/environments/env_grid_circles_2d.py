@@ -4,6 +4,7 @@ from matplotlib import pyplot as plt
 from torch_robotics.environments.env_base import EnvBase
 from torch_robotics.environments.primitives import ObjectField, MultiSphereField
 from torch_robotics.environments.utils import create_grid_spheres
+from torch_robotics.robots import RobotPointMass
 from torch_robotics.torch_utils.torch_utils import DEFAULT_TENSOR_ARGS
 from torch_robotics.visualizers.planning_visualizer import create_fig_and_axes
 
@@ -21,7 +22,7 @@ class EnvGridCircles2D(EnvBase):
             **kwargs
         )
 
-    def get_rrt_connect_params(self, robot='NA'):
+    def get_rrt_connect_params(self, robot=None):
         params = dict(
             n_iters=10000,
             step_size=0.01,
@@ -29,9 +30,12 @@ class EnvGridCircles2D(EnvBase):
             n_pre_samples=50000,
             max_time=15
         )
-        return params
+        if isinstance(robot, RobotPointMass):
+            return params
+        else:
+            raise NotImplementedError
 
-    def get_gpmp2_params(self, robot='NA'):
+    def get_gpmp2_params(self, robot=None):
         params = dict(
             opt_iters=100,
             num_samples=64,
@@ -51,9 +55,12 @@ class EnvGridCircles2D(EnvBase):
                 'method': 'cholesky',
             },
         )
-        return params
+        if isinstance(robot, RobotPointMass):
+            return params
+        else:
+            raise NotImplementedError
 
-    def get_sgpmp_params(self, robot='NA'):
+    def get_sgpmp_params(self, robot=None):
         params = dict(
             opt_iters=100,
             num_samples=64,
@@ -70,9 +77,12 @@ class EnvGridCircles2D(EnvBase):
             sigma_goal_sample=1e-4,
             temperature=1.,
         )
-        return params
+        if isinstance(robot, RobotPointMass):
+            return params
+        else:
+            raise NotImplementedError
     
-    def get_mpot_params(self):
+    def get_mpot_params(self, robot=None):
         solver_params = dict(
             reg=0.01,  # entropic regularization lambda
             num_probe=5,
@@ -100,7 +110,10 @@ class EnvGridCircles2D(EnvBase):
             sigma_goal_init=1e-4,
             sigma_gp_init=3.
         )
-        return params
+        if isinstance(robot, RobotPointMass):
+            return params
+        else:
+            raise NotImplementedError
 
 
 if __name__ == '__main__':

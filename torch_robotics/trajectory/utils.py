@@ -5,7 +5,7 @@ from scipy import interpolate
 from torch_robotics.torch_utils.torch_utils import to_torch, to_numpy
 
 
-def smoothen_trajectory(traj_pos, traj_len=30, dt=0.02, set_average_velocity=True, zero_velocity=False, tensor_args=None):
+def smoothen_trajectory(traj_pos, n_support_points=30, dt=0.02, set_average_velocity=True, zero_velocity=False, tensor_args=None):
     assert not (set_average_velocity and zero_velocity), "Either sets the average velocity or zero velocity"
     traj_pos = to_numpy(traj_pos)
     try:
@@ -15,18 +15,18 @@ def smoothen_trajectory(traj_pos, traj_len=30, dt=0.02, set_average_velocity=Tru
     except:
         # Trajectory is too short to interpolate, so add last position again and interpolate
         traj_pos = np.vstack((traj_pos, traj_pos[-1] + np.random.normal(0, 0.01)))
-        return smoothen_trajectory(traj_pos, traj_len=traj_len, dt=dt,
+        return smoothen_trajectory(traj_pos, n_support_points=n_support_points, dt=dt,
                                    set_average_velocity=set_average_velocity, zero_velocity=zero_velocity, tensor_args=tensor_args)
 
-    pos = spline_pos(np.linspace(0, 1, traj_len))
+    pos = spline_pos(np.linspace(0, 1, n_support_points))
     vel = np.zeros_like(pos)
     if zero_velocity:
         pass
     elif set_average_velocity:
-        avg_vel = (traj_pos[1] - traj_pos[0])/(traj_len * dt)
+        avg_vel = (traj_pos[1] - traj_pos[0])/(n_support_points * dt)
         vel[1:-1, :] = avg_vel
     else:
-        vel = spline_vel(np.linspace(0, 1, traj_len))
+        vel = spline_vel(np.linspace(0, 1, n_support_points))
 
     return to_torch(pos, **tensor_args), to_torch(vel, **tensor_args)
 

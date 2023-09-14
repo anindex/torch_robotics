@@ -52,7 +52,7 @@ class EnvSimple2D(EnvBase):
             **kwargs
         )
 
-    def get_rrt_connect_params(self, robot='NA'):
+    def get_rrt_connect_params(self, robot=None):
         params = dict(
             n_iters=10000,
             step_size=0.01,
@@ -66,9 +66,9 @@ class EnvSimple2D(EnvBase):
         else:
             raise NotImplementedError
 
-    def get_gpmp2_params(self, robot='NA'):
+    def get_gpmp2_params(self, robot=None):
         params = dict(
-            traj_len=64,
+            n_support_points=64,
             dt=0.04,
             opt_iters=300,
             num_samples=64,
@@ -76,7 +76,7 @@ class EnvSimple2D(EnvBase):
             sigma_gp=1e-2,
             sigma_goal_prior=1e-5,
             sigma_coll=1e-5,
-            step_size=1e-1,
+            step_size=5e-1,
             sigma_start_init=1e-4,
             sigma_goal_init=1e-4,
             sigma_gp_init=0.2,
@@ -94,9 +94,9 @@ class EnvSimple2D(EnvBase):
         else:
             raise NotImplementedError
 
-    def get_chomp_params(self, robot='NA'):
+    def get_chomp_params(self, robot=None):
         params = dict(
-            traj_len=64,
+            n_support_points=64,
             dt=0.04,
             opt_iters=1,  # Keep this 1 for visualization
             weight_prior_cost=1e-4,
