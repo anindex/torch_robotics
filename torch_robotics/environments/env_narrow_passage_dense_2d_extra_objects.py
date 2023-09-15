@@ -23,6 +23,9 @@ class EnvNarrowPassageDense2DExtraObjects(EnvNarrowPassageDense2D):
                         [0.35, 0.35],
                         [-0.6, -0.85],
                         [0.4, -0.7],
+                        [-0.65, 0.7],
+                        [-0.225, 0.35],
+                        [0.6, -0.1],
                     ]),
                 np.array(
                     [
@@ -32,6 +35,9 @@ class EnvNarrowPassageDense2DExtraObjects(EnvNarrowPassageDense2D):
                         0.1,
                         0.1,
                         0.1,
+                        0.075,
+                        0.075,
+                        0.05,
                     ]
                 )
                 ,
