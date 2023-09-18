@@ -93,6 +93,7 @@ class EnvDense2D(EnvBase):
     def get_gpmp2_params(self, robot=None):
         params = dict(
             n_support_points=64,
+            n_interpolated_points=None,
             dt=0.04,
             opt_iters=300,
             num_samples=64,
