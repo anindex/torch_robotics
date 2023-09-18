@@ -186,6 +186,9 @@ class PandaMotionPlanningIsaacGymEnv:
                  sync_with_real_time=False,
                  show_collision_spheres=False,  # very slow implementation. use only one robots
                  show_contact_forces=False,
+                 dt=1./25.,  # dt of motion planning
+                 lower_level_controller_frequency=1000,
+                 **kwargs,
     ):
 
         self.env = env
@@ -227,8 +230,8 @@ class PandaMotionPlanningIsaacGymEnv:
         sim_params = gymapi.SimParams()
         sim_params.up_axis = gymapi.UP_AXIS_Z
         sim_params.gravity = gymapi.Vec3(0.0, 0.0, -9.8)
-        sim_params.dt = 1.0 / 25.0  # upper level policy frequency
-        sim_params.substeps = 20  # 1/dt * substeps = lower level controller frequency
+        sim_params.dt = dt  # upper level policy frequency
+        sim_params.substeps = ceil(lower_level_controller_frequency * dt)  # 1/dt * substeps = lower level controller frequency
         # e.g. dt = 1/50 and substeps = 20, means a lower-level controller running at 1000 Hz
         sim_params.use_gpu_pipeline = self.gym_args.use_gpu_pipeline
         if self.gym_args.physics_engine == gymapi.SIM_PHYSX:
