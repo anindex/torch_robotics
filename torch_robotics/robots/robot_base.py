@@ -29,11 +29,14 @@ class RobotBase(ABC):
             self_collision_margin_grasped_object=0.05,
             num_interpolated_points_for_self_collision_checking=50,
             num_interpolated_points_for_object_collision_checking=50,
+            dt=1.0,  # time interval to compute velocities and accelerations from positions via finite difference
             tensor_args=None,
             **kwargs
     ):
         self.name = name
         self.tensor_args = tensor_args
+
+        self.dt = dt
 
         ################################################################################################
         # Configuration space
@@ -145,16 +148,22 @@ class RobotBase(ABC):
     def get_position(self, x):
         return x[..., :self.q_dim]
 
-    def get_velocity(self, x, dt=1.):
+    def get_velocity(self, x):
         vel = x[..., self.q_dim:2 * self.q_dim]
         # If there is no velocity in the state, then compute it via finite difference
         if x.nelement() != 0 and vel.nelement() == 0:
-            vel = finite_difference_vector(x, dt=dt, method='central')
+            vel = finite_difference_vector(x, dt=self.dt, method='central')
             return vel
         return vel
 
     def get_acceleration(self, x):
-        raise NotImplementedError
+        acc = x[..., 2 * self.q_dim:3 * self.q_dim]
+        # If there is no acceleration in the state, then compute it via finite difference
+        if x.nelement() != 0 and acc.nelement() == 0:
+            vel = self.get_velocity(x)
+            acc = finite_difference_vector(vel, dt=self.dt, method='central')
+            return acc
+        return acc
 
     def distance_q(self, q1, q2):
         return torch.linalg.norm(q1 - q2, dim=-1)

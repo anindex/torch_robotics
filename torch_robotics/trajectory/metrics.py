@@ -24,10 +24,10 @@ def compute_variance_waypoints(trajs, robot):
     return sum_var_waypoints
 
 
-def compute_smoothness(trajs, robot, trajs_vel=None, dt=1.):
+def compute_smoothness(trajs, robot, trajs_vel=None):
     if trajs_vel is None:
         assert trajs.ndim == 3
-        trajs_vel = robot.get_velocity(trajs, dt=dt)
+        trajs_vel = robot.get_velocity(trajs)
     else:
         assert trajs_vel.ndim == 3
     smoothness = torch.linalg.norm(torch.diff(trajs_vel, dim=-2), dim=-1)
