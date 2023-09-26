@@ -72,6 +72,7 @@ class EnvSpheres3D(EnvBase):
                 # 'method': 'cholesky-sparse',
                 # 'method': 'inverse',
             },
+            stop_criteria=0.1,
         )
         if isinstance(robot, RobotPanda):
             return params
