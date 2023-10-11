@@ -4,7 +4,6 @@ import einops
 import torch
 from matplotlib import pyplot as plt
 
-from storm_kit.geom.nn_model.robot_self_collision import RobotSelfCollisionNet
 from torch_robotics.torch_kinematics_tree.geometrics.utils import SE3_distance
 from torch_robotics.visualizers.planning_visualizer import create_fig_and_axes
 import torch.nn.functional as Functional
@@ -256,6 +255,7 @@ class CollisionSelfFieldWrapperSTORM(EmbodimentDistanceFieldBase):
 
     def __init__(self, robot, weights_fname, n_joints, *args, **kwargs):
         super().__init__(robot, *args, collision_margins=0., interpolate_link_pos=False, **kwargs)
+        from storm_kit.geom.nn_model.robot_self_collision import RobotSelfCollisionNet
         self.robot_self_collision_net = RobotSelfCollisionNet(n_joints)
         self.robot_self_collision_net.load_weights(weights_fname, self.tensor_args)
 
