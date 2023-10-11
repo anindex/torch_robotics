@@ -15,39 +15,28 @@ class EnvDense2DExtraObjects(EnvDense2D):
     def __init__(self, tensor_args=None, **kwargs):
         obj_extra_list = [
             MultiSphereField(
-                np.array(
-                    [
-                        [-0.4, 0.1],
-                        [-0.075, -0.85],
-                        [-0.1, -0.1],
-                    ]),
-                np.array(
-                    [
-                        0.075,
-                        0.1,
-                        0.075,
-                    ]
-                )
+                np.array([
+                     [0.5, -0.1],
+                     [-0.6, -0.9],
+                     [-0.125, -0.125],
+                 ]),
+                np.array([
+                     0.125,
+                     0.1,
+                     0.05,
+                 ])
                 ,
                 tensor_args=tensor_args
             ),
             MultiBoxField(
-                np.array(
-                    [
-                        [0.45, -0.1],
-                        [0.35, 0.35],
-                        [-0.6, -0.85],
-                        [-0.65, -0.25],
-                    ]
-                ),
-                np.array(
-                    [
-                        [0.2, 0.2],
-                        [0.1, 0.15],
-                        [0.1, 0.25],
-                        [0.15, 0.1],
-                    ]
-                )
+                np.array([
+                    [-0.9, 0.3],
+                    [-0.1, -0.8],
+                ]),
+                np.array([
+                    [0.1, 0.3],
+                    [0.1, 0.3],
+                ])
                 ,
                 tensor_args=tensor_args
             )
