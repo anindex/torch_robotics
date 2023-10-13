@@ -90,10 +90,10 @@ class GridMapSDF:
         :param X: Tensor of trajectories, of shape (batch_size, horizon, task_spaces, position_dim)
         :return: collision cost on the trajectories
         """
-        X_in_map = ((X-self.limits[0])/self.map_dim * self.cmap_dim).floor().type(torch.LongTensor)
+        X_in_map = ((X-self.limits[0])/self.map_dim * self.cmap_dim).floor().to(torch.int)
 
         # Project out-of-bounds locations to axis
-        max_idx = torch.tensor(self.points_for_sdf.shape[:-1])-1
+        max_idx = torch.tensor(self.points_for_sdf.shape[:-1]).type_as(X_in_map) - 1
         X_in_map = X_in_map.clamp(torch.zeros_like(max_idx), max_idx)
 
         # SDFs and gradients
@@ -102,21 +102,14 @@ class GridMapSDF:
         # This surrogate has the property
         # surrogate_sdf(x) = sdf(x_detachted)
         # grad_x_surrogate_sdf(x) = grad_sdf(x_detachted)
-        try:
-            X_in_map_detached = X_in_map.detach()
-            X_query = X_in_map_detached[..., 0], X_in_map_detached[..., 1]
-            if self.dim == 3:
-                X_query = X_in_map_detached[..., 0], X_in_map_detached[..., 1], X_in_map_detached[..., 2]
+        X_in_map_detached = X_in_map.detach()
+        X_query = torch.unbind(X_in_map_detached, dim=-1)
 
-            sdf_vals = self.sdf_tensor[X_query]
-            grad_sdf = self.grad_sdf_tensor[X_query]
+        sdf_vals = self.sdf_tensor[X_query]
+        grad_sdf = self.grad_sdf_tensor[X_query]
 
-            X_detached = X.detach()
-            sdf_vals += (X * grad_sdf).sum(-1) - (X_detached * grad_sdf).sum(-1)
-
-        except Exception as e:
-            print(e)
-            print(X_in_map)
+        X_detached = X.detach()
+        sdf_vals += (X * grad_sdf).sum(-1) - (X_detached * grad_sdf).sum(-1)
 
         return sdf_vals
 

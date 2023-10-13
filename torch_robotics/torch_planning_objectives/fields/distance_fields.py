@@ -90,8 +90,8 @@ class EmbodimentDistanceFieldBase(DistanceField):
                  num_interpolated_points=30,
                  collision_margins=0.,
                  cutoff_margin=0.001,
-                 field_type='sdf', clamp_sdf=True,
-                 interpolate_link_pos=True,
+                 field_type='sdf', clamp_sdf=False,
+                 interpolate_link_pos=False,
                  **kwargs):
         super().__init__(**kwargs)
         assert robot is not None, "You need to pass a robot instance to the embodiment distance fields"
