@@ -79,10 +79,10 @@ class RobotPanda(RobotBase):
         #############################################
         # Robot collision model for self collision
         link_names_pairs_for_self_collision_checking = OrderedDict({
-            'panda_hand': ['panda_link0', 'panda_link1', 'panda_link2'],
-            'panda_link6': ['panda_link0', 'panda_link1', 'panda_link2'],
+            'panda_link4': ['panda_link1'],
             'panda_link5': ['panda_link0', 'panda_link1', 'panda_link2'],
-            'panda_link4': ['panda_link1']
+            'panda_link6': ['panda_link0', 'panda_link1', 'panda_link2'],
+            'panda_hand': ['panda_link0', 'panda_link1', 'panda_link2'],
         })
 
         # self collision due to grasped object
@@ -114,11 +114,11 @@ class RobotPanda(RobotBase):
             link_margins_for_object_collision_checking=link_margins_for_object_collision_checking,
             link_idxs_for_object_collision_checking=link_idxs_for_object_collision_checking,
             margin_for_grasped_object_collision_checking=0.001,  # small margin for object placement
-            num_interpolated_points_for_object_collision_checking=len(link_names_for_object_collision_checking)*5,
+            num_interpolated_points_for_object_collision_checking=len(link_names_for_object_collision_checking),
             link_names_for_self_collision_checking=link_names_for_self_collision_checking,
             link_names_pairs_for_self_collision_checking=link_names_pairs_for_self_collision_checking,
             link_idxs_for_self_collision_checking=link_idxs_for_self_collision_checking,
-            num_interpolated_points_for_self_collision_checking=25,
+            num_interpolated_points_for_self_collision_checking=len(link_names_for_self_collision_checking),
             self_collision_margin_robot=0.05,
             link_names_for_self_collision_checking_with_grasped_object=link_names_for_self_collision_checking_with_grasped_object,
             self_collision_margin_grasped_object=0.05,

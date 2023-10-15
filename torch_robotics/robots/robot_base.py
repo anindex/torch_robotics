@@ -27,8 +27,8 @@ class RobotBase(ABC):
             self_collision_margin_robot=0.001,
             link_names_for_self_collision_checking_with_grasped_object=None,
             self_collision_margin_grasped_object=0.05,
-            num_interpolated_points_for_self_collision_checking=50,
-            num_interpolated_points_for_object_collision_checking=50,
+            num_interpolated_points_for_self_collision_checking=1,
+            num_interpolated_points_for_object_collision_checking=1,
             dt=1.0,  # time interval to compute velocities and accelerations from positions via finite difference
             tensor_args=None,
             **kwargs
