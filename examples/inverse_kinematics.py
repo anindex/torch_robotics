@@ -14,6 +14,7 @@ from torch_robotics.torch_utils.torch_utils import to_numpy
 from torch_robotics.visualizers.planning_visualizer import create_fig_and_axes
 from torch_robotics.visualizers.plot_utils import plot_coordinate_frame
 
+
 if __name__ == "__main__":
     seed = 0
     fix_random_seed(seed)

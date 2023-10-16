@@ -1,6 +1,5 @@
 pyyaml
 urdf-parser-py
 matplotlib
-sobol_seq
-ghalton
 trimesh
+einops
