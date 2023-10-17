@@ -170,6 +170,8 @@ class EmbodimentDistanceFieldBase(DistanceField):
         if self.interpolate_link_pos:
             # select the robot links used for collision checking
             link_pos = interpolate_points_v1(link_pos_robot, self.num_interpolated_points)
+        else:
+            link_pos = link_pos_robot
 
         # stack collision points from grasped object
         # these points do not need to be interpolated

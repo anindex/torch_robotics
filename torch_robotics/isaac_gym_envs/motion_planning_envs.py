@@ -15,6 +15,7 @@ from isaacgym.torch_utils import *
 
 import torch
 
+from deps.isaacgym.python.isaacgym.torch_utils import to_torch
 from torch_robotics.environments import EnvTableShelf
 from torch_robotics.environments.env_spheres_3d import EnvSpheres3D
 from torch_robotics.environments.primitives import MultiSphereField, MultiBoxField
@@ -190,7 +191,6 @@ class PandaMotionPlanningIsaacGymEnv:
                  lower_level_controller_frequency=1000,
                  **kwargs,
     ):
-
         self.env = env
         self.robot = robot
         self.task = task
@@ -610,7 +610,8 @@ class PandaMotionPlanningIsaacGymEnv:
                     fk_link_pos = self.robot.fk_map_collision(joint_pos_curr)
                     fk_link_pos = fk_link_pos[..., self.robot.link_idxs_for_object_collision_checking, :]
                     fk_link_pos = interpolate_points_v1(fk_link_pos, self.robot.num_interpolated_points_for_object_collision_checking).squeeze(0)
-                    for j, (link_pos, margin) in enumerate(zip(fk_link_pos, self.robot.link_margins_for_object_collision_checking_tensor)):
+                    radii = self.robot.link_margins_for_object_collision_checking_tensor
+                    for j, (link_pos, margin) in enumerate(zip(fk_link_pos, radii)):
                         link_transform = gymapi.Transform(p=gymapi.Vec3(*link_pos))
                         sphere_geom = gymutil.WireframeSphereGeometry(margin, 5, 5, gymapi.Transform(), color=(0, 0, 1))
                         gymutil.draw_lines(sphere_geom, self.gym, self.viewer, env, link_transform)

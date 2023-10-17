@@ -13,16 +13,16 @@ class EnvSpheres3D(EnvBase):
 
     def __init__(self, name='EnvDense2D', tensor_args=None, **kwargs):
         spheres = MultiSphereField(torch.tensor([
-                    [-0.3, 0.3, 0.85],
-                    [-0.35, -0.25, 0.45],
-                    [-0.45, 0.15, 0.0],
-                    [0.45, 0.35, 0.],
-                    [0.55, 0.35, 0.55],
-                    [0.65, -0.4, 0.25],
-                    [0.2, -0.35, 0.5],
-                    [0.35, 0.0, 0.9],
-                    [0., -0.3, 0.0],
-                    [0.0, 0.45, 0.35],
+                    [-0.4, 0.4, 0.85],
+                    [-0.45, -0.35, 0.45],
+                    [-0.55, 0.25, 0.0],
+                    [0.55, 0.45, 0.],
+                    [0.65, 0.45, 0.55],
+                    [0.75, -0.5, 0.25],
+                    [0.3, -0.45, 0.5],
+                    [0.45, 0.1, 0.9],
+                    [0.1, -0.4, 0.0],
+                    [0.1, 0.55, 0.35],
                     ]),
                 torch.tensor([
                     0.15,
@@ -86,7 +86,7 @@ class EnvSpheres3D(EnvBase):
             n_radius=torch.pi/4,
             n_pre_samples=50000,
 
-            max_time=90
+            max_time=180
         )
         if isinstance(robot, RobotPanda):
             return params

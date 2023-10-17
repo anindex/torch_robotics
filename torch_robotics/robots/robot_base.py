@@ -30,6 +30,7 @@ class RobotBase(ABC):
             num_interpolated_points_for_self_collision_checking=50,
             num_interpolated_points_for_object_collision_checking=50,
             dt=1.0,  # time interval to compute velocities and accelerations from positions via finite difference
+            use_collision_spheres=False,
             tensor_args=None,
             **kwargs
     ):
@@ -56,6 +57,8 @@ class RobotBase(ABC):
 
         ################################################################################################
         # Objects collision field
+        self.use_collision_spheres = use_collision_spheres
+
         assert num_interpolated_points_for_object_collision_checking >= len(link_names_for_object_collision_checking)
         if num_interpolated_points_for_object_collision_checking % len(link_names_for_object_collision_checking) != 0:
             self.points_per_link_object_collision_checking = ceil(num_interpolated_points_for_object_collision_checking / len(link_names_for_object_collision_checking))
@@ -67,10 +70,11 @@ class RobotBase(ABC):
         self.link_names_for_object_collision_checking = link_names_for_object_collision_checking
         self.n_links_for_object_collision_checking = len(link_names_for_object_collision_checking)
         self.link_margins_for_object_collision_checking = link_margins_for_object_collision_checking
-        self.link_margins_for_object_collision_checking_robot_tensor = torch.tensor(
+        self.link_margins_for_object_collision_checking_robot_tensor = to_torch(
             link_margins_for_object_collision_checking, **self.tensor_args).repeat_interleave(
             int(num_interpolated_points_for_object_collision_checking / len(link_margins_for_object_collision_checking))
         )
+
         self.link_margins_for_object_collision_checking_tensor = self.link_margins_for_object_collision_checking_robot_tensor
         # append grasped object margins
         if self.grasped_object is not None:

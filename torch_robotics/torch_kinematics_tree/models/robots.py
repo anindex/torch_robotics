@@ -3,11 +3,12 @@ from typing import Optional, List
 from xml.dom import minidom
 
 import numpy as np
+import yaml
 from urdf_parser_py.urdf import URDF, Joint, Link, Visual, Collision, Box, Pose
 
 from torch_robotics.torch_kinematics_tree.geometrics.quaternion import q_to_euler
 from torch_robotics.torch_kinematics_tree.models.robot_tree import DifferentiableTree
-from torch_robotics.torch_kinematics_tree.utils.files import get_robot_path
+from torch_robotics.torch_kinematics_tree.utils.files import get_robot_path, get_configs_path
 from xml.etree import ElementTree as ET
 
 from torch_robotics.torch_utils.torch_utils import to_numpy
@@ -53,12 +54,60 @@ def modidy_franka_panda_urdf_grasped_object(robot_file, grasped_object):
     return robot_file
 
 
+def modidy_franka_panda_urdf_collision_model(robot_file):
+    collision_spheres = 'panda/panda_sphere_config.yaml'
+    # load collision file:
+    coll_yml = (get_configs_path() / collision_spheres).as_posix()
+    with open(coll_yml) as file:
+        coll_params = yaml.load(file, Loader=yaml.FullLoader)
+
+    robot_urdf = URDF.from_xml_file(robot_file)
+
+    link_collision_names = []
+    link_collision_margins = []
+    for link_name, spheres_l in coll_params.items():
+        for i, sphere in enumerate(spheres_l):
+            joint = Joint(
+                name=f'joint_{link_name}_sphere_{i}',
+                parent=f'{link_name}',
+                child=f'{link_name}_{i}',
+                joint_type='fixed',
+                origin=Pose(xyz=to_numpy(sphere[:3]))
+            )
+            robot_urdf.add_joint(joint)
+
+            link_collision = f'{link_name}_{i}'
+            link = Link(
+                name=link_collision,
+                origin=Pose(xyz=[0., 0., 0.], rpy=[0., 0., 0.])
+            )
+            robot_urdf.add_link(link)
+
+            link_collision_names.append(link_collision)
+            link_collision_margins.append(sphere[-1])
+
+    # replace the robots file
+    robot_file = Path(str(robot_file).replace('.urdf', '_collision_model.urdf'))
+    xmlstr = minidom.parseString(ET.tostring(robot_urdf.to_xml())).toprettyxml(indent="   ")
+    with open(str(robot_file), "w") as f:
+        f.write(xmlstr)
+
+    return robot_file, link_collision_names, link_collision_margins
+
+
 class DifferentiableFrankaPanda(DifferentiableTree):
-    def __init__(self, link_list: Optional[str] = None, gripper=False, device='cpu', grasped_object=None):
+    def __init__(self, link_list: Optional[str] = None, gripper=False, device='cpu', grasped_object=None,
+                 use_collision_spheres=False):
         if gripper:
             robot_file = get_robot_path() / 'franka_description' / 'robots' / 'panda_arm_hand.urdf'
         else:
             robot_file = get_robot_path() / 'franka_description' / 'robots' / 'panda_arm_no_gripper.urdf'
+
+        # Modify the urdf to append links of the collision model
+        if use_collision_spheres:
+            robot_file, link_collision_names, link_collision_margins = modidy_franka_panda_urdf_collision_model(robot_file)
+            self.link_collision_names = link_collision_names
+            self.link_collision_margins = link_collision_margins
 
         # Modify the urdf to append the link of the grasped object
         if grasped_object is not None:

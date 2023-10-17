@@ -54,6 +54,7 @@ class PlanningTask(Task):
             num_interpolated_points=self.robot.num_interpolated_points_for_object_collision_checking,
             link_margins_for_object_collision_checking_tensor=self.robot.link_margins_for_object_collision_checking_tensor,
             cutoff_margin=obstacle_cutoff_margin,
+            interpolate_link_pos=not self.robot.use_collision_spheres,
             tensor_args=self.tensor_args
         )
 
@@ -65,6 +66,7 @@ class PlanningTask(Task):
                 num_interpolated_points=self.robot.num_interpolated_points_for_object_collision_checking,
                 link_margins_for_object_collision_checking_tensor=self.robot.link_margins_for_object_collision_checking_tensor,
                 cutoff_margin=obstacle_cutoff_margin,
+                interpolate_link_pos=not self.robot.use_collision_spheres,
                 tensor_args=self.tensor_args
             )
             self._collision_fields_extra_objects = [self.df_collision_extra_objects]
@@ -78,6 +80,7 @@ class PlanningTask(Task):
             num_interpolated_points=self.robot.num_interpolated_points_for_object_collision_checking,
             link_margins_for_object_collision_checking_tensor=self.robot.link_margins_for_object_collision_checking_tensor,
             cutoff_margin=obstacle_cutoff_margin,
+            interpolate_link_pos=not self.robot.use_collision_spheres,
             ws_bounds_min=self.ws_min,
             ws_bounds_max=self.ws_max,
             tensor_args=self.tensor_args
@@ -244,11 +247,11 @@ class PlanningTask(Task):
         ###############################################################################################################
         # compute collisions on a finer interpolated trajectory
         trajs_interpolated = interpolate_traj_via_points(trajs_new, num_interpolation=num_interpolation)
-        # Set 0 margin for collision checking, which means we allow trajectories to pass very close to objects.
+        # Set a low margin for collision checking, which means we allow trajectories to pass very close to objects.
         # While the optimized trajectory via points are not at a 0 margin from the object, the interpolated via points
         # might be. A 0 margin guarantees that we do not discard those trajectories, while ensuring they are not in
         # collision (margin < 0).
-        trajs_waypoints_collisions = self.compute_collision(trajs_interpolated, margin=0.)
+        trajs_waypoints_collisions = self.compute_collision(trajs_interpolated, margin=0.01)
 
         if trajs.ndim == 4:
             trajs_waypoints_collisions = einops.rearrange(trajs_waypoints_collisions, '(N B) H -> N B H', N=N, B=B)

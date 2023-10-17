@@ -23,6 +23,7 @@ class RobotPointMass(RobotBase):
             link_margins_for_object_collision_checking=[0.01],
             link_idxs_for_object_collision_checking=[0],
             num_interpolated_points_for_object_collision_checking=1,
+            use_collision_spheres=False,
             **kwargs
         )
 
