@@ -186,6 +186,7 @@ class PandaMotionPlanningIsaacGymEnv:
                  show_goal_configuration=True,
                  sync_with_real_time=False,
                  show_collision_spheres=False,  # very slow implementation. use only one robots
+                 collor_robots_in_collision=False,
                  show_contact_forces=False,
                  dt=1./25.,  # dt of motion planning
                  lower_level_controller_frequency=1000,
@@ -200,6 +201,7 @@ class PandaMotionPlanningIsaacGymEnv:
         self.all_robots_in_one_env = all_robots_in_one_env
         self.color_robots = color_robots
 
+        self.collor_robots_in_collision = collor_robots_in_collision
         self.show_collision_spheres = show_collision_spheres
         self.show_contact_forces = show_contact_forces
 
@@ -595,12 +597,13 @@ class PandaMotionPlanningIsaacGymEnv:
                 gymutil.draw_lines(self.axes_geom, self.gym, self.viewer, env, ee_transform)
 
                 # color frankas in collision
-                if k in envs_with_robot_in_contact:
-                    n_rigid_bodies = self.gym.get_actor_rigid_body_count(env, franka_handle)
-                    # color = gymapi.Vec3(1., 0., 0.)
-                    color = gymapi.Vec3(0., 0., 0.)
-                    for j in range(n_rigid_bodies):
-                        self.gym.set_rigid_body_color(env, franka_handle, j, gymapi.MESH_VISUAL_AND_COLLISION, color)
+                if self.collor_robots_in_collision:
+                    if k in envs_with_robot_in_contact:
+                        n_rigid_bodies = self.gym.get_actor_rigid_body_count(env, franka_handle)
+                        # color = gymapi.Vec3(1., 0., 0.)
+                        color = gymapi.Vec3(0., 0., 0.)
+                        for j in range(n_rigid_bodies):
+                            self.gym.set_rigid_body_color(env, franka_handle, j, gymapi.MESH_VISUAL_AND_COLLISION, color)
 
                 # collision spheres
                 if self.show_collision_spheres:
@@ -697,11 +700,11 @@ class MotionPlanningController:
             joint_states, envs_with_robot_in_contact = self.mp_env.step(actions, visualize=visualize, render_viewer_camera=render_viewer_camera)
             envs_with_robot_in_contact_l.append(envs_with_robot_in_contact)
             # stop the trajectory if the robots was in contact with the environments
-            if len(envs_with_robot_in_contact) > 0:
-                if self.mp_env.controller_type == 'position':
-                    trajectories_copy[i:, envs_with_robot_in_contact, :] = actions[envs_with_robot_in_contact, :]
-                elif self.mp_env.controller_type == 'velocity':
-                    trajectories_copy[i:, envs_with_robot_in_contact, :] = 0.
+            # if len(envs_with_robot_in_contact) > 0:
+            #     if self.mp_env.controller_type == 'position':
+            #         trajectories_copy[i:, envs_with_robot_in_contact, :] = actions[envs_with_robot_in_contact, :]
+            #     elif self.mp_env.controller_type == 'velocity':
+            #         trajectories_copy[i:, envs_with_robot_in_contact, :] = 0.
 
         # last steps -- keep robots in place
         if self.mp_env.controller_type == 'position':

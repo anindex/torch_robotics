@@ -205,7 +205,6 @@ class RobotPanda(RobotBase):
 
         #############################################
         # Override self collision distance field with the one from STORM - https://arxiv.org/abs/2104.13542
-        self.df_collision_self = None
         if use_self_collision_storm:
             assert grasped_object is None, ("STORM self collision model does not work if objects are grasped. "
                                             "Learn a self collision model of the robots grasping the object "
