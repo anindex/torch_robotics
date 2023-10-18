@@ -47,11 +47,11 @@ class GridMapSDF:
         f_grad_sdf = lambda x: self.compute_signed_distance_raw(x).sum()
         sdf_tensor_l = []
         grad_sdf_tensor_l = []
-        # TODO - compute sdf and gradient in batches to prevent memory overflow
-        for i in range(self.points_for_sdf.shape[0]):
+        batch_size = 64
+        for i in range(0, self.points_for_sdf.shape[0], batch_size):
             torch.cuda.empty_cache()
             # sdf
-            points_sdf = self.points_for_sdf[i]
+            points_sdf = self.points_for_sdf[i:i+batch_size]
             sdf_tensor = self.compute_signed_distance_raw(points_sdf)
             sdf_tensor_l.append(sdf_tensor)
             # gradient of sdf
@@ -59,8 +59,8 @@ class GridMapSDF:
             grad_sdf_tensor_l.append(grad_sdf_tensor)
         torch.cuda.empty_cache()
 
-        self.sdf_tensor = torch.stack(sdf_tensor_l, dim=0)
-        self.grad_sdf_tensor = torch.stack(grad_sdf_tensor_l, dim=0)
+        self.sdf_tensor = torch.cat(sdf_tensor_l, dim=0)
+        self.grad_sdf_tensor = torch.cat(grad_sdf_tensor_l, dim=0)
 
     def compute_signed_distance_raw(self, x):
         sdf = None

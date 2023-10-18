@@ -21,8 +21,8 @@ class EnvBase(ABC):
                  limits=None,
                  obj_fixed_list=None,
                  obj_extra_list=None,
-                 precompute_sdf_obj_fixed=False,
-                 sdf_cell_size=0.005,
+                 precompute_sdf_obj_fixed=True,
+                 sdf_cell_size=0.01,
                  tensor_args=None,
                  **kwargs
                  ):
