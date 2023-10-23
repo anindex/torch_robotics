@@ -16,7 +16,6 @@ class EnvSpheres3DExtraObjects(EnvSpheres3D):
             MultiSphereField(
                 np.array(
                     [
-                        [0.25, 0., 0.],
                         [0., 0.5, 0.5],
                         [0., -0.5, 0.],
                         [-0.25, -0.5, 0.5],
@@ -24,7 +23,6 @@ class EnvSpheres3DExtraObjects(EnvSpheres3D):
                     ]),
                 np.array(
                     [
-                        0.15,
                         0.15,
                         0.15,
                         0.15,

@@ -739,7 +739,7 @@ class MotionPlanningController:
                 if idx not in envs_with_robot_in_contact_unique:
                     envs_with_robot_in_contact_unique.append(idx)
 
-        print(f'trajectories free: {B-len(envs_with_robot_in_contact_unique)}/{B}')
+        print(f'trajectories free in Isaac: {B-len(envs_with_robot_in_contact_unique)}/{B}')
 
 
 if __name__ == '__main__':
