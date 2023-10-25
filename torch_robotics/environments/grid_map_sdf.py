@@ -10,7 +10,7 @@ class GridMapSDF:
     """
     Generates an SDF grid.
     """
-    def __init__(self, limits, cell_size, obj_list, tensor_args=None):
+    def __init__(self, limits, cell_size, obj_list, batch_size=64, tensor_args=None):
 
         self.limits = limits
         self.dim = limits.shape[-1]
@@ -29,6 +29,8 @@ class GridMapSDF:
         self.points_for_sdf = None
         self.sdf_tensor = None
         self.grad_sdf_tensor = None
+
+        self.batch_size = batch_size
         self.precompute_sdf()
 
     def precompute_sdf(self):
@@ -47,11 +49,10 @@ class GridMapSDF:
         f_grad_sdf = lambda x: self.compute_signed_distance_raw(x).sum()
         sdf_tensor_l = []
         grad_sdf_tensor_l = []
-        batch_size = 64
-        for i in range(0, self.points_for_sdf.shape[0], batch_size):
+        for i in range(0, self.points_for_sdf.shape[0], self.batch_size):
             torch.cuda.empty_cache()
             # sdf
-            points_sdf = self.points_for_sdf[i:i+batch_size]
+            points_sdf = self.points_for_sdf[i:i+self.batch_size]
             sdf_tensor = self.compute_signed_distance_raw(points_sdf)
             sdf_tensor_l.append(sdf_tensor)
             # gradient of sdf
