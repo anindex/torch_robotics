@@ -28,6 +28,10 @@ class PrimitiveShapeField(ABC):
             tensor_args = DEFAULT_TENSOR_ARGS
         self.tensor_args = tensor_args
 
+    @abstractmethod
+    def get_all_single_primitives(self):
+        pass
+
     def compute_signed_distance(self, x):
         """
         Returns the signed distance at x.
@@ -104,6 +108,12 @@ class MultiSphereField(PrimitiveShapeField):
 
     def __repr__(self):
         return f"MultiSphereField(centers={self.centers}, radii={self.radii})"
+
+    def get_all_single_primitives(self):
+        single_primitives = []
+        for center, radius in zip(self.centers, self.radii):
+            single_primitives.append(MultiSphereField(center, radius, tensor_args=self.tensor_args))
+        return single_primitives
 
     def compute_signed_distance_impl(self, x):
         distance_to_centers = torch.norm(x.unsqueeze(-2) - self.centers.unsqueeze(0), dim=-1)
@@ -216,6 +226,12 @@ class MultiBoxField(PrimitiveShapeField):
 
     def __repr__(self):
         return f"MultiBoxField(centers={self.centers}, sizes={self.sizes})"
+
+    def get_all_single_primitives(self):
+        single_primitives = []
+        for center, sizes in zip(self.centers, self.sizes):
+            single_primitives.append(MultiBoxField(center, sizes, tensor_args=self.tensor_args))
+        return single_primitives
 
     def compute_signed_distance_impl(self, x):
         distance_to_centers = torch.abs(x.unsqueeze(-2) - self.centers.unsqueeze(0))
@@ -545,6 +561,9 @@ class ObjectField(PrimitiveShapeField):
             assert len(ori) == 4, "quaternion wxyz"
             self.ori = to_torch(ori, **self.tensor_args)
 
+    def get_position_orientation(self):
+        return self.pos, self.ori
+
     def join_primitives(self):
         raise NotImplementedError
 
@@ -583,6 +602,12 @@ class ObjectField(PrimitiveShapeField):
     def zero_grad(self):
         for field in self.fields:
             field.zero_grad()
+
+    def get_all_single_primitives(self):
+        single_primitives = []
+        for field in self.fields:
+            single_primitives.extend(field.get_all_single_primitives())
+        return single_primitives
 
 
 if __name__ == '__main__':

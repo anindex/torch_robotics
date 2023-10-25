@@ -231,7 +231,8 @@ class PandaMotionPlanningIsaacGymEnv:
         # configure sim
         sim_params = gymapi.SimParams()
         sim_params.up_axis = gymapi.UP_AXIS_Z
-        sim_params.gravity = gymapi.Vec3(0.0, 0.0, -9.8)
+        # sim_params.gravity = gymapi.Vec3(0.0, 0.0, -9.8)
+        sim_params.gravity = gymapi.Vec3(0.0, 0.0, 0.0)
         sim_params.dt = dt  # upper level policy frequency
         sim_params.substeps = ceil(lower_level_controller_frequency * dt)  # 1/dt * substeps = lower level controller frequency
         # e.g. dt = 1/50 and substeps = 20, means a lower-level controller running at 1000 Hz

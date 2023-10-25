@@ -1,3 +1,4 @@
+import os
 from collections import OrderedDict
 from functools import partial
 from itertools import product
@@ -17,7 +18,7 @@ from torch_robotics.torch_kinematics_tree.geometrics.utils import link_pos_from_
     link_quat_from_link_tensor
 from torch_robotics.torch_kinematics_tree.models.robot_tree import convert_link_dict_to_tensor
 from torch_robotics.torch_kinematics_tree.models.robots import DifferentiableFrankaPanda
-from torch_robotics.torch_kinematics_tree.utils.files import get_configs_path
+from torch_robotics.torch_kinematics_tree.utils.files import get_configs_path, get_robot_path
 from torch_robotics.torch_planning_objectives.fields.distance_fields import interpolate_points_v1, CollisionSelfFieldWrapperSTORM
 from torch_robotics.torch_utils.torch_timer import TimerCUDA
 from torch_robotics.torch_utils.torch_utils import to_numpy, to_torch
@@ -199,6 +200,7 @@ class RobotPanda(RobotBase):
             link_names_for_self_collision_checking_with_grasped_object=link_names_for_self_collision_checking_with_grasped_object,
             self_collision_margin_grasped_object=0.05,
             use_collision_spheres=use_collision_spheres,
+            robot_urdf_path=os.path.join(get_robot_path(), 'franka_description', 'robots', 'panda_arm_no_gripper.urdf'),
             tensor_args=tensor_args,
             **kwargs
         )

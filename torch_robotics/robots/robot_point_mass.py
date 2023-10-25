@@ -1,3 +1,5 @@
+import os.path
+
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
@@ -5,6 +7,7 @@ from mpl_toolkits.mplot3d.art3d import Line3DCollection
 
 from torch_robotics.environments.primitives import plot_sphere
 from torch_robotics.robots.robot_base import RobotBase
+from torch_robotics.torch_kinematics_tree.utils.files import get_robot_path
 from torch_robotics.torch_utils.torch_utils import to_numpy, to_torch
 
 import matplotlib.collections as mcoll
@@ -15,6 +18,7 @@ class RobotPointMass(RobotBase):
     def __init__(self,
                  name='RobotPointMass',
                  q_limits=torch.tensor([[-1, -1], [1, 1]]),  # configuration space limits
+                 robot_urdf_path=os.path.join(get_robot_path(), "point_mass_robot_2d.urdf"),
                  **kwargs):
         super().__init__(
             name=name,
@@ -24,6 +28,7 @@ class RobotPointMass(RobotBase):
             link_idxs_for_object_collision_checking=[0],
             num_interpolated_points_for_object_collision_checking=1,
             use_collision_spheres=False,
+            robot_urdf_path=robot_urdf_path,
             **kwargs
         )
 
@@ -105,5 +110,7 @@ class RobotPointMass3D(RobotPointMass):
         super().__init__(
             name='RobotPointMass3D',
             q_limits=torch.tensor([[-1, -1, -1], [1, 1, 1]], **kwargs['tensor_args']),  # configuration space limits
+            robot_urdf_path=os.path.join(get_robot_path(), "point_mass_robot_3d.urdf"),
             **kwargs
         )
+

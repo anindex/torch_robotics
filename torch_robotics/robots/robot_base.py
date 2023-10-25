@@ -31,6 +31,7 @@ class RobotBase(ABC):
             num_interpolated_points_for_object_collision_checking=50,
             dt=1.0,  # time interval to compute velocities and accelerations from positions via finite difference
             use_collision_spheres=False,
+            robot_urdf_path=None,
             tensor_args=None,
             **kwargs
     ):
@@ -38,6 +39,9 @@ class RobotBase(ABC):
         self.tensor_args = tensor_args
 
         self.dt = dt
+
+        ################################################################################################
+        self.robot_urdf_path = robot_urdf_path
 
         ################################################################################################
         # Configuration space
