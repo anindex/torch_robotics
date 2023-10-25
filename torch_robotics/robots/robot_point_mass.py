@@ -68,7 +68,8 @@ class RobotPointMass(RobotBase):
 
     def render_trajectories(
             self, ax, trajs=None, start_state=None, goal_state=None, colors=['blue'],
-            linestyle='solid', **kwargs):
+            linestyle='solid', control_points=None,
+            **kwargs):
         if trajs is not None:
             trajs_pos = self.get_position(trajs)
             trajs_np = to_numpy(trajs_pos)
@@ -85,10 +86,16 @@ class RobotPointMass(RobotBase):
                 segments = np.array(list(zip(trajs_np[..., 0], trajs_np[..., 1]))).swapaxes(1, 2)
                 line_segments = mcoll.LineCollection(segments, colors=colors, linestyle=linestyle)
                 ax.add_collection(line_segments)
-                points = np.reshape(trajs_np, (-1, 2))
-                colors_scatter = []
-                for segment, color in zip(segments, colors):
-                    colors_scatter.extend([color]*segment.shape[0])
+                if control_points is not None:
+                    points = np.reshape(to_numpy(control_points), (-1, 2))
+                    colors_scatter = []
+                    for control_pointss, color in zip(control_points, colors):
+                        colors_scatter.extend([color]*control_pointss.shape[0])
+                else:
+                    points = np.reshape(trajs_np, (-1, 2))
+                    colors_scatter = []
+                    for segment, color in zip(segments, colors):
+                        colors_scatter.extend([color]*segment.shape[0])
                 ax.scatter(points[:, 0], points[:, 1], color=colors_scatter, s=2**2)
         if start_state is not None:
             start_state_np = to_numpy(start_state)

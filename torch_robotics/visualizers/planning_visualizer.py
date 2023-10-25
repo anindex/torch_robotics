@@ -147,7 +147,7 @@ class PlanningVisualizer:
         B, H, D = trajs_np.shape
 
         # Separate trajectories in collision and free (not in collision)
-        trajs_coll, trajs_free = self.task.get_trajs_collision_and_free(trajs)
+        trajs_coll, trajs_free = self.task.get_trajs_collision_and_free(trajs, **kwargs)
 
         trajs_coll_pos_np = to_numpy([])
         trajs_coll_vel_np = to_numpy([])

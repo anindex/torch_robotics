@@ -234,7 +234,7 @@ class PlanningTask(Task):
 
         return collisions
 
-    def get_trajs_collision_and_free(self, trajs, return_indices=False, num_interpolation=5):
+    def get_trajs_collision_and_free(self, trajs, return_indices=False, num_interpolation=0, **kwargs):
         assert trajs.ndim == 3 or trajs.ndim == 4
         N = 1
         if trajs.ndim == 4:  # n_goals (or steps), batch of trajectories, length, dim
@@ -246,12 +246,15 @@ class PlanningTask(Task):
 
         ###############################################################################################################
         # compute collisions on a finer interpolated trajectory
-        trajs_interpolated = interpolate_traj_via_points(trajs_new, num_interpolation=num_interpolation)
+        if num_interpolation > 0:
+            trajs_interpolated = interpolate_traj_via_points(trajs_new, num_interpolation=num_interpolation)
+        else:
+            trajs_interpolated = trajs_new
         # Set a low margin for collision checking, which means we allow trajectories to pass very close to objects.
         # While the optimized trajectory via points are not at a 0 margin from the object, the interpolated via points
         # might be. A 0 margin guarantees that we do not discard those trajectories, while ensuring they are not in
         # collision (margin < 0).
-        trajs_waypoints_collisions = self.compute_collision(trajs_interpolated, margin=0.01)
+        trajs_waypoints_collisions = self.compute_collision(trajs_interpolated, margin=0.0)
 
         if trajs.ndim == 4:
             trajs_waypoints_collisions = einops.rearrange(trajs_waypoints_collisions, '(N B) H -> N B H', N=N, B=B)
@@ -312,19 +315,19 @@ class PlanningTask(Task):
 
     def compute_fraction_free_trajs(self, trajs, **kwargs):
         # Compute the fractions of trajs that are collision free
-        _, trajs_coll_idxs, _, trajs_free_idxs, _ = self.get_trajs_collision_and_free(trajs, return_indices=True)
+        _, trajs_coll_idxs, _, trajs_free_idxs, _ = self.get_trajs_collision_and_free(trajs, return_indices=True, **kwargs)
         n_trajs_free = trajs_free_idxs.nelement()
         n_trajs_coll = trajs_coll_idxs.nelement()
         return n_trajs_free/(n_trajs_free + n_trajs_coll)
 
     def compute_collision_intensity_trajs(self, trajs, **kwargs):
         # Compute the fraction of waypoints that are in collision
-        _, _, _, _, trajs_waypoints_collisions = self.get_trajs_collision_and_free(trajs, return_indices=True)
+        _, _, _, _, trajs_waypoints_collisions = self.get_trajs_collision_and_free(trajs, return_indices=True, **kwargs)
         return torch.count_nonzero(trajs_waypoints_collisions)/trajs_waypoints_collisions.nelement()
 
     def compute_success_free_trajs(self, trajs, **kwargs):
         # If at least one trajectory is collision free, then we consider success
-        _, trajs_free = self.get_trajs_collision_and_free(trajs)
+        _, trajs_free = self.get_trajs_collision_and_free(trajs, **kwargs)
         if trajs_free is not None:
             if trajs_free.nelement() >= 1:
                 return 1
