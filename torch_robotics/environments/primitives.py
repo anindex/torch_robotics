@@ -12,6 +12,7 @@ from torch.autograd.functional import jacobian
 
 from torch_robotics.torch_kinematics_tree.geometrics.quaternion import q_to_rotation_matrix
 from torch_robotics.torch_kinematics_tree.geometrics.utils import transform_point, rotate_point
+from torch_robotics.torch_utils.torch_timer import TimerCUDA
 from torch_robotics.torch_utils.torch_utils import DEFAULT_TENSOR_ARGS, to_torch, to_numpy, tensor_linspace_v1
 from torch_robotics.visualizers.planning_visualizer import create_fig_and_axes
 
@@ -32,17 +33,17 @@ class PrimitiveShapeField(ABC):
     def get_all_single_primitives(self):
         pass
 
-    def compute_signed_distance(self, x):
+    def compute_signed_distance(self, x, get_gradient=False):
         """
         Returns the signed distance at x.
         Parameters
         ----------
             x : torch array (batch, dim) or (batch, horizon, dim)
         """
-        return self.compute_signed_distance_impl(x)
+        return self.compute_signed_distance_impl(x, get_gradient=get_gradient)
 
     @abstractmethod
-    def compute_signed_distance_impl(self, x):
+    def compute_signed_distance_impl(self, x, get_gradient=False):
         # The SDF computed here assumes the primitive shape main center is located at the origin, and there is no
         # rotation.
         # Note that this center is different from e.g. the centers for spheres in MultiSphereField, since a primitive
@@ -115,11 +116,17 @@ class MultiSphereField(PrimitiveShapeField):
             single_primitives.append(MultiSphereField(center, radius, tensor_args=self.tensor_args))
         return single_primitives
 
-    def compute_signed_distance_impl(self, x):
-        distance_to_centers = torch.norm(x.unsqueeze(-2) - self.centers.unsqueeze(0), dim=-1)
-        # sdfs = distance_to_centers - self.radii.unsqueeze(0)
+    def compute_signed_distance_impl(self, x, get_gradient=False):
+        normal_vectors = x.unsqueeze(-2) - self.centers.unsqueeze(0)
+        distance_to_centers = torch.norm(normal_vectors, dim=-1)
         sdfs = distance_to_centers - self.radii
-        return torch.min(sdfs, dim=-1)[0]
+        sdf_vals_min, sdf_idxs_min = torch.min(sdfs, dim=-1)
+        if get_gradient:
+            normal_vectors_min = normal_vectors[torch.arange(normal_vectors.shape[0]), sdf_idxs_min]
+            sdf_grads_min = normal_vectors_min / torch.norm(normal_vectors_min, dim=-1, keepdim=True)
+            return sdf_vals_min, sdf_grads_min
+        else:
+            return sdf_vals_min
 
     def zero_grad(self):
         self.centers.grad = None
@@ -233,10 +240,17 @@ class MultiBoxField(PrimitiveShapeField):
             single_primitives.append(MultiBoxField(center, sizes, tensor_args=self.tensor_args))
         return single_primitives
 
-    def compute_signed_distance_impl(self, x):
+    def compute_signed_distance_impl(self, x, get_gradient=False):
         distance_to_centers = torch.abs(x.unsqueeze(-2) - self.centers.unsqueeze(0))
         sdfs = torch.max(distance_to_centers - self.half_sizes.unsqueeze(0), dim=-1)[0]
-        return torch.min(sdfs, dim=-1)[0]
+        sdf_vals_min, sdf_idxs_min = torch.min(sdfs, dim=-1)
+        if get_gradient:
+            raise NotImplementedError
+            normal_vectors_min = normal_vectors[torch.arange(normal_vectors.shape[0]), sdf_idxs_min]
+            sdf_grads_min = normal_vectors_min / torch.norm(normal_vectors_min, dim=-1, keepdim=True)
+            return sdf_vals_min, sdf_grads_min
+        else:
+            return sdf_vals_min
 
     def zero_grad(self):
         self.centers.grad = None
@@ -335,15 +349,28 @@ class MultiRoundedBoxField(MultiBoxField):
         """
         super().__init__(centers, sizes, tensor_args=tensor_args)
         self.radius = torch.min(self.sizes, dim=-1)[0] * 0.15  # empirical value
+        self.f_sdf = lambda x: self.sdf_computation(x).sum()
 
-    def compute_signed_distance_impl(self, x):
-        # Implementation of rounded box
-        # https://raphlinus.github.io/graphics/2020/04/21/blurred-rounded-rects.html
+    def sdf_computation(self, x):
         distance_to_centers = torch.abs(x.unsqueeze(-2) - self.centers.unsqueeze(0))
         q = distance_to_centers - self.half_sizes.unsqueeze(0) + self.radius.unsqueeze(0).unsqueeze(-1)
         max_q = torch.amax(q, dim=-1)
         sdfs = torch.minimum(max_q, torch.zeros_like(max_q)) + torch.linalg.norm(torch.relu(q), dim=-1) - self.radius.unsqueeze(0)
-        return torch.min(sdfs, dim=-1)[0]
+        sdf_vals_min, sdf_idxs_min = torch.min(sdfs, dim=-1)
+        return sdf_vals_min
+
+    def compute_signed_distance_impl(self, x, get_gradient=False):
+        # Implementation of rounded box
+        # https://raphlinus.github.io/graphics/2020/04/21/blurred-rounded-rects.html
+        if get_gradient:
+            raise NotImplementedError
+            # with TimerCUDA() as t:
+            #     grad_sdf = jacobian(self.f_sdf, x, vectorize=True)
+            # print(t.elapsed)
+            # sdf = self.sdf_computation(x)
+            # return sdf, grad_sdf
+        else:
+            return self.sdf_computation(x)
 
     def draw_box(self, ax, i, point, a, b, rot, trans, color='gray'):
         rounded_box = FancyBboxPatch((point[0], point[1]), a, b, color=color,
@@ -567,7 +594,7 @@ class ObjectField(PrimitiveShapeField):
     def join_primitives(self):
         raise NotImplementedError
 
-    def compute_signed_distance_impl(self, x):
+    def compute_signed_distance_impl(self, x, get_gradient=False):
         # Transform the point before computing the SDF.
         # The implemented SDFs assume the objects are centered around 0 and not rotated.
         x_shape = x.shape
@@ -582,10 +609,20 @@ class ObjectField(PrimitiveShapeField):
         if x_shape[-1] == 2:
             x_new = x_new[..., :2]
 
-        sdf_fields = []
-        for field in self.fields:
-            sdf_fields.append(field.compute_signed_distance_impl(x_new))
-        return torch.min(torch.stack(sdf_fields, dim=-1), dim=-1)[0]
+        if get_gradient:
+            sdf_fields = []
+            grad_sdf_fields = []
+            for field in self.fields:
+                sdf, grad = field.compute_signed_distance(x_new, get_gradient=get_gradient)
+                sdf_fields.append(sdf)
+                grad_sdf_fields.append(grad)
+            return torch.min(torch.stack(sdf_fields, dim=-1), dim=-1)[0]
+        else:
+            sdf_fields = []
+            for field in self.fields:
+                sdf = field.compute_signed_distance(x_new, get_gradient=get_gradient)
+                sdf_fields.append(sdf)
+            return torch.min(torch.stack(sdf_fields, dim=-1), dim=-1)[0]
 
     def render(self, ax, pos=None, ori=None, color='gray', **kwargs):
         for field in self.fields:
@@ -650,8 +687,8 @@ if __name__ == '__main__':
     ax.set_ylim(-1, 1)
 
     # Render gradient sdf
-    xs = torch.linspace(-1, 1, steps=20, **tensor_args)
-    ys = torch.linspace(-1, 1, steps=20, **tensor_args)
+    xs = torch.linspace(-1, 1, steps=40, **tensor_args)
+    ys = torch.linspace(-1, 1, steps=40, **tensor_args)
     X, Y = torch.meshgrid(xs, ys, indexing='xy')
     X_flat = torch.flatten(X)
     Y_flat = torch.flatten(Y)

@@ -200,7 +200,9 @@ class RobotPanda(RobotBase):
             link_names_for_self_collision_checking_with_grasped_object=link_names_for_self_collision_checking_with_grasped_object,
             self_collision_margin_grasped_object=0.05,
             use_collision_spheres=use_collision_spheres,
-            robot_urdf_path=os.path.join(get_robot_path(), 'franka_description', 'robots', 'panda_arm_no_gripper.urdf'),
+            robot_urdf_path=self.diff_panda.model_path,
+            robot_urdf_path_ompl=os.path.join(get_robot_path(), 'franka_description', 'robots', 'panda_arm_hand.urdf'),
+            link_names_torchkin=self.diff_panda.get_link_names(),
             tensor_args=tensor_args,
             **kwargs
         )
@@ -225,33 +227,69 @@ class RobotPanda(RobotBase):
         else:
             raise NotImplementedError
 
-        link_pose_dict = self.diff_panda.compute_forward_kinematics_all_links(q, return_dict=True)
-        # link_tensor = convert_link_dict_to_tensor(link_pose_dict, self.link_names_for_object_collision_checking)
-        link_all_tensor = convert_link_dict_to_tensor(link_pose_dict, self.diff_panda.get_link_names())
+        link_poses = self.robot_torchkin_fk(q)
+        links_poses_th = torch.stack(link_poses).transpose(0, 1)
 
         # Transform collision points of the grasp object with the forward kinematics
         grasped_object_points_in_robot_base_frame = None
         if self.grasped_object:
+            raise NotImplementedError  # Need to get the link transform index in torchkin
             grasped_object_points_in_object_frame = self.grasped_object.base_points_for_collision
             frame_grasped_object = link_pose_dict[self.link_name_grasped_object]
-            # TODO - by default assumes that world frame is the robots base frame
+            # TODO - by default assumes that world frame is the robot base frame
             grasped_object_points_in_robot_base_frame = frame_grasped_object.transform_point(grasped_object_points_in_object_frame)
 
         if len(q_orig_shape) == 3:
-            link_all_tensor = einops.rearrange(link_all_tensor, "(b h) t d1 d2 -> b h t d1 d2", b=b, h=h)
+            links_poses_th = einops.rearrange(links_poses_th, "(b h) t d1 d2 -> b h t d1 d2", b=b, h=h)
 
-        # if self.use_collision_spheres:
-        #     get the collision spheres centers
-            # link_pos = self.get_spheres_centers(link_all_tensor)
-        # else:
-
-        link_pos = link_pos_from_link_tensor(link_all_tensor)  # (batch horizon), taskspaces, x_dim
+        link_positions_th = link_pos_from_link_tensor(links_poses_th)  # (batch horizon), taskspaces, x_dim
         if grasped_object_points_in_robot_base_frame is not None:
+            raise NotImplementedError
             if len(q_orig_shape) == 3:
                 grasped_object_points_in_robot_base_frame = einops.rearrange(grasped_object_points_in_robot_base_frame, "(b h) d1 d2 -> b h d1 d2", b=b, h=h)
             link_pos = torch.cat((link_pos, grasped_object_points_in_robot_base_frame), dim=-2)
 
-        return link_pos
+        return link_positions_th
+
+
+    # def fk_map_collision_impl(self, q, **kwargs):
+    #     q_orig_shape = q.shape
+    #     if len(q_orig_shape) == 3:
+    #         b, h, d = q_orig_shape
+    #         q = einops.rearrange(q, 'b h d -> (b h) d')
+    #     elif len(q_orig_shape) == 2:
+    #         h = 1
+    #         b, d = q_orig_shape
+    #     else:
+    #         raise NotImplementedError
+    #
+    #     link_pose_dict = self.diff_panda.compute_forward_kinematics_all_links(q, return_dict=True)
+    #     # link_tensor = convert_link_dict_to_tensor(link_pose_dict, self.link_names_for_object_collision_checking)
+    #     link_all_tensor = convert_link_dict_to_tensor(link_pose_dict, self.diff_panda.get_link_names())
+    #
+    #     # Transform collision points of the grasp object with the forward kinematics
+    #     grasped_object_points_in_robot_base_frame = None
+    #     if self.grasped_object:
+    #         grasped_object_points_in_object_frame = self.grasped_object.base_points_for_collision
+    #         frame_grasped_object = link_pose_dict[self.link_name_grasped_object]
+    #         # TODO - by default assumes that world frame is the robot base frame
+    #         grasped_object_points_in_robot_base_frame = frame_grasped_object.transform_point(grasped_object_points_in_object_frame)
+    #
+    #     if len(q_orig_shape) == 3:
+    #         link_all_tensor = einops.rearrange(link_all_tensor, "(b h) t d1 d2 -> b h t d1 d2", b=b, h=h)
+    #
+    #     # if self.use_collision_spheres:
+    #     #     get the collision spheres centers
+    #         # link_pos = self.get_spheres_centers(link_all_tensor)
+    #     # else:
+    #
+    #     link_pos = link_pos_from_link_tensor(link_all_tensor)  # (batch horizon), taskspaces, x_dim
+    #     if grasped_object_points_in_robot_base_frame is not None:
+    #         if len(q_orig_shape) == 3:
+    #             grasped_object_points_in_robot_base_frame = einops.rearrange(grasped_object_points_in_robot_base_frame, "(b h) d1 d2 -> b h d1 d2", b=b, h=h)
+    #         link_pos = torch.cat((link_pos, grasped_object_points_in_robot_base_frame), dim=-2)
+    #
+    #     return link_pos
 
     # def get_spheres_centers(self, link_all_tensor):
     #     get only the needed link transformations

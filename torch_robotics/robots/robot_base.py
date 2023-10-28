@@ -3,11 +3,14 @@ import itertools
 from abc import ABC
 from math import ceil
 
+import einops
 import torch
 
 from torch_robotics.torch_planning_objectives.fields.distance_fields import CollisionSelfField
 from torch_robotics.torch_utils.torch_utils import to_numpy, to_torch
 from torch_robotics.trajectory.utils import finite_difference_vector
+
+import torchkin as kin
 
 
 class RobotBase(ABC):
@@ -32,6 +35,8 @@ class RobotBase(ABC):
             dt=1.0,  # time interval to compute velocities and accelerations from positions via finite difference
             use_collision_spheres=False,
             robot_urdf_path=None,
+            robot_urdf_path_ompl=None,
+            link_names_torchkin=None,
             tensor_args=None,
             **kwargs
     ):
@@ -40,8 +45,31 @@ class RobotBase(ABC):
 
         self.dt = dt
 
+        self.robot_urdf_path_ompl = robot_urdf_path_ompl
+
         ################################################################################################
+        # torchkin robot
         self.robot_urdf_path = robot_urdf_path
+
+        self.robot_torchkin = kin.Robot.from_urdf_file(robot_urdf_path, **tensor_args)
+        # Print robot name, number of links and degrees of freedom
+        print(f"{self.robot_torchkin.name} has {len(self.robot_torchkin.get_links())} links and {self.robot_torchkin.dof} degrees of freedom.\n")
+
+        # Print joint id and name
+        # for id, name in enumerate(self.robot_torchkin.joint_map):
+        #     # A joint is not fixed if and only if id < robot.dof
+        #     print(f"joint {id}: {name} is {'not fixed' if id < self.robot_torchkin.dof else 'fixed'}")
+        # print("\n")
+
+        # Print link id and name
+        # for link in self.robot_torchkin.get_links():
+        #     print(f"link {link.id}: {link.name}")
+
+        self.link_names_torchkin = link_names_torchkin
+        fk, jfk_b, jfk_s = kin.get_forward_kinematics_fns(robot=self.robot_torchkin, link_names=self.link_names_torchkin)
+        self.robot_torchkin_fk = fk
+        self.robot_torchkin_jfk_b = jfk_b
+        self.robot_torchkin_jfk_s = jfk_s
 
         ################################################################################################
         # Configuration space
@@ -177,9 +205,11 @@ class RobotBase(ABC):
         return torch.linalg.norm(q1 - q2, dim=-1)
 
     def fk_map_collision(self, q, **kwargs):
-        if q.ndim == 1:
+        q_original_shape = q.shape
+        if len(q_original_shape) == 1:
             q = q.unsqueeze(0)  # add batch dimension
-        return self.fk_map_collision_impl(q, **kwargs)
+        task_space_positions = self.fk_map_collision_impl(q, **kwargs)
+        return task_space_positions
 
     @abc.abstractmethod
     def fk_map_collision_impl(self, q, **kwargs):

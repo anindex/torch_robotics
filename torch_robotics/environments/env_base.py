@@ -22,6 +22,7 @@ class EnvBase(ABC):
                  obj_fixed_list=None,
                  obj_extra_list=None,
                  precompute_sdf_obj_fixed=True,
+                 precompute_sdf_obj_extra=True,
                  sdf_cell_size=0.01,
                  tensor_args=None,
                  **kwargs
@@ -62,7 +63,16 @@ class EnvBase(ABC):
                 self.grid_map_sdf_obj_fixed = GridMapSDF(
                     self.limits, sdf_cell_size, self.obj_fixed_list, tensor_args=self.tensor_args
                 )
-            print(f'Precomputing the SDF grid and gradients took: {t.elapsed:.3f} sec')
+            print(f'Precomputing the SDF grid and gradients of FIXED objects took: {t.elapsed:.3f} sec')
+
+        if self.obj_extra_list is not None:
+            if precompute_sdf_obj_extra:
+                with TimerCUDA() as t:
+                    # Compute SDF grid
+                    self.grid_map_sdf_obj_extra = GridMapSDF(
+                        self.limits, sdf_cell_size, self.obj_extra_list, tensor_args=self.tensor_args
+                    )
+                print(f'Precomputing the SDF grid and gradients of EXTRA objects took: {t.elapsed:.3f} sec')
 
         ################################################################################################
         # Occupancy map
@@ -83,7 +93,10 @@ class EnvBase(ABC):
 
         # obj_extra_list objects
         if self.obj_extra_list is not None:
-            df_obj_l.extend(self.obj_extra_list)
+            if self.grid_map_sdf_obj_extra is not None:
+                df_obj_l.append(self.grid_map_sdf_obj_extra)
+            else:
+                df_obj_l.extend(self.obj_extra_list)
 
         return df_obj_l
 
@@ -168,14 +181,19 @@ class EnvBase(ABC):
 
         # compute sdf of extra objects
         if self.obj_extra_list is not None:
-            for obj in self.obj_extra_list:
-                sdf_obj = obj.compute_signed_distance(x)
-                if reshape_shape is not None:
-                    sdf_obj = sdf_obj.reshape(reshape_shape)
-                if sdf is None:
-                    sdf = sdf_obj
-                else:
-                    sdf = torch.minimum(sdf, sdf_obj)
+            if self.grid_map_sdf_obj_extra is not None:
+                sdf = self.grid_map_sdf_obj_extra(x)
+                if reshape_shape:
+                    sdf = sdf.reshape(reshape_shape)
+            else:
+                for obj in self.obj_extra_list:
+                    sdf_obj = obj.compute_signed_distance(x)
+                    if reshape_shape is not None:
+                        sdf_obj = sdf_obj.reshape(reshape_shape)
+                    if sdf is None:
+                        sdf = sdf_obj
+                    else:
+                        sdf = torch.minimum(sdf, sdf_obj)
 
         return sdf
 

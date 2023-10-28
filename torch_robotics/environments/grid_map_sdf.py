@@ -10,7 +10,7 @@ class GridMapSDF:
     """
     Generates an SDF grid.
     """
-    def __init__(self, limits, cell_size, obj_list, batch_size=64, tensor_args=None):
+    def __init__(self, limits, cell_size, obj_list, batch_size=128, tensor_args=None):
 
         self.limits = limits
         self.dim = limits.shape[-1]
@@ -79,10 +79,20 @@ class GridMapSDF:
     def compute_cost(self, X, **kwargs):
         return self.get_sdf(X, **kwargs)
 
-    def compute_signed_distance(self, X, **kwargs):
-        return self.get_sdf(X, **kwargs)
+    def compute_signed_distance(self, X, get_gradient=False, **kwargs):
+        # Project X to grid points
+        X_in_map = ((X-self.limits[0])/self.map_dim * self.cmap_dim).floor().type(torch.LongTensor)
 
-    def get_sdf(self, X, **kwargs):
+        # Project out-of-bounds locations to axis
+        max_idx = torch.tensor(self.points_for_sdf.shape[:-1])-1
+        X_in_map = X_in_map.clamp(torch.zeros_like(max_idx), max_idx)
+
+        if get_gradient:
+            return self.get_sdf_and_gradient(X_in_map, **kwargs)
+        else:
+            return self.get_sdf(X, X_in_map, **kwargs)
+
+    def get_sdf(self, X, X_in_map, **kwargs):
         """
         Checks for collision in a batch of trajectories using the generated occupancy grid (i.e. obstacle map), and
         returns sum of collision costs for the entire batch.
@@ -91,12 +101,6 @@ class GridMapSDF:
         :param X: Tensor of trajectories, of shape (batch_size, horizon, task_spaces, position_dim)
         :return: collision cost on the trajectories
         """
-        X_in_map = ((X-self.limits[0])/self.map_dim * self.cmap_dim).floor().type(torch.LongTensor)
-
-        # Project out-of-bounds locations to axis
-        max_idx = torch.tensor(self.points_for_sdf.shape[:-1])-1
-        X_in_map = X_in_map.clamp(torch.zeros_like(max_idx), max_idx)
-
         # SDFs and gradients
         # To compute the gradients, because we already have computed the gradients, we use a surrogate sdf function
         # surrogate_sdf(x) = sdf(x_detachted) + x @ grad_sdf(x_detachted) - x_detached @ grad_sdf(x_detachted)
@@ -120,6 +124,19 @@ class GridMapSDF:
             print(X_in_map)
 
         return sdf_vals
+
+    def get_sdf_and_gradient(self, X_in_map, **kwargs):
+        if self.dim == 2:
+            X_query = X_in_map[..., 0], X_in_map[..., 1]
+        elif self.dim == 3:
+            X_query = X_in_map[..., 0], X_in_map[..., 1], X_in_map[..., 2]
+        else:
+            raise ValueError('Invalid dimension')
+
+        sdf_vals = self.sdf_tensor[X_query]
+        grad_sdf = self.grad_sdf_tensor[X_query]
+
+        return sdf_vals, grad_sdf
 
     def zero_grad(self):
         pass

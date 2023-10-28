@@ -56,6 +56,7 @@ from dataclasses import dataclass
 
 import torch
 import numpy as np
+from torch._functorch.deprecated import jacrev
 from torch.autograd.functional import jacobian
 
 from torch_robotics.torch_kinematics_tree.geometrics.quaternion import q_to_axis_angles, q_div, q_convert_wxyz
@@ -261,7 +262,8 @@ class DifferentiableTree(torch.nn.Module):
             quat = link_quat_from_link_tensor(links_tensor)
             return torch.cat((pos, quat), dim=-1).sum(0)
 
-        links_jac = jacobian(surrogate_fn, q).movedim(-2, 0)
+        links_jac = jacobian(surrogate_fn, q, vectorize=True).movedim(-2, 0)
+
         return links_jac
 
     def compute_forward_kinematics_all_links(

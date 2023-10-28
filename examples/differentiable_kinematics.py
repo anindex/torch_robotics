@@ -6,7 +6,7 @@ from torch_robotics.torch_utils.torch_timer import TimerCUDA
 
 if __name__ == "__main__":
 
-    batch_size = 10
+    batch_size = 100
     # device = "cpu"
     device = "cuda"
 
@@ -33,11 +33,21 @@ if __name__ == "__main__":
 
     print()
     # Compute linear (position) and angular geometrical jacobians for the end-effector
-    # with Timer() as t:
-    #     ee_pos, ee_rot, lin_jac, ang_jac = diff_planar.compute_forward_kinematics_and_geometric_jacobian(q, torch.zeros_like(q), 'link_ee')
-    #     print(f'lin_jac.shape: {lin_jac.shape}')
-    #     print(f'ang_jac.shape: {ang_jac.shape}')
-    # print(f"Computational Time {t.elapsed:.4f}")
+    with TimerCUDA() as t:
+        ee_pos, ee_rot, lin_jac, ang_jac = diff_planar.compute_forward_kinematics_and_geometric_jacobian(q, torch.zeros_like(q), 'link_ee')
+        print(f'lin_jac.shape: {lin_jac.shape}')
+        print(f'ang_jac.shape: {ang_jac.shape}')
+    print(f"Computational Time {t.elapsed:.4f}")
+
+    print()
+    # Compute linear (position) and angular geometrical jacobians for all links
+    with TimerCUDA() as t:
+        for link_name in diff_planar.get_link_names():
+            print(link_name)
+            ee_pos, ee_rot, lin_jac, ang_jac = diff_planar.compute_forward_kinematics_and_geometric_jacobian(q, torch.zeros_like(q), link_name)
+            print(f'lin_jac.shape: {lin_jac.shape}')
+            print(f'ang_jac.shape: {ang_jac.shape}')
+    print(f"Computational Time {t.elapsed:.4f}")
 
 
     print("\n===========================Panda Model===============================")
@@ -62,6 +72,26 @@ if __name__ == "__main__":
     print(f"Computational Time {t.elapsed:.4f}")
 
     print()
+
+    print()
+    # Compute linear (position) and angular geometrical jacobians for all links
+    with TimerCUDA() as t:
+        for link_name in diff_panda.get_link_names():
+            print(link_name)
+            ee_pos, ee_rot, lin_jac, ang_jac = diff_panda.compute_forward_kinematics_and_geometric_jacobian(q, torch.zeros_like(q), link_name)
+            print(f'lin_jac.shape: {lin_jac.shape}')
+            print(f'ang_jac.shape: {ang_jac.shape}')
+    print(f"Computational Time {t.elapsed:.4f}")
+
+    print()
+    # Compute linear (position) and angular geometrical jacobians for end-effector
+    with TimerCUDA() as t:
+        ee_pos, ee_rot, lin_jac, ang_jac = diff_panda.compute_forward_kinematics_and_geometric_jacobian(q, torch.zeros_like(q), 'ee_link')
+        print(f'lin_jac.shape: {lin_jac.shape}')
+        print(f'ang_jac.shape: {ang_jac.shape}')
+    print(f"Computational Time {t.elapsed:.4f}")
+
+
     # Compute linear (position) and angular geometrical jacobians for the end-effector
     # with Timer() as t:
     #     ee_pos, ee_rot, lin_jac, ang_jac = diff_panda.compute_forward_kinematics_and_geometric_jacobian(q, torch.zeros_like(q), 'ee_link')

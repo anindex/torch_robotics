@@ -1,5 +1,6 @@
 import os.path
 
+import einops
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
@@ -7,7 +8,9 @@ from mpl_toolkits.mplot3d.art3d import Line3DCollection
 
 from torch_robotics.environments.primitives import plot_sphere
 from torch_robotics.robots.robot_base import RobotBase
+from torch_robotics.torch_kinematics_tree.geometrics.utils import link_pos_from_link_tensor
 from torch_robotics.torch_kinematics_tree.utils.files import get_robot_path
+from torch_robotics.torch_utils.torch_timer import TimerCUDA
 from torch_robotics.torch_utils.torch_utils import to_numpy, to_torch
 
 import matplotlib.collections as mcoll
@@ -23,19 +26,45 @@ class RobotPointMass(RobotBase):
         super().__init__(
             name=name,
             q_limits=to_torch(q_limits, **kwargs['tensor_args']),
-            link_names_for_object_collision_checking=['link_0'],
+            link_names_for_object_collision_checking=['robot'],
             link_margins_for_object_collision_checking=[0.01],
             link_idxs_for_object_collision_checking=[0],
             num_interpolated_points_for_object_collision_checking=1,
             use_collision_spheres=False,
             robot_urdf_path=robot_urdf_path,
+            robot_urdf_path_ompl=robot_urdf_path,
+            link_names_torchkin=['robot'],
             **kwargs
         )
 
+    # def fk_map_collision_impl(self, q, **kwargs):
+    #     # There is no forward kinematics. Assume it's the identity.
+    #     # Add tasks space dimension
+    #     return q.unsqueeze(-2)
+
     def fk_map_collision_impl(self, q, **kwargs):
-        # There is no forward kinematics. Assume it's the identity.
+        q_original_shape = q.shape
+        if len(q_original_shape) == 1:
+            q = q.unsqueeze(0)  # add batch dimension
+        elif len(q_original_shape) == 3:
+            q = einops.rearrange(q, 'b n d -> (b n) d')
+        else:
+            raise NotImplementedError
+
+        link_poses = self.robot_torchkin_fk(q)
+        links_poses_th = torch.cat(link_poses)
+        link_positions_th = link_pos_from_link_tensor(links_poses_th)
+        task_space_positions = link_positions_th[..., :self.q_dim]  # q_dim because the point mass robot can be in 2D or 3D
+
+        if len(q_original_shape) == 1:
+            raise NotImplementedError
+        elif len(q_original_shape) == 3:
+            task_space_positions = einops.rearrange(task_space_positions, '(b n) d -> b n d', b=q_original_shape[0])
+        else:
+            raise NotImplementedError
+
         # Add tasks space dimension
-        return q.unsqueeze(-2)
+        return task_space_positions.unsqueeze(-2)
 
     def render(self, ax, q=None, color='blue', cmap='Blues', margin_multiplier=1., **kwargs):
         if q is not None:

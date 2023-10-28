@@ -15,11 +15,6 @@
         <mesh filename="package://franka_description/meshes/collision/link0.stl"/>
       </geometry>
     </collision>
-    <inertial>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <mass value="2.8142028896"/>
-      <inertia ixx="0.0129886979" ixy="0.0" ixz="0.0" iyy="0.0165355284" iyz="0" izz="0.0203311636"/>
-    </inertial>
   </link>
   <link name="panda_link1">
     <visual>
@@ -32,11 +27,6 @@
         <mesh filename="package://franka_description/meshes/collision/link1.stl"/>
       </geometry>
     </collision>
-    <inertial>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <mass value="2.3599995791"/>
-      <inertia ixx="0.0186863903" ixy="0.0" ixz="0.0" iyy="0.0143789874" iyz="0" izz="0.00906812"/>
-    </inertial>
   </link>
   <joint name="panda_joint1" type="revolute">
     <safety_controller k_position="100.0" k_velocity="40.0" soft_lower_limit="-2.8973" soft_upper_limit="2.8973"/>
@@ -57,11 +47,6 @@
         <mesh filename="package://franka_description/meshes/collision/link2.stl"/>
       </geometry>
     </collision>
-    <inertial>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <mass value="2.379518833"/>
-      <inertia ixx="0.0190388734" ixy="0.0" ixz="0.0" iyy="0.0091429124" iyz="0" izz="0.014697537"/>
-    </inertial>
   </link>
   <joint name="panda_joint2" type="revolute">
     <safety_controller k_position="100.0" k_velocity="40.0" soft_lower_limit="-1.7628" soft_upper_limit="1.7628"/>
@@ -82,11 +67,6 @@
         <mesh filename="package://franka_description/meshes/collision/link3.stl"/>
       </geometry>
     </collision>
-    <inertial>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <mass value="2.6498823337"/>
-      <inertia ixx="0.0129300178" ixy="0.0" ixz="0.0" iyy="0.0150242121" iyz="0" izz="0.0142734598"/>
-    </inertial>
   </link>
   <joint name="panda_joint3" type="revolute">
     <safety_controller k_position="100.0" k_velocity="40.0" soft_lower_limit="-2.8973" soft_upper_limit="2.8973"/>
@@ -107,11 +87,6 @@
         <mesh filename="package://franka_description/meshes/collision/link4.stl"/>
       </geometry>
     </collision>
-    <inertial>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <mass value="2.6948018744"/>
-      <inertia ixx="0.0133874611" ixy="0.0" ixz="0.0" iyy="0.014514325" iyz="0" izz="0.0155175551"/>
-    </inertial>
   </link>
   <joint name="panda_joint4" type="revolute">
     <safety_controller k_position="100.0" k_velocity="40.0" soft_lower_limit="-3.0718" soft_upper_limit="-0.0698"/>
@@ -132,11 +107,6 @@
         <mesh filename="package://franka_description/meshes/collision/link5.stl"/>
       </geometry>
     </collision>
-    <inertial>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <mass value="2.9812816864"/>
-      <inertia ixx="0.0325565705" ixy="0.0" ixz="0.0" iyy="0.0270660472" iyz="0" izz="0.0115023375"/>
-    </inertial>
   </link>
   <joint name="panda_joint5" type="revolute">
     <safety_controller k_position="100.0" k_velocity="40.0" soft_lower_limit="-2.8973" soft_upper_limit="2.8973"/>
@@ -157,11 +127,6 @@
         <mesh filename="package://franka_description/meshes/collision/link6.stl"/>
       </geometry>
     </collision>
-    <inertial>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <mass value="1.1285806309"/>
-      <inertia ixx="0.0026052565" ixy="0.0" ixz="0.0" iyy="0.0039897229" iyz="0" izz="0.0047048591"/>
-    </inertial>
   </link>
   <joint name="panda_joint6" type="revolute">
     <safety_controller k_position="100.0" k_velocity="40.0" soft_lower_limit="-0.0175" soft_upper_limit="3.7525"/>
@@ -182,11 +147,6 @@
         <mesh filename="package://franka_description/meshes/collision/link7.stl"/>
       </geometry>
     </collision>
-    <inertial>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <mass value="0.4052912465"/>
-      <inertia ixx="0.0006316592" ixy="0.0" ixz="0.0" iyy="0.0006319639" iyz="0" izz="0.0010607721"/>
-    </inertial>
   </link>
   <joint name="panda_joint7" type="revolute">
     <safety_controller k_position="100.0" k_velocity="40.0" soft_lower_limit="-2.8973" soft_upper_limit="2.8973"/>

@@ -6,6 +6,7 @@ from matplotlib import pyplot as plt
 
 from storm_kit.geom.nn_model.robot_self_collision import RobotSelfCollisionNet
 from torch_robotics.torch_kinematics_tree.geometrics.utils import SE3_distance
+from torch_robotics.torch_utils.torch_timer import TimerCUDA
 from torch_robotics.visualizers.planning_visualizer import create_fig_and_axes
 import torch.nn.functional as Functional
 
@@ -65,6 +66,8 @@ class DistanceField(ABC):
 
 
 def interpolate_points_v1(points, num_interpolated_points):
+    if num_interpolated_points == 1:
+        return points
     # https://github.com/SamsungLabs/RAMP/blob/c3bd23b2c296c94cdd80d6575390fd96c4f83d83/mppi_planning/cost/collision_cost.py#L89
     points = Functional.interpolate(points.transpose(-2, -1), size=num_interpolated_points, mode='linear', align_corners=True).transpose(-2, -1)
     return points
@@ -328,16 +331,77 @@ class CollisionObjectDistanceField(CollisionObjectBase):
         super().__init__(*args, **kwargs)
         self.df_obj_list_fn = df_obj_list_fn
 
-    def object_signed_distances(self, link_pos, **kwargs):
+    def object_signed_distances(self, link_pos, get_gradient=False, **kwargs):
         if self.df_obj_list_fn is None:
             return torch.inf
         df_obj_list = self.df_obj_list_fn()
         link_dim = link_pos.shape[:-1]
         link_pos = link_pos.reshape(-1, link_pos.shape[-1])  # flatten batch_dim and links
         dfs = []
-        for df in df_obj_list:
-            dfs.append(df.compute_signed_distance(link_pos).view(link_dim))  # df() returns batch_dim x links
-        return torch.stack(dfs, dim=-2)  # batch_dim x num_sdfs x links
+        if get_gradient:
+            dfs_gradient = []
+            for df in df_obj_list:
+                sdf_vals, sdf_gradient = df.compute_signed_distance(link_pos, get_gradient=get_gradient)
+                dfs.append(sdf_vals.view(link_dim))  # df() returns batch_dim x links
+                dfs_gradient.append(sdf_gradient.view(link_dim + (sdf_gradient.shape[-1],)))
+
+            dfs_th = torch.stack(dfs, dim=-2)  # batch_dim x num_sdfs x links
+            dfs_gradient = torch.stack(dfs_gradient, dim=-3)  # batch_dim x num_sdfs x links x 3
+            return dfs_th, dfs_gradient
+        else:
+            for df in df_obj_list:
+                sdf_vals = df.compute_signed_distance(link_pos, get_gradient=get_gradient)
+                dfs.append(sdf_vals.view(link_dim))  # df() returns batch_dim x links
+
+            dfs_th = torch.stack(dfs, dim=-2)  # batch_dim x num_sdfs x links
+            return dfs_th
+
+    def compute_distance_field_cost_and_gradient(self, link_pos, **kwargs):
+        # position link_pos tensor # batch x num_links x env_dim (2D or 3D)
+
+        # get robot tasks space link positions
+        if self.robot.grasped_object is not None:
+            n_grasped_object_points = self.robot.grasped_object.n_base_points_for_collision
+            link_pos_robot = link_pos[..., :-n_grasped_object_points, :]
+            link_pos_grasped_object = link_pos[..., -n_grasped_object_points:, :]
+        else:
+            link_pos_robot = link_pos
+
+        # filter link positions for collision checking
+        # link_pos = link_pos_robot
+        link_pos = link_pos_robot[..., self.link_idxs_for_collision_checking, :]
+
+        # stack collision points from grasped object
+        if self.robot.grasped_object is not None:
+            link_pos = torch.cat((link_pos, link_pos_grasped_object), dim=-2)
+
+        embodiment_cost, embodiment_cost_gradient = self.compute_embodiment_taskspace_sdf_and_gradient(link_pos, **kwargs)
+        # Treat the SDF as a cost, so revert the gradient direction
+        embodiment_cost_gradient = -1. * embodiment_cost_gradient
+        return embodiment_cost, embodiment_cost_gradient
+
+    def compute_embodiment_taskspace_sdf_and_gradient(self, link_pos, **kwargs):
+        margin = self.collision_margins + self.cutoff_margin
+        # returns all distances from each link to the environment
+        sdf_vals, sdf_gradient = self.object_signed_distances(link_pos, get_gradient=True, **kwargs)
+        margin_minus_sdf = -(sdf_vals - margin)
+        if self.clamp_sdf:
+            clamped_sdf = torch.relu(margin_minus_sdf)
+        else:
+            clamped_sdf = margin_minus_sdf
+        if clamped_sdf.ndim == 3:  # cover the multiple objects case ((batch, horizon, ...), object, links)
+            clamped_sdf, idxs_max = clamped_sdf.max(-2)
+            sdf_gradient_l = []
+            # TODO - vectorized version
+            for i in range(sdf_gradient.shape[-1]):
+                sdf_gradient_l.append(sdf_gradient[..., i].gather(1, idxs_max.unsqueeze(1)).squeeze(1))
+            sdf_gradient = torch.stack(sdf_gradient_l, dim=-1)
+
+        # set sdf gradient to 0 if the point is not in collision
+        idxs = torch.argwhere(clamped_sdf <= 0)
+        sdf_gradient[idxs[:, 0], idxs[:, 1], :] = 0.
+
+        return clamped_sdf, sdf_gradient
 
 
 class CollisionWorkspaceBoundariesDistanceField(CollisionObjectBase):

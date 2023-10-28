@@ -160,3 +160,25 @@ def torch_intersect_1d(a, b):
     return intersection
 
 
+def clip_gradient(grad, clip_grad_rule='norm', max_grad_norm=1., max_grad_value=0.1):
+    if clip_grad_rule == 'norm':
+        return clip_grad_by_norm(grad, max_grad_norm)
+    elif clip_grad_rule == 'value':
+        return clip_grad_by_value(grad, max_grad_value)
+    else:
+        raise NotImplementedError
+
+
+def clip_grad_by_norm(grad, max_grad_norm=1.):
+    # clip gradient by norm
+    grad_norm = torch.linalg.norm(grad + 1e-6, dim=-1, keepdims=True)
+    scale_ratio = torch.clip(grad_norm, 0., max_grad_norm) / grad_norm
+    grad = scale_ratio * grad
+    return grad
+
+
+def clip_grad_by_value(grad, max_grad_value=0.1):
+    # clip gradient by value
+    grad = torch.clip(grad, -max_grad_value, max_grad_value)
+    return grad
+

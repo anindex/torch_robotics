@@ -499,7 +499,7 @@
       <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
    </link>
    <joint name="joint_panda_hand_sphere_1" type="fixed">
-      <origin xyz="0.0 -0.015 0.01" rpy="0 0 0"/>
+      <origin xyz="0.0 -0.045 0.01" rpy="0 0 0"/>
       <parent link="panda_hand"/>
       <child link="panda_hand_1"/>
    </joint>
@@ -507,7 +507,7 @@
       <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
    </link>
    <joint name="joint_panda_hand_sphere_2" type="fixed">
-      <origin xyz="0.0 0.015 0.01" rpy="0 0 0"/>
+      <origin xyz="0.0 -0.015 0.01" rpy="0 0 0"/>
       <parent link="panda_hand"/>
       <child link="panda_hand_2"/>
    </joint>
@@ -515,7 +515,7 @@
       <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
    </link>
    <joint name="joint_panda_hand_sphere_3" type="fixed">
-      <origin xyz="0.0 0.075 0.01" rpy="0 0 0"/>
+      <origin xyz="0.0 0.015 0.01" rpy="0 0 0"/>
       <parent link="panda_hand"/>
       <child link="panda_hand_3"/>
    </joint>
@@ -523,7 +523,7 @@
       <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
    </link>
    <joint name="joint_panda_hand_sphere_4" type="fixed">
-      <origin xyz="0.0 -0.075 0.03" rpy="0 0 0"/>
+      <origin xyz="0.0 0.045 0.01" rpy="0 0 0"/>
       <parent link="panda_hand"/>
       <child link="panda_hand_4"/>
    </joint>
@@ -531,7 +531,7 @@
       <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
    </link>
    <joint name="joint_panda_hand_sphere_5" type="fixed">
-      <origin xyz="0.0 -0.015 0.03" rpy="0 0 0"/>
+      <origin xyz="0.0 0.075 0.01" rpy="0 0 0"/>
       <parent link="panda_hand"/>
       <child link="panda_hand_5"/>
    </joint>
@@ -539,7 +539,7 @@
       <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
    </link>
    <joint name="joint_panda_hand_sphere_6" type="fixed">
-      <origin xyz="0.0 0.015 0.03" rpy="0 0 0"/>
+      <origin xyz="0.0 -0.075 0.03" rpy="0 0 0"/>
       <parent link="panda_hand"/>
       <child link="panda_hand_6"/>
    </joint>
@@ -547,7 +547,7 @@
       <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
    </link>
    <joint name="joint_panda_hand_sphere_7" type="fixed">
-      <origin xyz="0.0 0.075 0.03" rpy="0 0 0"/>
+      <origin xyz="0.0 -0.045 0.03" rpy="0 0 0"/>
       <parent link="panda_hand"/>
       <child link="panda_hand_7"/>
    </joint>
@@ -555,7 +555,7 @@
       <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
    </link>
    <joint name="joint_panda_hand_sphere_8" type="fixed">
-      <origin xyz="0.0 -0.075 0.05" rpy="0 0 0"/>
+      <origin xyz="0.0 -0.015 0.03" rpy="0 0 0"/>
       <parent link="panda_hand"/>
       <child link="panda_hand_8"/>
    </joint>
@@ -563,7 +563,7 @@
       <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
    </link>
    <joint name="joint_panda_hand_sphere_9" type="fixed">
-      <origin xyz="0.0 -0.015 0.05" rpy="0 0 0"/>
+      <origin xyz="0.0 0.015 0.03" rpy="0 0 0"/>
       <parent link="panda_hand"/>
       <child link="panda_hand_9"/>
    </joint>
@@ -571,7 +571,7 @@
       <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
    </link>
    <joint name="joint_panda_hand_sphere_10" type="fixed">
-      <origin xyz="0.0 0.015 0.05" rpy="0 0 0"/>
+      <origin xyz="0.0 0.045 0.03" rpy="0 0 0"/>
       <parent link="panda_hand"/>
       <child link="panda_hand_10"/>
    </joint>
@@ -579,11 +579,59 @@
       <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
    </link>
    <joint name="joint_panda_hand_sphere_11" type="fixed">
-      <origin xyz="0.0 0.075 0.05" rpy="0 0 0"/>
+      <origin xyz="0.0 0.075 0.03" rpy="0 0 0"/>
       <parent link="panda_hand"/>
       <child link="panda_hand_11"/>
    </joint>
    <link name="panda_hand_11">
+      <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+   </link>
+   <joint name="joint_panda_hand_sphere_12" type="fixed">
+      <origin xyz="0.0 -0.075 0.05" rpy="0 0 0"/>
+      <parent link="panda_hand"/>
+      <child link="panda_hand_12"/>
+   </joint>
+   <link name="panda_hand_12">
+      <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+   </link>
+   <joint name="joint_panda_hand_sphere_13" type="fixed">
+      <origin xyz="0.0 -0.045 0.05" rpy="0 0 0"/>
+      <parent link="panda_hand"/>
+      <child link="panda_hand_13"/>
+   </joint>
+   <link name="panda_hand_13">
+      <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+   </link>
+   <joint name="joint_panda_hand_sphere_14" type="fixed">
+      <origin xyz="0.0 -0.015 0.05" rpy="0 0 0"/>
+      <parent link="panda_hand"/>
+      <child link="panda_hand_14"/>
+   </joint>
+   <link name="panda_hand_14">
+      <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+   </link>
+   <joint name="joint_panda_hand_sphere_15" type="fixed">
+      <origin xyz="0.0 0.015 0.05" rpy="0 0 0"/>
+      <parent link="panda_hand"/>
+      <child link="panda_hand_15"/>
+   </joint>
+   <link name="panda_hand_15">
+      <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+   </link>
+   <joint name="joint_panda_hand_sphere_16" type="fixed">
+      <origin xyz="0.0 0.045 0.05" rpy="0 0 0"/>
+      <parent link="panda_hand"/>
+      <child link="panda_hand_16"/>
+   </joint>
+   <link name="panda_hand_16">
+      <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+   </link>
+   <joint name="joint_panda_hand_sphere_17" type="fixed">
+      <origin xyz="0.0 0.075 0.05" rpy="0 0 0"/>
+      <parent link="panda_hand"/>
+      <child link="panda_hand_17"/>
+   </joint>
+   <link name="panda_hand_17">
       <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
    </link>
 </robot>

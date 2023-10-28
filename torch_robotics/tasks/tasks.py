@@ -86,7 +86,11 @@ class PlanningTask(Task):
             tensor_args=self.tensor_args
         )
 
-        self._collision_fields = [self.df_collision_self, self.df_collision_objects, self.df_collision_ws_boundaries]
+        self._collision_fields = [
+            # self.df_collision_self,
+            self.df_collision_objects,
+            # self.df_collision_ws_boundaries
+        ]
 
     def get_collision_fields(self):
         return self._collision_fields
