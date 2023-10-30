@@ -16,10 +16,10 @@ from torch_robotics.torch_utils.torch_utils import to_numpy, to_torch
 import matplotlib.collections as mcoll
 
 
-class RobotPointMass(RobotBase):
+class RobotPointMass2D(RobotBase):
 
     def __init__(self,
-                 name='RobotPointMass',
+                 name='RobotPointMass2D',
                  q_limits=torch.tensor([[-1, -1], [1, 1]]),  # configuration space limits
                  robot_urdf_path=os.path.join(get_robot_path(), "point_mass_robot_2d.urdf"),
                  **kwargs):
@@ -140,7 +140,7 @@ class RobotPointMass(RobotBase):
                 ax.plot(goal_state_np[0], goal_state_np[1], marker='o', color='purple', markersize=7)
 
 
-class RobotPointMass3D(RobotPointMass):
+class RobotPointMass3D(RobotPointMass2D):
 
     def __init__(self, **kwargs):
         super().__init__(

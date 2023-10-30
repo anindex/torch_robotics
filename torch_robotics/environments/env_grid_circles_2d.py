@@ -4,7 +4,7 @@ from matplotlib import pyplot as plt
 from torch_robotics.environments.env_base import EnvBase
 from torch_robotics.environments.primitives import ObjectField, MultiSphereField
 from torch_robotics.environments.utils import create_grid_spheres
-from torch_robotics.robots import RobotPointMass
+from torch_robotics.robots import RobotPointMass2D
 from torch_robotics.torch_utils.torch_utils import DEFAULT_TENSOR_ARGS
 from torch_robotics.visualizers.planning_visualizer import create_fig_and_axes
 
@@ -30,7 +30,7 @@ class EnvGridCircles2D(EnvBase):
             n_pre_samples=50000,
             max_time=15
         )
-        if isinstance(robot, RobotPointMass):
+        if isinstance(robot, RobotPointMass2D):
             return params
         else:
             raise NotImplementedError
@@ -55,7 +55,7 @@ class EnvGridCircles2D(EnvBase):
                 'method': 'cholesky',
             },
         )
-        if isinstance(robot, RobotPointMass):
+        if isinstance(robot, RobotPointMass2D):
             return params
         else:
             raise NotImplementedError
@@ -77,7 +77,7 @@ class EnvGridCircles2D(EnvBase):
             sigma_goal_sample=1e-4,
             temperature=1.,
         )
-        if isinstance(robot, RobotPointMass):
+        if isinstance(robot, RobotPointMass2D):
             return params
         else:
             raise NotImplementedError
@@ -110,7 +110,7 @@ class EnvGridCircles2D(EnvBase):
             sigma_goal_init=1e-4,
             sigma_gp_init=3.
         )
-        if isinstance(robot, RobotPointMass):
+        if isinstance(robot, RobotPointMass2D):
             return params
         else:
             raise NotImplementedError
