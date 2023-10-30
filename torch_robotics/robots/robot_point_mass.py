@@ -117,9 +117,9 @@ class RobotPointMass2D(RobotBase):
                 ax.add_collection(line_segments)
                 if control_points is not None:
                     points = np.reshape(to_numpy(control_points), (-1, 2))
-                    colors_scatter = []
-                    for control_pointss, color in zip(control_points, colors):
-                        colors_scatter.extend([color]*control_pointss.shape[0])
+                    colors_scatter = ['red'] * points.shape[0]
+                    # for control_points_aux, color in zip(control_points, colors):
+                    #     colors_scatter.extend([color]*control_points_aux.shape[0])
                 else:
                     points = np.reshape(trajs_np, (-1, 2))
                     colors_scatter = []
