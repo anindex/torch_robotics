@@ -140,6 +140,10 @@ class RobotPointMass2D(RobotBase):
                 ax.plot(goal_state_np[0], goal_state_np[1], marker='o', color='purple', markersize=7)
 
 
+# alias for backward compatilibity
+RobotPointMass = RobotPointMass2D
+
+
 class RobotPointMass3D(RobotPointMass2D):
 
     def __init__(self, **kwargs):

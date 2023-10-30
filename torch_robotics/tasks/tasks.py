@@ -27,6 +27,9 @@ class PlanningTask(Task):
             use_occupancy_map=False,
             cell_size=0.01,
             obstacle_cutoff_margin=0.01,
+            use_field_collision_self=False,  # consider self collision
+            use_field_collision_objects=True,  # consider object collision
+            use_field_collision_ws_boundaries=False,  # consider workspace boundaries collision
             **kwargs
     ):
         super().__init__(**kwargs)
@@ -87,9 +90,9 @@ class PlanningTask(Task):
         )
 
         self._collision_fields = [
-            # self.df_collision_self,
-            self.df_collision_objects,
-            # self.df_collision_ws_boundaries
+            self.df_collision_self if use_field_collision_self else None,
+            self.df_collision_objects if use_field_collision_objects else None,
+            self.df_collision_ws_boundaries if use_field_collision_ws_boundaries else None,
         ]
 
     def get_collision_fields(self):

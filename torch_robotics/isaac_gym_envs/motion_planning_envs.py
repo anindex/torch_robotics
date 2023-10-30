@@ -1,5 +1,6 @@
 import os
 import time
+from copy import copy
 from math import ceil
 
 import cv2
@@ -188,6 +189,8 @@ class PandaMotionPlanningIsaacGymEnv:
                  show_collision_spheres=False,  # very slow implementation. use only one robots
                  collor_robots_in_collision=False,
                  show_contact_forces=False,
+                 draw_end_effector_path=False,
+                 draw_end_effector_frame=False,
                  dt=1./25.,  # dt of motion planning
                  lower_level_controller_frequency=1000,
                  **kwargs,
@@ -199,11 +202,14 @@ class PandaMotionPlanningIsaacGymEnv:
         self.num_envs = num_envs + 1 if show_goal_configuration else num_envs
 
         self.all_robots_in_one_env = all_robots_in_one_env
-        self.color_robots = color_robots
 
+        # Visualization
+        self.color_robots = color_robots
         self.collor_robots_in_collision = collor_robots_in_collision
         self.show_collision_spheres = show_collision_spheres
         self.show_contact_forces = show_contact_forces
+        self.draw_end_effector_path = draw_end_effector_path
+        self.draw_end_effector_frame = draw_end_effector_frame
 
         # Modify the urdf to append the link of the grasped object
         if self.robot.grasped_object is not None:
@@ -419,10 +425,9 @@ class PandaMotionPlanningIsaacGymEnv:
         self.gym.viewer_camera_look_at(self.viewer, self.middle_env, cam_pos, cam_target)
 
         camera_props = gymapi.CameraProperties()
-        # camera_props.width = 1920
-        # camera_props.height = 1080
-        camera_props.width = 1280
-        camera_props.height = 720
+        camera_props.width, camera_props.height = 1920, 1080
+        # camera_props.width, camera_props.height = 1280, 720
+        # camera_props.width, camera_props.height = 640, 480
         self.viewer_camera_handle = self.gym.create_camera_sensor(self.middle_env, camera_props)
         self.gym.set_camera_location(self.viewer_camera_handle, env, cam_pos, cam_target)
 
@@ -431,7 +436,9 @@ class PandaMotionPlanningIsaacGymEnv:
         ###############################################################################################################
         # DEBUGGING visualization
         self.axes_geom = gymutil.AxesGeometry(0.15)
-        self.sphere_geom = gymutil.WireframeSphereGeometry(0.15, 6, 6, gymapi.Transform(), color=(0, 0, 1))
+
+        self.end_effector_positions_visualization = None
+        self.sphere_geom_end_effector = gymutil.WireframeSphereGeometry(0.005, 10, 10, gymapi.Transform(), color=(0, 0, 1))
 
         ###############################################################################################################
         # ==== prepare tensors =====
@@ -508,6 +515,13 @@ class PandaMotionPlanningIsaacGymEnv:
         joint_states_curr = gymtorch.wrap_tensor(self.gym.acquire_dof_state_tensor(self.sim)).view(self.num_envs, 9, 2)
         if self.show_goal_configuration:
             joint_states_curr = joint_states_curr[:-1, ...]
+
+        ###############################################################################################################
+        # Visualization
+        self.gym.clear_lines(self.viewer)
+        # reset end effector positions for visualization
+        self.end_effector_positions_visualization = [[]] * len(self.franka_handles)
+
         return joint_states_curr
 
     def step(self, actions, visualize=True, render_viewer_camera=False):
@@ -579,7 +593,8 @@ class PandaMotionPlanningIsaacGymEnv:
         ###############################################################################################################
         if visualize:
             # clean up
-            self.gym.clear_lines(self.viewer)
+            if not self.draw_end_effector_path:
+                self.gym.clear_lines(self.viewer)
 
             # draw EE reference frame
             # TODO - implement vectorized version
@@ -589,13 +604,22 @@ class PandaMotionPlanningIsaacGymEnv:
                 envs = self.envs
 
             for k, (env, franka_handle) in enumerate(zip(envs, self.franka_handles)):
-                # End-effector frame
+                # Get end-effector frame
                 body_dict = self.gym.get_actor_rigid_body_dict(env, franka_handle)
                 props = self.gym.get_actor_rigid_body_states(env, franka_handle, gymapi.STATE_POS)
                 ee_pose = props['pose'][:][body_dict[self.franka_hand]]
-                ee_transform = gymapi.Transform(p=gymapi.Vec3(*ee_pose[0]), r=gymapi.Quat(*ee_pose[1]))
-                # reference frame
-                gymutil.draw_lines(self.axes_geom, self.gym, self.viewer, env, ee_transform)
+                ee_position = ee_pose[0]
+                ee_transform = gymapi.Transform(p=gymapi.Vec3(*ee_position), r=gymapi.Quat(*ee_pose[1]))
+
+                if self.draw_end_effector_frame:
+                    gymutil.draw_lines(self.axes_geom, self.gym, self.viewer, env, ee_transform)
+
+                if self.draw_end_effector_path and self.step_idx % 2 == 0:
+                    self.end_effector_positions_visualization[k].append(copy(ee_position))
+                    ee_position_l = [ee_position]
+                    for ee_position in ee_position_l:
+                        link_transform = gymapi.Transform(p=gymapi.Vec3(*ee_position))
+                        gymutil.draw_lines(self.sphere_geom_end_effector, self.gym, self.viewer, env, link_transform)
 
                 # color frankas in collision
                 if self.collor_robots_in_collision:
@@ -625,6 +649,7 @@ class PandaMotionPlanningIsaacGymEnv:
 
             # update viewer
             self.gym.step_graphics(self.sim)
+
             self.gym.draw_viewer(self.viewer, self.sim, False)
             if self.sync_with_real_time:
                 self.gym.sync_frame_time(self.sim)
@@ -740,7 +765,7 @@ class MotionPlanningController:
                 if idx not in envs_with_robot_in_contact_unique:
                     envs_with_robot_in_contact_unique.append(idx)
 
-        print(f'trajectories free: {B-len(envs_with_robot_in_contact_unique)}/{B}')
+        print(f'Trajectories free: {B-len(envs_with_robot_in_contact_unique)}/{B}')
 
 
 if __name__ == '__main__':
@@ -778,11 +803,13 @@ if __name__ == '__main__':
         controller_type='position',
         num_envs=8,
         all_robots_in_one_env=False,
-        color_robots=False
+        color_robots=False,
+        draw_end_effector_path=True,
+        dt=0.1
     )
 
     motion_planning_controller = MotionPlanningController(motion_planning_isaac_env)
-    trajectories_joint_pos = torch.zeros((10000, 8, 7), **tensor_args) + 1.
+    trajectories_joint_pos = torch.zeros((10000, 8, 7), **tensor_args) + 0.1 + 0.05 * torch.randn((10000, 8, 7), **tensor_args)
     motion_planning_controller.run_trajectories(
         trajectories_joint_pos,
         start_states_joint_pos=trajectories_joint_pos[0], goal_state_joint_pos=trajectories_joint_pos[-1][0],
