@@ -101,7 +101,7 @@ class DifferentiableFrankaPanda(DifferentiableTree):
         if gripper:
             robot_file = get_robot_path() / 'franka_description' / 'robots' / 'panda_arm_hand.urdf'
         else:
-            robot_file = get_robot_path() / 'franka_description' / 'robots' / 'panda_arm_no_gripper.urdf'
+            robot_file = get_robot_path() / 'franka_description' / 'robots' / 'panda_arm_hand_no_gripper.urdf'
 
         # Modify the urdf to append links of the collision model
         if use_collision_spheres:

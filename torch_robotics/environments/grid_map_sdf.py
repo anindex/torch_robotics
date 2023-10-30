@@ -10,7 +10,7 @@ class GridMapSDF:
     """
     Generates an SDF grid.
     """
-    def __init__(self, limits, cell_size, obj_list, batch_size=128, tensor_args=None):
+    def __init__(self, limits, cell_size, obj_list, batch_size=64, tensor_args=None):
 
         self.limits = limits
         self.dim = limits.shape[-1]
@@ -73,19 +73,25 @@ class GridMapSDF:
                 sdf = torch.minimum(sdf, sdf_obj)
         return sdf
 
-    def __call__(self, X, **kwargs):
-        return self.get_sdf(X, **kwargs)
-
-    def compute_cost(self, X, **kwargs):
-        return self.get_sdf(X, **kwargs)
-
-    def compute_signed_distance(self, X, get_gradient=False, **kwargs):
+    def project_x_to_grid_points(self, X, **kwargs):
         # Project X to grid points
         X_in_map = ((X-self.limits[0])/self.map_dim * self.cmap_dim).floor().type(torch.LongTensor)
 
         # Project out-of-bounds locations to axis
         max_idx = torch.tensor(self.points_for_sdf.shape[:-1])-1
         X_in_map = X_in_map.clamp(torch.zeros_like(max_idx), max_idx)
+        return X_in_map
+
+    def __call__(self, X, **kwargs):
+        X_in_map = self.project_x_to_grid_points(X, **kwargs)
+        return self.get_sdf(X, X_in_map, **kwargs)
+
+    def compute_cost(self, X, **kwargs):
+        X_in_map = self.project_x_to_grid_points(X, **kwargs)
+        return self.get_sdf(X, X_in_map, **kwargs)
+
+    def compute_signed_distance(self, X, get_gradient=False, **kwargs):
+        X_in_map = self.project_x_to_grid_points(X, **kwargs)
 
         if get_gradient:
             return self.get_sdf_and_gradient(X_in_map, **kwargs)

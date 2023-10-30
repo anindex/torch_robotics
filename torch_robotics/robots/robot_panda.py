@@ -202,6 +202,7 @@ class RobotPanda(RobotBase):
             use_collision_spheres=use_collision_spheres,
             robot_urdf_path=self.diff_panda.model_path,
             robot_urdf_path_ompl=os.path.join(get_robot_path(), 'franka_description', 'robots', 'panda_arm_hand.urdf'),
+            # robot_urdf_path_ompl=os.path.join(get_robot_path(), 'franka_description', 'robots', 'panda_arm_hand_no_gripper.urdf'),
             link_names_torchkin=self.diff_panda.get_link_names(),
             tensor_args=tensor_args,
             **kwargs
