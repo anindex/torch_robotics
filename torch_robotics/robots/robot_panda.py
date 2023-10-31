@@ -34,7 +34,7 @@ def transform_spheres_centers(x, link_tensor):
 class RobotPanda(RobotBase):
 
     def __init__(self,
-                 use_self_collision_storm=True,
+                 use_self_collision_storm=False,
                  use_collision_spheres=True,
                  grasped_object=None,
                  tensor_args=None,
