@@ -11,7 +11,7 @@ from torch_robotics.visualizers.planning_visualizer import create_fig_and_axes
 
 class EnvSpheres3D(EnvBase):
 
-    def __init__(self, name='EnvDense2D', tensor_args=None, **kwargs):
+    def __init__(self, tensor_args=None, **kwargs):
         spheres = MultiSphereField(torch.tensor([
                     [-0.4, 0.4, 0.85],
                     [-0.45, -0.35, 0.45],
@@ -42,7 +42,6 @@ class EnvSpheres3D(EnvBase):
         obj_list = [obj_field]
 
         super().__init__(
-            name=name,
             limits=torch.tensor([[-1, -1, -1], [1, 1, 1]], **tensor_args),  # environments limits
             obj_fixed_list=obj_list,
             tensor_args=tensor_args,

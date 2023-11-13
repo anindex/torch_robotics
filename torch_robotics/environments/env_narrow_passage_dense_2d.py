@@ -13,7 +13,6 @@ from torch_robotics.visualizers.planning_visualizer import create_fig_and_axes
 class EnvNarrowPassageDense2D(EnvBase):
 
     def __init__(self,
-                 name='EnvDense2D',
                  tensor_args=None,
                  **kwargs
                  ):

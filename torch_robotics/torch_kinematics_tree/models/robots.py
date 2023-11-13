@@ -22,11 +22,11 @@ class DifferentiableKUKAiiwa(DifferentiableTree):
         super().__init__(self.model_path, self.name, link_list=link_list, device=device)
 
 
-def modidy_franka_panda_urdf_grasped_object(robot_file, grasped_object):
+def modidy_robot_urdf_grasped_object(robot_file, grasped_object, parent_link='panda_hand'):
     robot_urdf = URDF.from_xml_file(robot_file)
     joint = Joint(
         name='grasped_object_fixed_joint',
-        parent='panda_hand',
+        parent=parent_link,
         child='grasped_object',
         joint_type='fixed',
         origin=Pose(xyz=to_numpy(grasped_object.pos.squeeze()),
@@ -111,7 +111,7 @@ class DifferentiableFrankaPanda(DifferentiableTree):
 
         # Modify the urdf to append the link of the grasped object
         if grasped_object is not None:
-            robot_file = modidy_franka_panda_urdf_grasped_object(robot_file, grasped_object)
+            robot_file = modidy_robot_urdf_grasped_object(robot_file, grasped_object)
 
         self.model_path = robot_file.as_posix()
         self.name = "differentiable_franka_panda"

@@ -17,7 +17,6 @@ from torch_robotics.visualizers.planning_visualizer import create_fig_and_axes
 class EnvBase(ABC):
 
     def __init__(self,
-                 name='NameEnvBase',
                  limits=None,
                  obj_fixed_list=None,
                  obj_extra_list=None,
@@ -29,7 +28,7 @@ class EnvBase(ABC):
                  ):
         self.tensor_args = tensor_args
 
-        self.name = name
+        self.name = self.__class__.__name__
 
         # Workspace
         assert limits is not None
@@ -66,6 +65,7 @@ class EnvBase(ABC):
             print(f'Precomputing the SDF grid and gradients of FIXED objects took: {t.elapsed:.3f} sec')
 
         if self.obj_extra_list is not None:
+            self.grid_map_sdf_obj_extra = None
             if precompute_sdf_obj_extra:
                 with TimerCUDA() as t:
                     # Compute SDF grid
@@ -180,20 +180,25 @@ class EnvBase(ABC):
                     sdf = torch.minimum(sdf, sdf_obj)
 
         # compute sdf of extra objects
+        sdf_extra_objects = None
         if self.obj_extra_list is not None:
             if self.grid_map_sdf_obj_extra is not None:
-                sdf = self.grid_map_sdf_obj_extra(x)
+                sdf_extra_objects = self.grid_map_sdf_obj_extra(x)
                 if reshape_shape:
-                    sdf = sdf.reshape(reshape_shape)
+                    sdf_extra_objects = sdf_extra_objects.reshape(reshape_shape)
             else:
                 for obj in self.obj_extra_list:
                     sdf_obj = obj.compute_signed_distance(x)
                     if reshape_shape is not None:
                         sdf_obj = sdf_obj.reshape(reshape_shape)
-                    if sdf is None:
-                        sdf = sdf_obj
+                    if sdf_extra_objects is None:
+                        sdf_extra_objects = sdf_obj
                     else:
-                        sdf = torch.minimum(sdf, sdf_obj)
+                        sdf_extra_objects = torch.minimum(sdf_extra_objects, sdf_obj)
+            if sdf is None:
+                sdf = sdf_extra_objects
+            else:
+                sdf = torch.minimum(sdf, sdf_extra_objects)
 
         return sdf
 
@@ -240,10 +245,10 @@ class EnvBase(ABC):
 
     def render_grad_sdf(self, ax=None, fig=None):
         # draw gradient of sdf
-        xs = torch.linspace(self.limits_np[0][0], self.limits_np[1][0], steps=40, **self.tensor_args)
-        ys = torch.linspace(self.limits_np[0][1], self.limits_np[1][1], steps=40, **self.tensor_args)
+        xs = torch.linspace(self.limits_np[0][0], self.limits_np[1][0], steps=5, **self.tensor_args)
+        ys = torch.linspace(self.limits_np[0][1], self.limits_np[1][1], steps=5, **self.tensor_args)
         if self.dim == 3:
-            zs = torch.linspace(self.limits_np[0][2], self.limits_np[1][2], steps=20, **self.tensor_args)
+            zs = torch.linspace(self.limits_np[0][2], self.limits_np[1][2], steps=5, **self.tensor_args)
             X, Y, Z = torch.meshgrid(xs, ys, zs, indexing='xy')
         else:
             X, Y = torch.meshgrid(xs, ys, indexing='xy')

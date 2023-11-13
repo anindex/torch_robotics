@@ -240,7 +240,7 @@ class CollisionSelfField(EmbodimentDistanceFieldBase):
     def compute_embodiment_collision(self, q, link_pos, **kwargs):  # position tensor
         margin = kwargs.get('margin', self.cutoff_margin)
         distances = self.compute_embodiment_signed_distances(q, link_pos, **kwargs)
-        any_self_collision = torch.any(distances < margin, dim=-1)
+        any_self_collision = torch.any(distances <= margin, dim=-1)
         return any_self_collision
 
 
@@ -312,7 +312,7 @@ class CollisionObjectBase(EmbodimentDistanceFieldBase):
         # position tensor
         margin = kwargs.get('margin', self.collision_margins + self.cutoff_margin)
         signed_distances = self.object_signed_distances(link_pos, **kwargs)
-        collisions = signed_distances < margin
+        collisions = signed_distances <= margin
         # reduce over points (dim -1) and over objects (dim -2)
         any_collision = torch.any(torch.any(collisions, dim=-1), dim=-1)
         return any_collision
@@ -376,8 +376,6 @@ class CollisionObjectDistanceField(CollisionObjectBase):
             link_pos = torch.cat((link_pos, link_pos_grasped_object), dim=-2)
 
         embodiment_cost, embodiment_cost_gradient = self.compute_embodiment_taskspace_sdf_and_gradient(link_pos, **kwargs)
-        # Treat the SDF as a cost, so revert the gradient direction
-        embodiment_cost_gradient = -1. * embodiment_cost_gradient
         return embodiment_cost, embodiment_cost_gradient
 
     def compute_embodiment_taskspace_sdf_and_gradient(self, link_pos, **kwargs):
@@ -386,22 +384,24 @@ class CollisionObjectDistanceField(CollisionObjectBase):
         sdf_vals, sdf_gradient = self.object_signed_distances(link_pos, get_gradient=True, **kwargs)
         margin_minus_sdf = -(sdf_vals - margin)
         if self.clamp_sdf:
-            clamped_sdf = torch.relu(margin_minus_sdf)
+            margin_minus_sdf_clamped = torch.relu(margin_minus_sdf)
         else:
-            clamped_sdf = margin_minus_sdf
-        if clamped_sdf.ndim == 3:  # cover the multiple objects case ((batch, horizon, ...), object, links)
-            clamped_sdf, idxs_max = clamped_sdf.max(-2)
-            sdf_gradient_l = []
-            # TODO - vectorized version
-            for i in range(sdf_gradient.shape[-1]):
-                sdf_gradient_l.append(sdf_gradient[..., i].gather(1, idxs_max.unsqueeze(1)).squeeze(1))
-            sdf_gradient = torch.stack(sdf_gradient_l, dim=-1)
+            margin_minus_sdf_clamped = margin_minus_sdf
+        if margin_minus_sdf_clamped.ndim >= 3:  # cover the multiple objects case ((batch, horizon, ...), objects, links)
+            if margin_minus_sdf_clamped.shape[-2] == 1:  # if there is only one object, take this one as the maximum margin_minus_sdf
+                margin_minus_sdf_clamped = margin_minus_sdf_clamped.squeeze(-2)
+                sdf_gradient = sdf_gradient.squeeze(-3)
+            else:
+                margin_minus_sdf_clamped, idxs_max = margin_minus_sdf_clamped.max(-2)
+                sdf_gradient = sdf_gradient.gather(
+                    2, idxs_max.unsqueeze(2).unsqueeze(-1).expand(-1, -1, -1, -1, sdf_gradient.shape[-1])).squeeze(2)
 
         # set sdf gradient to 0 if the point is not in collision
-        idxs = torch.argwhere(clamped_sdf <= 0)
-        sdf_gradient[idxs[:, 0], idxs[:, 1], :] = 0.
+        idxs = torch.argwhere(margin_minus_sdf_clamped <= 0)
+        sdf_gradient[idxs[:, 0], idxs[:, 1], idxs[:, 2], :] = 0.
 
-        return clamped_sdf, sdf_gradient
+        # the gradient of (margin-sdf) wrt to the position is -1 * sdf_gradient
+        return margin_minus_sdf_clamped, -1. * sdf_gradient
 
 
 class CollisionWorkspaceBoundariesDistanceField(CollisionObjectBase):

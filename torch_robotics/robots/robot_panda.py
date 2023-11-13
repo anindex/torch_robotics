@@ -36,15 +36,16 @@ class RobotPanda(RobotBase):
     def __init__(self,
                  use_self_collision_storm=False,
                  use_collision_spheres=True,
+                 gripper=False,
                  grasped_object=None,
                  tensor_args=None,
                  **kwargs):
 
-        self.gripper = False
+        self.gripper = gripper
 
         ##########################################################################################
         # Differentiable robots model
-        self.link_name_ee = 'ee_link'
+        self.link_name_ee = 'panda_hand'
         self.link_name_grasped_object = 'grasped_object'
 
         self.diff_panda = DifferentiableFrankaPanda(
@@ -184,7 +185,6 @@ class RobotPanda(RobotBase):
 
         ##########################################################################################
         super().__init__(
-            name='RobotPanda',
             q_limits=q_limits,
             grasped_object=grasped_object,
             link_names_for_object_collision_checking=link_names_for_object_collision_checking,
@@ -204,6 +204,8 @@ class RobotPanda(RobotBase):
             robot_urdf_path_ompl=os.path.join(get_robot_path(), 'franka_description', 'robots', 'panda_arm_hand.urdf'),
             # robot_urdf_path_ompl=os.path.join(get_robot_path(), 'franka_description', 'robots', 'panda_arm_hand_no_gripper.urdf'),
             link_names_torchkin=self.diff_panda.get_link_names(),
+            link_name_ee=self.link_name_ee,
+            gripper_q_dim=2 if gripper else 0,
             tensor_args=tensor_args,
             **kwargs
         )

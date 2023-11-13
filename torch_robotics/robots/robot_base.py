@@ -17,7 +17,6 @@ class RobotBase(ABC):
 
     def __init__(
             self,
-            name='RobotBase',
             q_limits=None,
             grasped_object=None,
             margin_for_grasped_object_collision_checking=0.001,
@@ -37,11 +36,15 @@ class RobotBase(ABC):
             robot_urdf_path=None,
             robot_urdf_path_ompl=None,
             link_names_torchkin=None,
+            link_name_ee=None,
+            gripper_q_dim=0,
             tensor_args=None,
             **kwargs
     ):
-        self.name = name
+        self.name = self.__class__.__name__
         self.tensor_args = tensor_args
+
+        self.link_name_ee = link_name_ee
 
         self.dt = dt
 
@@ -71,6 +74,8 @@ class RobotBase(ABC):
         self.robot_torchkin_jfk_b = jfk_b
         self.robot_torchkin_jfk_s = jfk_s
 
+        self.torchkin_link_ee_idx = link_names_torchkin.index(link_name_ee)
+
         ################################################################################################
         # Configuration space
         assert q_limits is not None, "q_limits cannot be None"
@@ -81,6 +86,8 @@ class RobotBase(ABC):
         self.q_max_np = to_numpy(self.q_max)
         self.q_distribution = torch.distributions.uniform.Uniform(self.q_min, self.q_max)
         self.q_dim = len(self.q_min)
+        self.gripper_q_dim = gripper_q_dim
+        self.arm_q_dim = self.q_dim - self.gripper_q_dim
 
         ################################################################################################
         # Grasped object

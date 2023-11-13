@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<robot name="3_link_planar">
+<robot name="2_link_planar">
   <link name="world"/>
 
   <joint name="base_joint" type="fixed">

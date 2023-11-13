@@ -78,7 +78,7 @@
         <sphere radius="0.02"/>
       </geometry>
       <material name="robot">
-        <color rgba="1 0 0 1"/>
+        <color rgba="0 0 1 1"/>
       </material>
     </visual>
     <collision>

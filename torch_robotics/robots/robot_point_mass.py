@@ -19,21 +19,20 @@ import matplotlib.collections as mcoll
 class RobotPointMass2D(RobotBase):
 
     def __init__(self,
-                 name='RobotPointMass2D',
                  q_limits=torch.tensor([[-1, -1], [1, 1]]),  # configuration space limits
                  robot_urdf_path=os.path.join(get_robot_path(), "point_mass_robot_2d.urdf"),
                  **kwargs):
         super().__init__(
-            name=name,
             q_limits=to_torch(q_limits, **kwargs['tensor_args']),
             link_names_for_object_collision_checking=['robot'],
-            link_margins_for_object_collision_checking=[0.01],
+            link_margins_for_object_collision_checking=[0.02],
             link_idxs_for_object_collision_checking=[0],
             num_interpolated_points_for_object_collision_checking=1,
             use_collision_spheres=False,
             robot_urdf_path=robot_urdf_path,
             robot_urdf_path_ompl=robot_urdf_path,
             link_names_torchkin=['robot'],
+            link_name_ee='robot',
             **kwargs
         )
 
@@ -117,14 +116,15 @@ class RobotPointMass2D(RobotBase):
                 ax.add_collection(line_segments)
                 if control_points is not None:
                     points = np.reshape(to_numpy(control_points), (-1, 2))
-                    colors_scatter = ['red'] * points.shape[0]
+                    colors_scatter = ['blue'] * points.shape[0]
                     # for control_points_aux, color in zip(control_points, colors):
                     #     colors_scatter.extend([color]*control_points_aux.shape[0])
                 else:
                     points = np.reshape(trajs_np, (-1, 2))
-                    colors_scatter = []
-                    for segment, color in zip(segments, colors):
-                        colors_scatter.extend([color]*segment.shape[0])
+                    colors_scatter = ['red'] * points.shape[0]
+                    # colors_scatter = []
+                    # for segment, color in zip(segments, colors):
+                    #     colors_scatter.extend([color]*segment.shape[0])
                 ax.scatter(points[:, 0], points[:, 1], color=colors_scatter, s=2**2)
         if start_state is not None:
             start_state_np = to_numpy(start_state)
@@ -148,7 +148,6 @@ class RobotPointMass3D(RobotPointMass2D):
 
     def __init__(self, **kwargs):
         super().__init__(
-            name='RobotPointMass3D',
             q_limits=torch.tensor([[-1, -1, -1], [1, 1, 1]], **kwargs['tensor_args']),  # configuration space limits
             robot_urdf_path=os.path.join(get_robot_path(), "point_mass_robot_3d.urdf"),
             **kwargs

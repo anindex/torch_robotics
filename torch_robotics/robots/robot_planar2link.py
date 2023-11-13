@@ -8,11 +8,9 @@ from torch_robotics.torch_utils.torch_utils import to_numpy, tensor_linspace_v1,
 class RobotPlanar2Link(RobotBase):
 
     def __init__(self,
-                 name='RobotPlanar2Link',
                  q_limits=torch.tensor([[-torch.pi, -torch.pi + 0.01], [torch.pi, torch.pi - 0.01]]),  # configuration space limits
                  **kwargs):
         super().__init__(
-            name=name,
             q_limits=to_torch(q_limits, **kwargs['tensor_args']),
             link_names_for_object_collision_checking=['link_0', 'link_1', 'link_2'],
             link_margins_for_object_collision_checking=[0.01, 0.01, 0.01],

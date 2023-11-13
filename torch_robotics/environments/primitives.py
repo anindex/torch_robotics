@@ -103,6 +103,7 @@ class MultiSphereField(PrimitiveShapeField):
             radii : numpy array
                 Radii of the spheres.
         """
+        assert centers.shape[0] == radii.shape[0] if centers.ndim > 1 else True
         super().__init__(dim=centers.shape[-1], tensor_args=tensor_args)
         self.centers = to_torch(centers, **self.tensor_args)
         self.radii = to_torch(radii, **self.tensor_args)
@@ -113,7 +114,7 @@ class MultiSphereField(PrimitiveShapeField):
     def get_all_single_primitives(self):
         single_primitives = []
         for center, radius in zip(self.centers, self.radii):
-            single_primitives.append(MultiSphereField(center, radius, tensor_args=self.tensor_args))
+            single_primitives.append(MultiSphereField(center, radius[None], tensor_args=self.tensor_args))
         return single_primitives
 
     def compute_signed_distance_impl(self, x, get_gradient=False):
@@ -226,6 +227,7 @@ class MultiBoxField(PrimitiveShapeField):
             sizes: numpy array
                 Sizes of the boxes.
         """
+        assert centers.shape[0] == sizes.shape[0] if centers.ndim > 1 else True
         super().__init__(dim=centers.shape[-1], tensor_args=tensor_args)
         self.centers = to_torch(centers, **self.tensor_args)
         self.sizes = to_torch(sizes, **self.tensor_args)
@@ -348,7 +350,7 @@ class MultiRoundedBoxField(MultiBoxField):
                 Sizes of the boxes.
         """
         super().__init__(centers, sizes, tensor_args=tensor_args)
-        self.radius = torch.min(self.sizes, dim=-1)[0] * 0.15  # empirical value
+        self.radius = torch.ones(self.sizes.shape[:-1], **self.tensor_args) * 0.001  # empirical value
         self.f_sdf = lambda x: self.sdf_computation(x).sum()
 
     def sdf_computation(self, x):

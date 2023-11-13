@@ -18,7 +18,7 @@ def get_torch_device(device='cuda'):
 
 DEFAULT_TENSOR_ARGS = {'device': get_torch_device('cuda'), 'dtype': torch.float32}
 
-def dict_to_device(ob, device):
+def dict_to_device(ob, device, **kwargs):
     if isinstance(ob, collections.Mapping):
         return {k: dict_to_device(v, device) for k, v in ob.items()}
     else:

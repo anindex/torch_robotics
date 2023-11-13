@@ -99,6 +99,7 @@ class PlanningVisualizer:
 
     def animate_opt_iters_robots(
             self, trajs=None, traj_best=None, start_state=None, goal_state=None,
+            control_points=None,
             n_frames=10,
             **kwargs
     ):
@@ -111,6 +112,7 @@ class PlanningVisualizer:
 
         idxs = np.round(np.linspace(0, S - 1, n_frames)).astype(int)
         trajs_selection = trajs[idxs]
+        control_points_selection = control_points[idxs]
 
         fig, ax = create_fig_and_axes(dim=self.env.dim)
 
@@ -119,6 +121,7 @@ class PlanningVisualizer:
             ax.set_title(f"iter: {idxs[i]}/{S-1}")
             self.render_robot_trajectories(
                 fig=fig, ax=ax, trajs=trajs_selection[i],
+                control_points=control_points_selection[i],
                 traj_best=traj_best if i == n_frames - 1 else None,
                 start_state=start_state, goal_state=goal_state, **kwargs
             )
@@ -213,7 +216,8 @@ class PlanningVisualizer:
         return fig, axs
 
     def animate_opt_iters_joint_space_state(
-            self, trajs=None, traj_best=None, n_frames=10, **kwargs
+            self, trajs=None, traj_best=None, n_frames=10,
+            **kwargs
     ):
         # trajs: steps, batch, horizon, q_dim
         if trajs is None:
@@ -225,14 +229,17 @@ class PlanningVisualizer:
         idxs = np.round(np.linspace(0, S - 1, n_frames)).astype(int)
         trajs_selection = trajs[idxs]
 
-        fig, axs = self.plot_joint_space_state_trajectories(trajs=trajs_selection[0], **kwargs)
+        fig, axs = self.plot_joint_space_state_trajectories(
+            trajs=trajs_selection[0],
+            **kwargs)
 
         def animate_fn(i):
             [ax.clear() for ax in axs.ravel()]
             fig.suptitle(f"iter: {idxs[i]}/{S-1}")
             self.plot_joint_space_state_trajectories(
                 fig=fig, axs=axs,
-                trajs=trajs_selection[i], **kwargs
+                trajs=trajs_selection[i],
+                **kwargs
             )
             if i == n_frames -1 and traj_best is not None:
                 self.plot_joint_space_state_trajectories(
@@ -244,7 +251,7 @@ class PlanningVisualizer:
         create_animation_video(fig, animate_fn, n_frames=n_frames, **kwargs)
 
 
-def create_animation_video(fig, animate_fn, anim_time=5, n_frames=100, video_filepath='video.mp4', **kwargs):
+def create_animation_video(fig, animate_fn, anim_time=5, n_frames=100, video_filepath='video.mp4', dpi=90, **kwargs):
     str_start = "Creating animation"
     print(f'{str_start}...')
     ani = FuncAnimation(
@@ -258,7 +265,7 @@ def create_animation_video(fig, animate_fn, anim_time=5, n_frames=100, video_fil
 
     str_start = "Saving video..."
     print(f'{str_start}...')
-    ani.save(os.path.join(video_filepath), fps=max(1, int(n_frames / anim_time)), dpi=90)
+    ani.save(os.path.join(video_filepath), fps=max(1, int(n_frames / anim_time)), dpi=dpi)
     print(f'...finished {str_start}')
 
 

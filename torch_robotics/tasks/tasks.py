@@ -27,6 +27,7 @@ class PlanningTask(Task):
             use_occupancy_map=False,
             cell_size=0.01,
             obstacle_cutoff_margin=0.01,
+            margin_for_waypoint_collision_checking=0.0,
             use_field_collision_self=False,  # consider self collision
             use_field_collision_objects=True,  # consider object collision
             use_field_collision_ws_boundaries=False,  # consider workspace boundaries collision
@@ -43,6 +44,8 @@ class PlanningTask(Task):
         self.use_occupancy_map = use_occupancy_map
         if use_occupancy_map:
             self.env.build_occupancy_map(cell_size=cell_size)
+
+        self.margin_for_waypoint_collision_checking = margin_for_waypoint_collision_checking
 
         ################################################################################################
         # Collision fields
@@ -61,6 +64,7 @@ class PlanningTask(Task):
             tensor_args=self.tensor_args
         )
 
+        self.df_collision_extra_objects = None
         if self.env.obj_extra_list is not None:
             self.df_collision_extra_objects = CollisionObjectDistanceField(
                 self.robot,
@@ -106,10 +110,16 @@ class PlanningTask(Task):
         ]
 
     def get_collision_fields(self):
-        return self._collision_fields
+        return [field for field in self._collision_fields if field is not None]
 
     def get_collision_fields_extra_objects(self):
-        return self._collision_fields_extra_objects
+        return [field for field in self._collision_fields_extra_objects if field is not None]
+
+    def get_collision_objects_field(self):
+        return self.df_collision_objects
+
+    def get_collision_extra_objects_field(self):
+        return self.df_collision_extra_objects
 
     def distance_q(self, q1, q2):
         return self.robot.distance_q(q1, q2)
@@ -251,7 +261,10 @@ class PlanningTask(Task):
 
         return collisions
 
-    def get_trajs_collision_and_free(self, trajs, return_indices=False, num_interpolation=0, **kwargs):
+    def get_trajs_collision_and_free(
+            self, trajs, return_indices=False, num_interpolation=0,
+            **kwargs
+    ):
         assert trajs.ndim == 3 or trajs.ndim == 4
         N = 1
         if trajs.ndim == 4:  # n_goals (or steps), batch of trajectories, length, dim
@@ -271,7 +284,7 @@ class PlanningTask(Task):
         # While the optimized trajectory via points are not at a 0 margin from the object, the interpolated via points
         # might be. A 0 margin guarantees that we do not discard those trajectories, while ensuring they are not in
         # collision (margin < 0).
-        trajs_waypoints_collisions = self.compute_collision(trajs_interpolated, margin=0.0)
+        trajs_waypoints_collisions = self.compute_collision(trajs_interpolated, margin=self.margin_for_waypoint_collision_checking)
 
         if trajs.ndim == 4:
             trajs_waypoints_collisions = einops.rearrange(trajs_waypoints_collisions, '(N B) H -> N B H', N=N, B=B)

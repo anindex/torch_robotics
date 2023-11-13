@@ -13,7 +13,6 @@ from torch_robotics.visualizers.planning_visualizer import create_fig_and_axes
 class EnvCircle2D(EnvBase):
 
     def __init__(self,
-                 name='EnvDense2D',
                  tensor_args=None,
                  precompute_sdf_obj_fixed=True,
                  sdf_cell_size=0.005,
