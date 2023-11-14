@@ -154,7 +154,7 @@ class DifferentiableRigidBody(torch.nn.Module):
             q = q_dict[self.name]
 
             # bound q with limits
-            if self.joint_limits is not None:
+            if self.joint_type != 'continuous' and self.joint_limits is not None:
                 q_clamped = torch.clamp(q, min=self.joint_limits['lower'], max=self.joint_limits['upper'])
             else:
                 q_clamped = q
