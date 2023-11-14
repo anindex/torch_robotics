@@ -6,6 +6,8 @@ from math import ceil
 import einops
 import torch
 
+from torch_robotics.torch_kinematics_tree.geometrics.utils import link_pos_from_link_tensor, link_rot_from_link_tensor, \
+    link_quat_from_link_tensor
 from torch_robotics.torch_planning_objectives.fields.distance_fields import CollisionSelfField
 from torch_robotics.torch_utils.torch_utils import to_numpy, to_torch
 from torch_robotics.trajectory.utils import finite_difference_vector
@@ -231,3 +233,18 @@ class RobotBase(ABC):
     @abc.abstractmethod
     def render_trajectories(self, ax, trajs=None, **kwargs):
         raise NotImplementedError
+
+    def get_EE_pose(self, q):
+        return self.robot_torchkin_fk(q)[self.torchkin_link_ee_idx]
+        # return self.diff_panda.compute_forward_kinematics_all_links(q, link_list=[self.link_name_ee])
+
+    def get_EE_position(self, q):
+        ee_pose = self.get_EE_pose(q)
+        return link_pos_from_link_tensor(ee_pose)
+
+    def get_EE_orientation(self, q, rotation_matrix=True):
+        ee_pose = self.get_EE_pose(q)
+        if rotation_matrix:
+            return link_rot_from_link_tensor(ee_pose)
+        else:
+            return link_quat_from_link_tensor(ee_pose)

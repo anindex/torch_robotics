@@ -303,20 +303,6 @@ class RobotPanda(RobotBase):
         # new_centers = torch.transpose(new_centers, -2, -1)[..., :3]  # take the position from homegenous coordinate
         # return new_centers
 
-    def get_EE_pose(self, q):
-        return self.diff_panda.compute_forward_kinematics_all_links(q, link_list=[self.link_name_ee])
-
-    def get_EE_position(self, q):
-        ee_pose = self.get_EE_pose(q)
-        return link_pos_from_link_tensor(ee_pose)
-
-    def get_EE_orientation(self, q, rotation_matrix=True):
-        ee_pose = self.get_EE_pose(q)
-        if rotation_matrix:
-            return link_rot_from_link_tensor(ee_pose)
-        else:
-            return link_quat_from_link_tensor(ee_pose)
-
     def render(self, ax, q=None, color='blue', arrow_length=0.15, arrow_alpha=1.0, arrow_linewidth=2.0,
                draw_links_spheres=False, **kwargs):
         # draw skeleton
