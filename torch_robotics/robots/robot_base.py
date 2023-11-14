@@ -235,7 +235,10 @@ class RobotBase(ABC):
         raise NotImplementedError
 
     def get_EE_pose(self, q):
-        return self.robot_torchkin_fk(q)[self.torchkin_link_ee_idx]
+        # select only the first dimensions q_dim
+        # this is useful when the input q is of shape (..., q_dim + gripper_q_dim)
+        q_ = q[..., :self.q_dim]
+        return self.robot_torchkin_fk(q_)[self.torchkin_link_ee_idx]
         # return self.diff_panda.compute_forward_kinematics_all_links(q, link_list=[self.link_name_ee])
 
     def get_EE_position(self, q):
