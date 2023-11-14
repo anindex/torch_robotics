@@ -238,6 +238,10 @@ class URDFRobotModel(RobotModel):
                     "upper": joint.limit.upper,
                     "velocity": joint.limit.velocity,
                 }
+                if joint_type == "continuous":
+                    joint_limits["lower"] = -torch.pi
+                    joint_limits["upper"] = torch.pi
+
                 try:
                     joint_damping = torch.tensor(
                         [joint.dynamics.damping],
