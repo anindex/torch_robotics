@@ -75,7 +75,6 @@ class EnvNarrowPassageDense2D(EnvBase):
         ]
 
         super().__init__(
-            name=name,
             limits=torch.tensor([[-1, -1], [1, 1]], **tensor_args),  # environments limits
             obj_fixed_list=[ObjectField(obj_list, 'dense2d')],
             tensor_args=tensor_args,
