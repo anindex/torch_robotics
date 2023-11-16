@@ -59,7 +59,7 @@ import numpy as np
 from torch._functorch.deprecated import jacrev
 from torch.autograd.functional import jacobian
 
-from torch_robotics.torch_kinematics_tree.geometrics.quaternion import q_to_axis_angles, q_div, q_convert_wxyz
+from torch_robotics.torch_kinematics_tree.geometrics.quaternion import q_to_axis_angles, q_div, q_convert_to_wxyz
 from torch_robotics.torch_kinematics_tree.geometrics.skeleton import get_skeleton_from_model
 from torch_robotics.torch_kinematics_tree.models.rigid_body import DifferentiableRigidBody
 from torch_robotics.torch_kinematics_tree.models.utils import URDFRobotModel, MJCFRobotModel
@@ -213,7 +213,7 @@ class DifferentiableTree(torch.nn.Module):
             pose = self._bodies[self._name_to_idx_map[link_name]].pose
             pos = pose.translation
             rot = pose.get_quaternion()
-            rot = q_convert_wxyz(rot)  # pose.get_quaternion() returns a quaternion xyzw
+            rot = q_convert_to_wxyz(rot)  # pose.get_quaternion() returns a quaternion xyzw
             return pos, rot  # return tuple of translation and rotation
 
     def compute_forward_kinematics_and_geometric_jacobian(

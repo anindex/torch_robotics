@@ -12,7 +12,7 @@ from torch import vmap
 from torch_robotics.environments.primitives import MultiSphereField
 from torch_robotics.robots.robot_base import RobotBase
 from torch_robotics.torch_kinematics_tree.geometrics.frame import Frame
-from torch_robotics.torch_kinematics_tree.geometrics.quaternion import q_convert_wxyz
+from torch_robotics.torch_kinematics_tree.geometrics.quaternion import q_convert_to_wxyz
 from torch_robotics.torch_kinematics_tree.geometrics.skeleton import get_skeleton_from_model
 from torch_robotics.torch_kinematics_tree.geometrics.utils import link_pos_from_link_tensor, link_rot_from_link_tensor, \
     link_quat_from_link_tensor
@@ -336,7 +336,7 @@ class RobotPanda(RobotBase):
 
             # draw object
             pos = frame_grasped_object.translation.squeeze()
-            ori = q_convert_wxyz(frame_grasped_object.get_quaternion().squeeze())
+            ori = q_convert_to_wxyz(frame_grasped_object.get_quaternion().squeeze())
             self.grasped_object.render(ax, pos=pos, ori=ori, color=color)
 
             # draw object collision points

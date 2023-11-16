@@ -28,6 +28,15 @@ from torch_robotics.torch_utils.seed import fix_random_seed
 from torch_robotics.torch_utils.torch_utils import get_torch_device, to_numpy
 
 
+GYM_COLORS = {
+    'purple': gymapi.Vec3(128/255., 0., 128/255.),
+    'black': gymapi.Vec3(0., 0., 0.),
+    'grey': gymapi.Vec3(220. / 255., 220. / 255., 220. / 255.),
+    'red': gymapi.Vec3(1., 0., 0.),
+}
+
+
+
 def set_object_position_and_orientation(center, obj_pos, obj_ori):
     # set position and orientation
     obj_pose = gymapi.Transform()
@@ -206,6 +215,7 @@ class MotionPlanningIsaacGymEnv:
                  draw_contact_forces=False,
                  draw_end_effector_path=False,
                  draw_end_effector_frame=False,
+                 draw_ee_pose_goal=None,
                  camera_width=1920, camera_height=1080,
                  # camera_width=1280, camera_height=720,
                  # camera_width=640, camera_height=480,
@@ -230,12 +240,14 @@ class MotionPlanningIsaacGymEnv:
         self.color_robots = color_robots
         self.collor_robots_in_collision = collor_robots_in_collision
         self.draw_goal_configuration = draw_goal_configuration
+        self.draw_ee_pose_goal = draw_ee_pose_goal
         self.goal_joint_position = None
         self.draw_collision_spheres = draw_collision_spheres
         self.draw_contact_forces = draw_contact_forces
         self.draw_end_effector_path = draw_end_effector_path
         self.draw_end_effector_frame = draw_end_effector_frame
         self.axes_geom = gymutil.AxesGeometry(0.15)
+        self.axes_geom_ee_goal = gymutil.AxesGeometry(0.3)
         self.end_effector_positions_visualization = None
         self.sphere_geom_end_effector = gymutil.WireframeSphereGeometry(
             0.005, 10, 10, gymapi.Transform(), color=(0, 0, 1)
@@ -383,8 +395,8 @@ class MotionPlanningIsaacGymEnv:
         self.obj_idxs = []
         self.hand_idxs = []
 
-        color_obj_fixed = gymapi.Vec3(220. / 255., 220. / 255., 220. / 255.)
-        color_obj_extra = gymapi.Vec3(1., 0., 0.)
+        color_obj_fixed = GYM_COLORS['grey']
+        color_obj_extra = GYM_COLORS['red']
 
         # Maps the global rigid body index to the environments index
         # Useful to know which trajectories are in collision
@@ -432,9 +444,8 @@ class MotionPlanningIsaacGymEnv:
             # color robot
             n_rigid_bodies = self.gym.get_actor_rigid_body_count(env, robot_handle)
             if self.draw_goal_configuration and i == self.num_envs - 1:
-                color = gymapi.Vec3(128/255., 0., 128/255.)  # purple
                 for j in range(n_rigid_bodies):
-                    self.gym.set_rigid_body_color(env, robot_handle, j, gymapi.MESH_VISUAL_AND_COLLISION, color)
+                    self.gym.set_rigid_body_color(env, robot_handle, j, gymapi.MESH_VISUAL_AND_COLLISION, GYM_COLORS['purple'])
 
             if color_robots:
                 if not (self.draw_goal_configuration and i == self.num_envs - 1):
@@ -634,10 +645,8 @@ class MotionPlanningIsaacGymEnv:
                 if self.collor_robots_in_collision:
                     if k in envs_with_robot_in_contact:
                         n_rigid_bodies = self.gym.get_actor_rigid_body_count(env, robot_handle)
-                        # color = gymapi.Vec3(1., 0., 0.)
-                        color = gymapi.Vec3(0., 0., 0.)
                         for j in range(n_rigid_bodies):
-                            self.gym.set_rigid_body_color(env, robot_handle, j, gymapi.MESH_VISUAL_AND_COLLISION, color)
+                            self.gym.set_rigid_body_color(env, robot_handle, j, gymapi.MESH_VISUAL_AND_COLLISION, GYM_COLORS['black'])
 
                 # collision spheres
                 if self.draw_collision_spheres:
@@ -655,6 +664,12 @@ class MotionPlanningIsaacGymEnv:
 
                 if self.draw_contact_forces:
                     self.gym.draw_env_rigid_contacts(self.viewer, env, gymapi.Vec3(1, 0, 0), 0.5, True)
+
+            if self.draw_ee_pose_goal is not None:
+                ee_transform = gymapi.Transform(p=gymapi.Vec3(*self.draw_ee_pose_goal[0:3]), r=gymapi.Quat(*self.draw_ee_pose_goal[3:]))
+                gymutil.draw_lines(self.axes_geom_ee_goal, self.gym, self.viewer, env, ee_transform)
+                sphere_geom = gymutil.WireframeSphereGeometry(0.01, 15, 15, gymapi.Transform(), color=(255/255., 140/255., 0.))
+                gymutil.draw_lines(sphere_geom, self.gym, self.viewer, env, ee_transform)
 
             # update viewer
             self.gym.step_graphics(self.sim)
@@ -827,9 +842,9 @@ if __name__ == '__main__':
         tensor_args=tensor_args
     )
 
-    env = EnvTableShelf(
-        tensor_args=tensor_args
-    )
+    # env = EnvTableShelf(
+    #     tensor_args=tensor_args
+    # )
 
     robot = RobotPanda(tensor_args=tensor_args)
 
@@ -841,19 +856,21 @@ if __name__ == '__main__':
     )
 
     # -------------------------------- Physics --------------------------------
-    num_envs = 2
+    ee_pose_goal = torch.tensor([0.5, 0.7, 0.5, 0, 0, 0, 1], **tensor_args)
+    num_envs = 5
     motion_planning_isaac_env = MotionPlanningIsaacGymEnv(
         env, robot, task,
         controller_type='position',
         num_envs=num_envs,
-        all_robots_in_one_env=False,
+        all_robots_in_one_env=True,
         color_robots=False,
         collor_robots_in_collision=True,
-        draw_goal_configuration=True,
+        draw_goal_configuration=False,
         draw_collision_spheres=False,  # very slow implementation
         draw_contact_forces=False,
         draw_end_effector_path=False,
         draw_end_effector_frame=True,
+        draw_ee_pose_goal=ee_pose_goal,
     )
 
     motion_planning_controller = MotionPlanningController(motion_planning_isaac_env)
@@ -861,7 +878,7 @@ if __name__ == '__main__':
                               (motion_planning_isaac_env.robot_dof_upper_limits[:7] -
                                motion_planning_isaac_env.robot_dof_lower_limits[:7]) +
                               motion_planning_isaac_env.robot_dof_lower_limits[:7])
-    trajectories_joint_pos = trajectories_joint_pos.repeat(100, num_envs, 1)
+    trajectories_joint_pos = trajectories_joint_pos.repeat(10000, num_envs, 1)
     motion_planning_controller.run_trajectories(
         trajectories_joint_pos,
         start_states_joint_pos=trajectories_joint_pos[0], goal_state_joint_pos=trajectories_joint_pos[-1][0],

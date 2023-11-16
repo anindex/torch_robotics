@@ -232,11 +232,11 @@ def euler_to_q(euler):
     return q
 
 
-def q_convert_xyzw(q):
+def q_convert_to_xyzw(q):
     w, x, y, z = torch.unbind(q, dim=-1)
     return torch.stack([x, y, z, w], dim=-1)
 
 
-def q_convert_wxyz(q):
+def q_convert_to_wxyz(q):
     x, y, z, w = torch.unbind(q, dim=-1)
     return torch.stack([w, x, y, z], dim=-1)

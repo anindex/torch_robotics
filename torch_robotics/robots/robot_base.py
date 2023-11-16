@@ -6,6 +6,7 @@ from math import ceil
 import einops
 import torch
 
+from torch_robotics.torch_kinematics_tree.geometrics.quaternion import q_convert_to_xyzw
 from torch_robotics.torch_kinematics_tree.geometrics.utils import link_pos_from_link_tensor, link_rot_from_link_tensor, \
     link_quat_from_link_tensor
 from torch_robotics.torch_planning_objectives.fields.distance_fields import CollisionSelfField
@@ -234,11 +235,19 @@ class RobotBase(ABC):
     def render_trajectories(self, ax, trajs=None, **kwargs):
         raise NotImplementedError
 
-    def get_EE_pose(self, q):
+    def get_EE_pose(self, q, flatten_pos_quat=False, quat_xyzw=False):
         # select only the first dimensions q_dim
         # this is useful when the input q is of shape (..., q_dim + gripper_q_dim)
         q_ = q[..., :self.q_dim]
-        return self.robot_torchkin_fk(q_)[self.torchkin_link_ee_idx]
+        if flatten_pos_quat:
+            orientation_quat_wxyz = self.get_EE_orientation(q_, rotation_matrix=False)
+            orientation_quat = orientation_quat_wxyz
+            if quat_xyzw:
+                orientation_quat = q_convert_to_xyzw(orientation_quat_wxyz)
+            return torch.cat((self.get_EE_position(q_), orientation_quat), dim=-1)
+        else:
+            pose = self.robot_torchkin_fk(q_)[self.torchkin_link_ee_idx]
+            return pose
         # return self.diff_panda.compute_forward_kinematics_all_links(q, link_list=[self.link_name_ee])
 
     def get_EE_position(self, q):
