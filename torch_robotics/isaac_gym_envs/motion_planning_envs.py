@@ -124,9 +124,10 @@ def make_gif_from_array(filename, array, fps=10):
     return clip
 
 
-class ViewerRecorder:
+class CameraRecorder:
 
-    def __init__(self):
+    def __init__(self, dt=0.01):
+        self.dt = dt
         self.step_img = []
 
     def append(self, step, img):
@@ -136,53 +137,58 @@ class ViewerRecorder:
             self,
             video_duration=5.,
             video_path='./trajs_replay.mp4',
-            n_first_steps=0,
-            n_last_steps=0,
-            make_gif=False
+            make_gif=False,
+            n_pre_steps=10,
+            n_post_steps=10,
+            **kwargs
     ):
         if len(self.step_img) == 0:
             print("No images to a make video")
             return
 
-        frame = self.step_img[0][1]
-        height, width, layers = frame.shape
+        # remove first and last steps from video
+        del self.step_img[:n_pre_steps]
+        del self.step_img[-n_post_steps:]
 
-        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+        # set up the video writer
         fps = len(self.step_img) / video_duration
+        height, width, layers = self.step_img[0][1].shape
+        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
         video = cv2.VideoWriter(video_path, fourcc, fps, (width, height))
 
+        print(f"Making video with {len(self.step_img)} frames")
         max_steps = len(self.step_img) - 1
         image_l = []
         step_text = 0
         for step, frame in self.step_img:
             frame = np.ascontiguousarray(frame, dtype=np.uint8)
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            if step > n_first_steps:
-                if step > len(self.step_img) - n_last_steps - 1:
-                    pass
-                else:
-                    step_text = step - n_first_steps
-                cv2.putText(frame,
-                            f'Step: {step_text}/{max_steps-n_first_steps-n_last_steps}',
-                            (50, 50),
-                            cv2.FONT_HERSHEY_SIMPLEX, 1,
-                            (255, 255, 255),
-                            2,
-                            cv2.LINE_4)
-                # cv2.putText(frame,
-                #             f'Time: {self.dt * step_text:.2f} secs',
-                #             (50, 85),
-                #             cv2.FONT_HERSHEY_SIMPLEX, 1,
-                #             (255, 255, 255),
-                #             2,
-                #             cv2.LINE_4)
+            # Add step text to frame
+            cv2.putText(frame,
+                        f'Step: {step_text}/{max_steps}',
+                        (50, 50),
+                        cv2.FONT_HERSHEY_SIMPLEX, 1,
+                        (255, 255, 255),
+                        2,
+                        cv2.LINE_4)
+            cv2.putText(frame,
+                        f'Time: {self.dt * step_text:.2f} secs',
+                        (50, 85),
+                        cv2.FONT_HERSHEY_SIMPLEX, 1,
+                        (255, 255, 255),
+                        2,
+                        cv2.LINE_4)
 
             video.write(frame)
             # save frame for gif
             image_l.append(frame)
 
+            # increment step text
+            step_text += 1
+
         cv2.destroyAllWindows()
         video.release()
+        print(f"...finished making video at {video_path}")
 
         # create gif
         if make_gif:
@@ -204,22 +210,30 @@ class MotionPlanningIsaacGymEnv:
                  enable_dynamics=False,
                  controller_type='position',
                  num_envs=8,
+
                  add_ground_plane=True,
                  all_robots_in_one_env=False,
                  use_gpu_pipeline=False,
-                 sync_with_real_time=False,
+
+                 show_viewer=False,
+                 sync_viewer_with_real_time=False,
+                 viewer_time_between_steps=0.01,
+
                  color_robots=False,
                  collor_robots_in_collision=False,
-                 draw_goal_configuration=True,
+                 draw_goal_configuration=False,
                  draw_collision_spheres=False,  # very slow implementation
                  draw_contact_forces=False,
                  draw_end_effector_path=False,
                  draw_end_effector_frame=False,
                  draw_ee_pose_goal=None,
-                 camera_width=1920, camera_height=1080,
-                 # camera_width=1280, camera_height=720,
-                 # camera_width=640, camera_height=480,
-                 camera_viewer_from_top=False,
+
+                 render_camera_global=False,
+                 camera_global_width=1920, camera_global_height=1080,
+                 # camera_global_width=1280, camera_global_height=720,
+                 # camera_global_width=640, camera_global_height=480,
+                 camera_global_from_top=False,
+
                  **kwargs,
                  ):
 
@@ -277,8 +291,6 @@ class MotionPlanningIsaacGymEnv:
         self.gym_args.use_gpu_pipeline = use_gpu_pipeline
         self.gym_args.use_gpu = use_gpu_pipeline
 
-        self.sync_with_real_time = sync_with_real_time
-
         # configure sim
         sim_params = gymapi.SimParams()
         sim_params.up_axis = gymapi.UP_AXIS_Z
@@ -305,11 +317,6 @@ class MotionPlanningIsaacGymEnv:
             self.gym_args.compute_device_id, self.gym_args.graphics_device_id, self.gym_args.physics_engine, sim_params)
         if self.sim is None:
             raise Exception("Failed to create sim")
-
-        # create viewer
-        self.viewer = self.gym.create_viewer(self.sim, gymapi.CameraProperties())
-        if self.viewer is None:
-            raise Exception("Failed to create viewer")
 
         ###############################################################################################################
         # Environment assets
@@ -458,14 +465,23 @@ class MotionPlanningIsaacGymEnv:
             self.gym.set_actor_dof_properties(env, robot_handle, robot_dof_properties)
 
         ###############################################################################################################
-        # CAMERA
+        # VIEWER
+        self.viewer = None
+        if show_viewer:
+            self.viewer = self.gym.create_viewer(self.sim, gymapi.CameraProperties())
+
+        self.sync_viewer_with_real_time = sync_viewer_with_real_time
+        self.viewer_time_between_steps = viewer_time_between_steps
+
+        ###############################################################################################################
+        # CAMERA GLOBAL
         # point camera at middle env
-        if camera_viewer_from_top:
+        if camera_global_from_top:
             cam_pos = gymapi.Vec3(1e-3, -1e-3, 2)
             cam_target = gymapi.Vec3(0, -1e-3, -1)
         else:
-            cam_pos = gymapi.Vec3(0, 1.75, 1.25)
-            cam_target = gymapi.Vec3(0, -3, -1.25)
+            cam_pos = gymapi.Vec3(1.9, -1.25, 1.25)
+            cam_target = gymapi.Vec3(0.1, 0.35, 0.1)
 
         if len(self.envs) == 1:
             self.middle_env = self.envs[0]
@@ -473,12 +489,14 @@ class MotionPlanningIsaacGymEnv:
             self.middle_env = self.envs[self.num_envs // 2 + num_per_row // 2]
         self.gym.viewer_camera_look_at(self.viewer, self.middle_env, cam_pos, cam_target)
 
+        # camera global for rendering
         camera_props = gymapi.CameraProperties()
-        camera_props.width, camera_props.height = camera_width, camera_height
-        self.viewer_camera_handle = self.gym.create_camera_sensor(self.middle_env, camera_props)
-        self.gym.set_camera_location(self.viewer_camera_handle, self.middle_env, cam_pos, cam_target)
+        camera_props.width, camera_props.height = camera_global_width, camera_global_height
+        self.camera_global_handle = self.gym.create_camera_sensor(self.middle_env, camera_props)
+        self.gym.set_camera_location(self.camera_global_handle, self.middle_env, cam_pos, cam_target)
 
-        self.viewer_recorder = ViewerRecorder()
+        self.camera_global_recorder = CameraRecorder(dt=viewer_time_between_steps)
+        self.render_camera_global = render_camera_global
 
         ###############################################################################################################
         # ==== Prepare tensors =====
@@ -576,7 +594,7 @@ class MotionPlanningIsaacGymEnv:
             self.gym.set_actor_dof_states(env, handle, joint_state_des, gymapi.STATE_ALL)
             self.gym.set_actor_dof_position_targets(env, handle, joint_state_des['pos'])
 
-    def step(self, actions, visualize=True, render_viewer_camera=False):
+    def step(self, actions):
         ###############################################################################################################
         # Deploy control based on type
         action_dof_target = torch.zeros_like(self.robot_dof_pos).squeeze(-1)
@@ -616,11 +634,19 @@ class MotionPlanningIsaacGymEnv:
         envs_with_robot_in_contact = self.get_envs_with_contacts()
 
         ###############################################################################################################
-        if visualize:
-            # Clean up
-            if not self.draw_end_effector_path:
-                self.gym.clear_lines(self.viewer)
+        # Get current joint states
+        joint_states_current = gymtorch.wrap_tensor(self.gym.acquire_dof_state_tensor(self.sim)).view(
+            self.num_envs, self.robot_num_dofs, 2)
+        if self.draw_goal_configuration:
+            joint_states_current = joint_states_current[:-1, ...]
 
+        ###############################################################################################################
+        # Visualize and render
+        # Clean up
+        if not self.draw_end_effector_path:
+            self.gym.clear_lines(self.viewer)
+
+        if self.viewer is not None or self.render_camera_global:
             envs = self.get_envs()
             # TODO - implement vectorized versions
             for k, (env, robot_handle) in enumerate(zip(envs, self.robot_handles)):
@@ -671,26 +697,21 @@ class MotionPlanningIsaacGymEnv:
                 sphere_geom = gymutil.WireframeSphereGeometry(0.01, 15, 15, gymapi.Transform(), color=(255/255., 140/255., 0.))
                 gymutil.draw_lines(sphere_geom, self.gym, self.viewer, env, ee_transform)
 
-            # update viewer
-            self.gym.step_graphics(self.sim)
+        # update graphics state
+        self.gym.step_graphics(self.sim)
 
+        if self.viewer is not None:
             self.gym.draw_viewer(self.viewer, self.sim, False)
-            if self.sync_with_real_time:
+            if self.sync_viewer_with_real_time:
                 self.gym.sync_frame_time(self.sim)
+            time.sleep(self.viewer_time_between_steps)
 
-            # render viewer camera
-            if render_viewer_camera:
-                self.gym.render_all_camera_sensors(self.sim)
-                viewer_img = self.gym.get_camera_image(self.sim, self.middle_env, self.viewer_camera_handle, gymapi.IMAGE_COLOR)
-                viewer_img = viewer_img.reshape(viewer_img.shape[0], -1, 4)[..., :3]  # get RGB part
-                self.viewer_recorder.append(self.step_idx, viewer_img)
-
-        ###############################################################################################################
-        # Get current joint states
-        joint_states_current = gymtorch.wrap_tensor(self.gym.acquire_dof_state_tensor(self.sim)).view(
-            self.num_envs, self.robot_num_dofs, 2)
-        if self.draw_goal_configuration:
-            joint_states_current = joint_states_current[:-1, ...]
+        # render viewer camera
+        if self.render_camera_global:
+            self.gym.render_all_camera_sensors(self.sim)
+            viewer_img = self.gym.get_camera_image(self.sim, self.middle_env, self.camera_global_handle, gymapi.IMAGE_COLOR)
+            viewer_img = viewer_img.reshape(viewer_img.shape[0], -1, 4)[..., :3]  # get RGB part
+            self.camera_global_recorder.append(self.step_idx, viewer_img)
 
         ###############################################################################################################
         # Update simulation step
@@ -728,6 +749,8 @@ class MotionPlanningIsaacGymEnv:
         return envs_with_robot_in_contact
 
     def check_viewer_has_closed(self):
+        if self.viewer is None:
+            return False
         return self.gym.query_viewer_has_closed(self.viewer)
 
     def clean_up(self):
@@ -745,12 +768,9 @@ class MotionPlanningController:
             self,
             trajectories,  # shape: (H, B, D)
             start_states_joint_pos=None, goal_state_joint_pos=None,
-            n_first_steps=0,
-            n_last_steps=0,
-            visualize=True,
-            time_between_steps=0.01,
+            n_pre_steps=100,
+            n_post_steps=100,
             stop_robot_if_in_contact=False,
-            render_viewer_camera=False,
             make_video=False,
             **kwargs
     ):
@@ -768,46 +788,30 @@ class MotionPlanningController:
         )
 
         # first steps -- keep robots in place
-        joint_positions_start = joint_states[:, :, 0]
-        for _ in range(n_first_steps):
+        joint_positions_start = joint_states[:, :, 0]  # positions
+        for _ in range(n_pre_steps):
             if self.mp_isaac_env.check_viewer_has_closed():
                 break
-            if self.mp_isaac_env.controller_type == 'position':
-                _, _ = self.mp_isaac_env.step(
-                    joint_positions_start, visualize=visualize, render_viewer_camera=render_viewer_camera
-                )
-                time.sleep(time_between_steps)
-            else:
-                raise NotImplementedError
+            _, _ = self.mp_isaac_env.step(joint_positions_start)
 
         # Execute the planned trajectory
         envs_with_robot_in_contact_l = []
         for i, actions in enumerate(trajectories_copy):
             if self.mp_isaac_env.check_viewer_has_closed():
                 break
-            joint_states, envs_with_robot_in_contact = self.mp_isaac_env.step(
-                actions, visualize=visualize, render_viewer_camera=render_viewer_camera
-            )
+            joint_states, envs_with_robot_in_contact = self.mp_isaac_env.step(actions)
             envs_with_robot_in_contact_l.append(envs_with_robot_in_contact)
-            time.sleep(time_between_steps)
             # stop the trajectory if the robots was in contact with the environments
             if stop_robot_if_in_contact and len(envs_with_robot_in_contact) > 0:
                 if self.mp_isaac_env.controller_type == 'position':
                     trajectories_copy[i:, envs_with_robot_in_contact, :] = actions[envs_with_robot_in_contact, :]
 
         # last steps -- keep robots in place
-        if self.mp_isaac_env.controller_type == 'position':
-            # stay in the current position after the trajectory has finished
-            joint_positions_last = joint_states[:, :, 0]
-            for _ in range(n_last_steps):
-                if self.mp_isaac_env.check_viewer_has_closed():
-                    break
-                _, _ = self.mp_isaac_env.step(
-                    joint_positions_last, visualize=visualize, render_viewer_camera=render_viewer_camera
-                )
-                time.sleep(time_between_steps)
-        else:
-            raise NotImplementedError
+        joint_positions_last = joint_states[:, :, 0]  # positions
+        for _ in range(n_post_steps):
+            if self.mp_isaac_env.check_viewer_has_closed():
+                break
+            _, _ = self.mp_isaac_env.step(joint_positions_last)
 
         # clean up isaac gym
         self.mp_isaac_env.clean_up()
@@ -824,10 +828,11 @@ class MotionPlanningController:
         print(f'Trajectories free in Physics simulator: {B-len(envs_with_robot_in_contact_unique)}/{B}')
 
         ###############################################################################################################
-        # create video
+        # make a video
         if make_video:
-            self.mp_isaac_env.viewer_recorder.make_video(
-                n_first_steps=n_first_steps, n_last_steps=n_last_steps, **kwargs)
+            self.mp_isaac_env.camera_global_recorder.make_video(
+                n_pre_steps=n_pre_steps, n_post_steps=n_post_steps, **kwargs
+            )
 
 
 if __name__ == '__main__':
@@ -838,13 +843,9 @@ if __name__ == '__main__':
     tensor_args = {'device': 'cpu', 'dtype': torch.float32}
 
     # ---------------------------- Environment, Robot, PlanningTask ---------------------------------
-    env = EnvSpheres3D(
-        tensor_args=tensor_args
-    )
+    # env = EnvSpheres3D(tensor_args=tensor_args)
 
-    # env = EnvTableShelf(
-    #     tensor_args=tensor_args
-    # )
+    env = EnvTableShelf(tensor_args=tensor_args)
 
     robot = RobotPanda(tensor_args=tensor_args)
 
@@ -856,20 +857,27 @@ if __name__ == '__main__':
     )
 
     # -------------------------------- Physics --------------------------------
-    ee_pose_goal = torch.tensor([0.5, 0.7, 0.5, 0, 0, 0, 1], **tensor_args)
+    ee_pose_goal = torch.tensor([0.1, 0.7, 0.5, 0, 0, 0, 1], **tensor_args)
     num_envs = 5
     motion_planning_isaac_env = MotionPlanningIsaacGymEnv(
         env, robot, task,
         controller_type='position',
         num_envs=num_envs,
         all_robots_in_one_env=True,
+
+        show_viewer=True,
+        sync_viewer_with_real_time=False,
+        viewer_time_between_steps=0.01,
+
+        render_camera_global=True,
+
         color_robots=False,
-        collor_robots_in_collision=True,
+        collor_robots_in_collision=False,
         draw_goal_configuration=False,
         draw_collision_spheres=False,  # very slow implementation
         draw_contact_forces=False,
         draw_end_effector_path=False,
-        draw_end_effector_frame=True,
+        draw_end_effector_frame=False,
         draw_ee_pose_goal=ee_pose_goal,
     )
 
@@ -878,12 +886,12 @@ if __name__ == '__main__':
                               (motion_planning_isaac_env.robot_dof_upper_limits[:7] -
                                motion_planning_isaac_env.robot_dof_lower_limits[:7]) +
                               motion_planning_isaac_env.robot_dof_lower_limits[:7])
-    trajectories_joint_pos = trajectories_joint_pos.repeat(10000, num_envs, 1)
+    trajectories_joint_pos = trajectories_joint_pos.repeat(100, num_envs, 1)
+    trajectories_joint_pos_final = torch.randn_like(trajectories_joint_pos)
+    trajectories_joint_pos = trajectories_joint_pos_final - trajectories_joint_pos
     motion_planning_controller.run_trajectories(
         trajectories_joint_pos,
         start_states_joint_pos=trajectories_joint_pos[0], goal_state_joint_pos=trajectories_joint_pos[-1][0],
-        visualize=True,
-        render_viewer_camera=True,
-        make_video=True,
-        video_duration=5.,
+        n_pre_steps=100, n_post_steps=100,
+        make_video=True, video_duration=5.,
     )
