@@ -146,7 +146,7 @@ class CameraRecorder:
             print("No images to a make video")
             return
 
-        # remove first and last steps from video
+        # remove first and last steps from the video
         del self.step_img[:n_pre_steps]
         del self.step_img[-n_post_steps:]
 
@@ -480,8 +480,8 @@ class MotionPlanningIsaacGymEnv:
             cam_pos = gymapi.Vec3(1e-3, -1e-3, 2)
             cam_target = gymapi.Vec3(0, -1e-3, -1)
         else:
-            cam_pos = gymapi.Vec3(1.9, -1.25, 1.25)
-            cam_target = gymapi.Vec3(0.1, 0.35, 0.1)
+            cam_pos = gymapi.Vec3(1.3, -1.2, 0.9)
+            cam_target = gymapi.Vec3(0.1, 0.35, 0.3)
 
         if len(self.envs) == 1:
             self.middle_env = self.envs[0]
@@ -819,13 +819,15 @@ class MotionPlanningController:
         ###############################################################################################################
         # STATISTICS
         # Get number of trajectories that were in collision
+        statistics = dict()
         envs_with_robot_in_contact_unique = []
         for envs_idxs in envs_with_robot_in_contact_l:
             for idx in envs_idxs:
                 if idx not in envs_with_robot_in_contact_unique:
                     envs_with_robot_in_contact_unique.append(idx)
-
-        print(f'Trajectories free in Physics simulator: {B-len(envs_with_robot_in_contact_unique)}/{B}')
+        statistics['trajectories_collision'] = len(envs_with_robot_in_contact_unique)
+        statistics['trajectories_free'] = B - len(envs_with_robot_in_contact_unique)
+        statistics['trajectories_free_fraction'] = (B - len(envs_with_robot_in_contact_unique)) / B
 
         ###############################################################################################################
         # make a video
@@ -833,6 +835,8 @@ class MotionPlanningController:
             self.mp_isaac_env.camera_global_recorder.make_video(
                 n_pre_steps=n_pre_steps, n_post_steps=n_post_steps, **kwargs
             )
+
+        return statistics
 
 
 if __name__ == '__main__':
@@ -894,4 +898,5 @@ if __name__ == '__main__':
         start_states_joint_pos=trajectories_joint_pos[0], goal_state_joint_pos=trajectories_joint_pos[-1][0],
         n_pre_steps=100, n_post_steps=100,
         make_video=True, video_duration=5.,
+        make_gif=False
     )
