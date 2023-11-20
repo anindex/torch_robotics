@@ -480,8 +480,8 @@ class MotionPlanningIsaacGymEnv:
             cam_pos = gymapi.Vec3(1e-3, -1e-3, 2)
             cam_target = gymapi.Vec3(0, -1e-3, -1)
         else:
-            cam_pos = gymapi.Vec3(1.3, -1.2, 0.9)
-            cam_target = gymapi.Vec3(0.1, 0.35, 0.3)
+            cam_pos = gymapi.Vec3(1.8, -0.2, 0.9)
+            cam_target = gymapi.Vec3(0.1, 0.1, 0.3)
 
         if len(self.envs) == 1:
             self.middle_env = self.envs[0]
