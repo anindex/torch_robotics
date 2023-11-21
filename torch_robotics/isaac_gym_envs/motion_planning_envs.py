@@ -22,6 +22,7 @@ from torch_robotics.environments.env_spheres_3d import EnvSpheres3D
 from torch_robotics.environments.primitives import MultiSphereField, MultiBoxField
 from torch_robotics.robots.robot_panda import RobotPanda
 from torch_robotics.tasks.tasks import PlanningTask
+from torch_robotics.torch_kinematics_tree.geometrics.quaternion import rotation_matrix_to_q
 from torch_robotics.torch_kinematics_tree.models.robots import modidy_robot_urdf_grasped_object
 from torch_robotics.torch_planning_objectives.fields.distance_fields import interpolate_points_v1
 from torch_robotics.torch_utils.seed import fix_random_seed
@@ -52,7 +53,7 @@ def create_isaac_assets_from_primitive_shapes(sim, gym, obj_list):
     for obj in obj_list or []:
         # get position and orientation
         obj_pos = to_numpy(obj.pos)
-        obj_ori = to_numpy(obj.ori)
+        obj_ori = to_numpy(rotation_matrix_to_q(obj.ori))
 
         for obj_field in obj.fields:
             if isinstance(obj_field, MultiSphereField):

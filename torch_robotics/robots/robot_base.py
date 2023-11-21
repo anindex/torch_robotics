@@ -32,16 +32,16 @@ def modidy_robot_urdf_collision_model(
     link_collision_margins = []
     for link_name, spheres_l in coll_params.items():
         for i, sphere in enumerate(spheres_l):
+            link_collision = f'{link_name}_{i}'
             joint = Joint(
                 name=f'joint_{link_name}_sphere_{i}',
                 parent=f'{link_name}',
-                child=f'{link_name}_{i}',
+                child=link_collision,
                 joint_type='fixed',
                 origin=Pose(xyz=to_numpy(sphere[:3]))
             )
             robot_urdf.add_joint(joint)
 
-            link_collision = f'{link_name}_{i}'
             link = Link(
                 name=link_collision,
                 # visual=Visual(Sphere(sphere[-1])),  # add collision sphere to model
@@ -144,7 +144,7 @@ class RobotBase(ABC):
         # If the task space is 2D (point mass or plannar robot), then the z coordinate is set to 0
         self.task_space_dim = task_space_dim
 
-        # The raw version of the urdf file is used for collision checking with ompl
+        # The raw version of the original urdf file is used for collision checking with ompl
         self.urdf_robot_file_raw = copy(urdf_robot_file)
 
         ################################################################################################

@@ -77,7 +77,7 @@
    </joint>
    <link name="link_ee">
       <visual>
-         <origin xyz="0.01 0.0 0.0" rpy="0.0 1.57079632679 0.0"/>
+         <origin xyz="0.01 0.0 0.0" rpy="0.0 0.0 0.0"/>
          <geometry>
             <sphere radius="0.02"/>
          </geometry>
@@ -86,7 +86,7 @@
          </material>
       </visual>
       <collision>
-         <origin xyz="0.01 0.0 0.0" rpy="0.0 1.57079632679 0.0"/>
+         <origin xyz="0.01 0.0 0.0" rpy="0.0 0.0 0.0"/>
          <geometry>
             <sphere radius="0.01"/>
          </geometry>
