@@ -22,42 +22,9 @@ class DifferentiableKUKAiiwa(DifferentiableTree):
         super().__init__(self.model_path, self.name, link_list=link_list, device=device)
 
 
-def modidy_robot_urdf_grasped_object(robot_file, grasped_object, parent_link='panda_hand'):
-    robot_urdf = URDF.from_xml_file(robot_file)
-    joint = Joint(
-        name='grasped_object_fixed_joint',
-        parent=parent_link,
-        child='grasped_object',
-        joint_type='fixed',
-        origin=Pose(xyz=to_numpy(grasped_object.pos.squeeze()),
-                    rpy=to_numpy(q_to_euler(grasped_object.ori).squeeze())
-                    )
-    )
-    robot_urdf.add_joint(joint)
-
-    geometry_grasped_object = grasped_object.geometry_urdf
-    link = Link(
-        name='grasped_object',
-        visual=Visual(geometry_grasped_object),
-        # inertial=None,
-        collision=Collision(geometry_grasped_object),
-        origin=Pose(xyz=[0., 0., 0.], rpy=[0., 0., 0.])
-    )
-    robot_urdf.add_link(link)
-
-    # replace the robots file
-    robot_file = Path(str(robot_file).replace('.urdf', '_grasped_object.urdf'))
-    xmlstr = minidom.parseString(ET.tostring(robot_urdf.to_xml())).toprettyxml(indent="   ")
-    with open(str(robot_file), "w") as f:
-        f.write(xmlstr)
-
-    return robot_file
-
-
-def modidy_franka_panda_urdf_collision_model(robot_file):
-    collision_spheres = 'panda/panda_sphere_config.yaml'
-    # load collision file:
-    coll_yml = (get_configs_path() / collision_spheres).as_posix()
+def modidy_robot_urdf_collision_model(robot_file, collision_spheres_file_path='panda/panda_sphere_config.yaml'):
+    # load collision spheres file
+    coll_yml = (get_configs_path() / collision_spheres_file_path).as_posix()
     with open(coll_yml) as file:
         coll_params = yaml.load(file, Loader=yaml.FullLoader)
 
@@ -95,23 +62,83 @@ def modidy_franka_panda_urdf_collision_model(robot_file):
     return robot_file, link_collision_names, link_collision_margins
 
 
+def modidy_robot_urdf_grasped_object(robot_file, grasped_object, parent_link):
+    robot_urdf = URDF.from_xml_file(robot_file)
+
+    # Add the grasped object visual and collision
+    link_grasped_object = f'link_{grasped_object.name}'
+    joint = Joint(
+        name=f'joint_fixed_{grasped_object.name}',
+        parent=parent_link,
+        child=link_grasped_object,
+        joint_type='fixed',
+        origin=Pose(xyz=to_numpy(grasped_object.pos.squeeze()),
+                    rpy=to_numpy(q_to_euler(grasped_object.ori).squeeze())
+                    )
+    )
+    robot_urdf.add_joint(joint)
+
+    geometry_grasped_object = grasped_object.geometry_urdf
+    link = Link(
+        name=link_grasped_object,
+        visual=Visual(geometry_grasped_object),
+        # inertial=None,
+        collision=Collision(geometry_grasped_object),
+        origin=Pose(xyz=[0., 0., 0.], rpy=[0., 0., 0.])
+    )
+    robot_urdf.add_link(link)
+
+    # Create fixed joints and links for the grasped object collision points
+    link_collision_names = []
+    for i, point_collision in enumerate(grasped_object.points_for_collision):
+        link_collision = f'link_{grasped_object.name}_point_{i}'
+        joint = Joint(
+            name=f'joint_fixed_{grasped_object.name}_point_{i}',
+            parent=f'{grasped_object.reference_frame}',
+            child=link_collision,
+            joint_type='fixed',
+            origin=Pose(xyz=to_numpy(point_collision))
+        )
+        robot_urdf.add_joint(joint)
+
+        link = Link(
+            name=link_collision,
+            origin=Pose(xyz=[0., 0., 0.], rpy=[0., 0., 0.])
+        )
+        robot_urdf.add_link(link)
+
+        link_collision_names.append(link_collision)
+
+    # replace the robots file
+    robot_file = Path(str(robot_file).replace('.urdf', '_grasped_object.urdf'))
+    xmlstr = minidom.parseString(ET.tostring(robot_urdf.to_xml())).toprettyxml(indent="   ")
+    with open(str(robot_file), "w") as f:
+        f.write(xmlstr)
+
+    return robot_file, link_collision_names
+
+
 class DifferentiableFrankaPanda(DifferentiableTree):
-    def __init__(self, link_list: Optional[str] = None, gripper=False, device='cpu', grasped_object=None,
-                 use_collision_spheres=False):
+    def __init__(self, link_list: Optional[str] = None, gripper=False, device='cpu', grasped_object=None):
         if gripper:
             robot_file = get_robot_path() / 'franka_description' / 'robots' / 'panda_arm_hand.urdf'
         else:
             robot_file = get_robot_path() / 'franka_description' / 'robots' / 'panda_arm_hand_no_gripper.urdf'
 
+        self.link_collision_names = []
+        self.link_collision_margins = []
         # Modify the urdf to append links of the collision model
-        if use_collision_spheres:
-            robot_file, link_collision_names, link_collision_margins = modidy_franka_panda_urdf_collision_model(robot_file)
-            self.link_collision_names = link_collision_names
-            self.link_collision_margins = link_collision_margins
+        robot_file, link_collision_names, link_collision_margins = modidy_robot_urdf_collision_model(
+            robot_file, collision_spheres_file_path='panda/panda_sphere_config.yaml')
+        self.link_collision_names.extend(link_collision_names)
+        self.link_collision_margins.extend(link_collision_margins)
 
-        # Modify the urdf to append the link of the grasped object
+        # Modify the urdf to append the link and collision points of the grasped object
         if grasped_object is not None:
-            robot_file = modidy_robot_urdf_grasped_object(robot_file, grasped_object)
+            robot_file, link_collision_names = modidy_robot_urdf_grasped_object(
+                robot_file, grasped_object, 'panda_hand')
+            self.link_collision_names.extend(link_collision_names)
+            self.link_collision_margins.extend([grasped_object.object_collision_margin] * len(link_collision_names))
 
         self.model_path = robot_file.as_posix()
         self.name = "differentiable_franka_panda"

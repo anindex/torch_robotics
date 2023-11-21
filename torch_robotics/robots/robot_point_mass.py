@@ -1,73 +1,39 @@
 import os.path
 
-import einops
+import matplotlib.collections as mcoll
 import matplotlib.pyplot as plt
 import numpy as np
-import torch
 from mpl_toolkits.mplot3d.art3d import Line3DCollection
 
 from torch_robotics.environments.primitives import plot_sphere
 from torch_robotics.robots.robot_base import RobotBase
-from torch_robotics.torch_kinematics_tree.geometrics.utils import link_pos_from_link_tensor
-from torch_robotics.torch_kinematics_tree.utils.files import get_robot_path
-from torch_robotics.torch_utils.torch_timer import TimerCUDA
-from torch_robotics.torch_utils.torch_utils import to_numpy, to_torch
-
-import matplotlib.collections as mcoll
+from torch_robotics.torch_kinematics_tree.utils.files import get_robot_path, get_configs_path
+from torch_robotics.torch_utils.torch_utils import to_numpy
 
 
 class RobotPointMass2D(RobotBase):
 
+    link_name_ee = 'robot'  # must be in the urdf file
+
     def __init__(self,
-                 q_limits=torch.tensor([[-1, -1], [1, 1]]),  # configuration space limits
-                 robot_urdf_path=os.path.join(get_robot_path(), "point_mass_robot_2d.urdf"),
+                 urdf_robot_file=os.path.join(get_robot_path(), "point_mass_robot_2d.urdf"),
+                 collision_spheres_file_path=os.path.join(
+                     get_configs_path(), 'point_mass_robot_2d/point_mass_robot_2d_sphere_config.yaml'),
+                 task_space_dim=2,
                  **kwargs):
+
+        ##########################################################################################
         super().__init__(
-            q_limits=to_torch(q_limits, **kwargs['tensor_args']),
-            link_names_for_object_collision_checking=['robot'],
-            link_margins_for_object_collision_checking=[0.02],
-            link_idxs_for_object_collision_checking=[0],
-            num_interpolated_points_for_object_collision_checking=1,
-            use_collision_spheres=False,
-            robot_urdf_path=robot_urdf_path,
-            robot_urdf_path_ompl=robot_urdf_path,
-            link_names_torchkin=['robot'],
-            link_name_ee='robot',
+            urdf_robot_file=urdf_robot_file,
+            collision_spheres_file_path=collision_spheres_file_path,
+            link_name_ee=self.link_name_ee,
+            task_space_dim=task_space_dim,
             **kwargs
         )
 
-    # def fk_map_collision_impl(self, q, **kwargs):
-    #     # There is no forward kinematics. Assume it's the identity.
-    #     # Add tasks space dimension
-    #     return q.unsqueeze(-2)
-
-    def fk_map_collision_impl(self, q, **kwargs):
-        q_original_shape = q.shape
-        if len(q_original_shape) == 1:
-            q = q.unsqueeze(0)  # add batch dimension
-        elif len(q_original_shape) == 3:
-            q = einops.rearrange(q, 'b n d -> (b n) d')
-        else:
-            raise NotImplementedError
-
-        link_poses = self.robot_torchkin_fk(q)
-        links_poses_th = torch.cat(link_poses)
-        link_positions_th = link_pos_from_link_tensor(links_poses_th)
-        task_space_positions = link_positions_th[..., :self.q_dim]  # q_dim because the point mass robot can be in 2D or 3D
-
-        if len(q_original_shape) == 1:
-            raise NotImplementedError
-        elif len(q_original_shape) == 3:
-            task_space_positions = einops.rearrange(task_space_positions, '(b n) d -> b n d', b=q_original_shape[0])
-        else:
-            raise NotImplementedError
-
-        # Add tasks space dimension
-        return task_space_positions.unsqueeze(-2)
-
     def render(self, ax, q=None, color='blue', cmap='Blues', margin_multiplier=1., **kwargs):
         if q is not None:
-            margin = self.link_margins_for_object_collision_checking[0] * margin_multiplier
+            margin = self.link_object_collision_margins[0] * margin_multiplier
             q = to_numpy(q)
             if q.ndim == 1:
                 if self.q_dim == 2:
@@ -148,8 +114,10 @@ class RobotPointMass3D(RobotPointMass2D):
 
     def __init__(self, **kwargs):
         super().__init__(
-            q_limits=torch.tensor([[-1, -1, -1], [1, 1, 1]], **kwargs['tensor_args']),  # configuration space limits
-            robot_urdf_path=os.path.join(get_robot_path(), "point_mass_robot_3d.urdf"),
+            urdf_robot_file=os.path.join(get_robot_path(), "point_mass_robot_3d.urdf"),
+            collision_spheres_file_path=os.path.join(
+                get_configs_path(), 'point_mass_robot_3d/point_mass_robot_3d_sphere_config.yaml'),
+            task_space_dim=3,
             **kwargs
         )
 

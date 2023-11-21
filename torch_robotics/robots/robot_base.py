@@ -1,46 +1,134 @@
 import abc
-import itertools
 from abc import ABC
-from math import ceil
+from copy import copy
+from pathlib import Path
+from xml.dom import minidom
+from xml.etree import ElementTree as ET
 
 import einops
 import torch
+import yaml
+from urdf_parser_py.urdf import URDF, Joint, Link, Visual, Collision, Pose, Sphere
 
-from torch_robotics.torch_kinematics_tree.geometrics.quaternion import q_convert_to_xyzw
-from torch_robotics.torch_kinematics_tree.geometrics.utils import link_pos_from_link_tensor, link_rot_from_link_tensor, \
-    link_quat_from_link_tensor
-from torch_robotics.torch_planning_objectives.fields.distance_fields import CollisionSelfField
+import torchkin
+from torch_robotics.torch_kinematics_tree.geometrics.quaternion import q_convert_to_xyzw, q_to_euler
+from torch_robotics.torch_kinematics_tree.geometrics.utils import (
+    link_pos_from_link_tensor, link_rot_from_link_tensor, link_quat_from_link_tensor)
 from torch_robotics.torch_utils.torch_utils import to_numpy, to_torch
 from torch_robotics.trajectory.utils import finite_difference_vector
 
-import torchkin as kin
+
+def modidy_robot_urdf_collision_model(
+        urdf_robot_file,
+        collision_spheres_file_path):
+    # load collision spheres file
+    coll_yml = collision_spheres_file_path
+    with open(coll_yml) as file:
+        coll_params = yaml.load(file, Loader=yaml.FullLoader)
+
+    robot_urdf = URDF.from_xml_file(urdf_robot_file)
+
+    link_collision_names = []
+    link_collision_margins = []
+    for link_name, spheres_l in coll_params.items():
+        for i, sphere in enumerate(spheres_l):
+            joint = Joint(
+                name=f'joint_{link_name}_sphere_{i}',
+                parent=f'{link_name}',
+                child=f'{link_name}_{i}',
+                joint_type='fixed',
+                origin=Pose(xyz=to_numpy(sphere[:3]))
+            )
+            robot_urdf.add_joint(joint)
+
+            link_collision = f'{link_name}_{i}'
+            link = Link(
+                name=link_collision,
+                # visual=Visual(Sphere(sphere[-1])),  # add collision sphere to model
+                origin=Pose(xyz=[0., 0., 0.], rpy=[0., 0., 0.])
+            )
+            robot_urdf.add_link(link)
+
+            link_collision_names.append(link_collision)
+            link_collision_margins.append(sphere[-1])
+
+    # replace the robots file
+    robot_file = Path(str(urdf_robot_file).replace('.urdf', '_collision_model.urdf'))
+    xmlstr = minidom.parseString(ET.tostring(robot_urdf.to_xml())).toprettyxml(indent="   ")
+    with open(str(robot_file), "w") as f:
+        f.write(xmlstr)
+
+    return robot_file, link_collision_names, link_collision_margins
+
+
+def modidy_robot_urdf_grasped_object(urdf_robot_file, grasped_object, parent_link):
+    robot_urdf = URDF.from_xml_file(urdf_robot_file)
+
+    # Add the grasped object visual and collision
+    link_grasped_object = f'link_{grasped_object.name}'
+    joint = Joint(
+        name=f'joint_fixed_{grasped_object.name}',
+        parent=parent_link,
+        child=link_grasped_object,
+        joint_type='fixed',
+        origin=Pose(xyz=to_numpy(grasped_object.pos.squeeze()),
+                    rpy=to_numpy(q_to_euler(grasped_object.ori).squeeze())
+                    )
+    )
+    robot_urdf.add_joint(joint)
+
+    geometry_grasped_object = grasped_object.geometry_urdf
+    link = Link(
+        name=link_grasped_object,
+        visual=Visual(geometry_grasped_object),
+        # inertial=None,
+        collision=Collision(geometry_grasped_object),
+        origin=Pose(xyz=[0., 0., 0.], rpy=[0., 0., 0.])
+    )
+    robot_urdf.add_link(link)
+
+    # Create fixed joints and links for the grasped object collision points
+    link_collision_names = []
+    for i, point_collision in enumerate(grasped_object.points_for_collision):
+        link_collision = f'link_{grasped_object.name}_point_{i}'
+        joint = Joint(
+            name=f'joint_fixed_{grasped_object.name}_point_{i}',
+            parent=f'{grasped_object.reference_frame}',
+            child=link_collision,
+            joint_type='fixed',
+            origin=Pose(xyz=to_numpy(point_collision))
+        )
+        robot_urdf.add_joint(joint)
+
+        link = Link(
+            name=link_collision,
+            origin=Pose(xyz=[0., 0., 0.], rpy=[0., 0., 0.])
+        )
+        robot_urdf.add_link(link)
+
+        link_collision_names.append(link_collision)
+
+    # replace the robots file
+    robot_file = Path(str(urdf_robot_file).replace('.urdf', '_grasped_object.urdf'))
+    xmlstr = minidom.parseString(ET.tostring(robot_urdf.to_xml())).toprettyxml(indent="   ")
+    with open(str(robot_file), "w") as f:
+        f.write(xmlstr)
+
+    return robot_file, link_collision_names
 
 
 class RobotBase(ABC):
+    link_name_ee = None
 
     def __init__(
             self,
-            q_limits=None,
-            grasped_object=None,
-            margin_for_grasped_object_collision_checking=0.001,
-            link_names_for_object_collision_checking=None,
-            link_margins_for_object_collision_checking=None,
-            link_idxs_for_object_collision_checking=None,
-            link_names_for_self_collision_checking=None,
-            link_names_pairs_for_self_collision_checking=None,
-            link_idxs_for_self_collision_checking=None,
-            self_collision_margin_robot=0.001,
-            link_names_for_self_collision_checking_with_grasped_object=None,
-            self_collision_margin_grasped_object=0.05,
-            num_interpolated_points_for_self_collision_checking=50,
-            num_interpolated_points_for_object_collision_checking=50,
-            dt=1.0,  # time interval to compute velocities and accelerations from positions via finite difference
-            use_collision_spheres=False,
-            robot_urdf_path=None,
-            robot_urdf_path_ompl=None,
-            link_names_torchkin=None,
+            urdf_robot_file,
+            collision_spheres_file_path,
             link_name_ee=None,
             gripper_q_dim=0,
+            grasped_object=None,
+            dt=1.0,
+            task_space_dim=3,
             tensor_args=None,
             **kwargs
     ):
@@ -48,143 +136,89 @@ class RobotBase(ABC):
         self.tensor_args = tensor_args
 
         self.link_name_ee = link_name_ee
+        self.gripper_q_dim = gripper_q_dim
+        self.grasped_object = grasped_object
 
-        self.dt = dt
+        self.dt = dt  # time interval to compute velocities and accelerations from positions via finite difference
 
-        self.robot_urdf_path_ompl = robot_urdf_path_ompl
+        # If the task space is 2D (point mass or plannar robot), then the z coordinate is set to 0
+        self.task_space_dim = task_space_dim
 
-        ################################################################################################
-        # torchkin robot
-        self.robot_urdf_path = robot_urdf_path
-
-        self.robot_torchkin = kin.Robot.from_urdf_file(robot_urdf_path, **tensor_args)
-        # Print robot name, number of links and degrees of freedom
-        print(f"{self.robot_torchkin.name} has {len(self.robot_torchkin.get_links())} links and {self.robot_torchkin.dof} degrees of freedom.\n")
-
-        # Print joint id and name
-        # for id, name in enumerate(self.robot_torchkin.joint_map):
-        #     # A joint is not fixed if and only if id < robot.dof
-        #     print(f"joint {id}: {name} is {'not fixed' if id < self.robot_torchkin.dof else 'fixed'}")
-        # print("\n")
-
-        # Print link id and name
-        # for link in self.robot_torchkin.get_links():
-        #     print(f"link {link.id}: {link.name}")
-
-        self.link_names_torchkin = link_names_torchkin
-        fk, jfk_b, jfk_s = kin.get_forward_kinematics_fns(robot=self.robot_torchkin, link_names=self.link_names_torchkin)
-        self.robot_torchkin_fk = fk
-        self.robot_torchkin_jfk_b = jfk_b
-        self.robot_torchkin_jfk_s = jfk_s
-
-        self.torchkin_link_ee_idx = link_names_torchkin.index(link_name_ee)
+        # The raw version of the urdf file is used for collision checking with ompl
+        self.urdf_robot_file_raw = copy(urdf_robot_file)
 
         ################################################################################################
-        # Configuration space
-        assert q_limits is not None, "q_limits cannot be None"
-        self.q_limits = q_limits
-        self.q_min = q_limits[0]
-        self.q_max = q_limits[1]
+        # Robot collision model (links and margins) for object collision avoidance
+        self.link_object_collision_names = []
+        self.link_object_collision_margins = []
+        # Modify the urdf to append links of the collision model
+        urdf_robot_file, link_collision_names, link_collision_margins = modidy_robot_urdf_collision_model(
+            urdf_robot_file, collision_spheres_file_path)
+        self.link_object_collision_names.extend(link_collision_names)
+        self.link_object_collision_margins.extend(link_collision_margins)
+
+        # Modify the urdf to append the link and collision points of the grasped object
+        if grasped_object is not None:
+            urdf_robot_file, link_collision_names = modidy_robot_urdf_grasped_object(
+                urdf_robot_file, grasped_object, 'panda_hand')
+            self.link_object_collision_names.extend(link_collision_names)
+            self.link_object_collision_margins.extend([grasped_object.object_collision_margin] * len(link_collision_names))
+
+        assert len(self.link_object_collision_names) == len(self.link_object_collision_margins)
+
+        self.link_object_collision_margins = to_torch(self.link_object_collision_margins, **tensor_args)
+
+        self.urdf_robot_file = urdf_robot_file.as_posix()
+
+        ################################################################################################
+        # Configuration space limits
+        robot_urdf = URDF.from_xml_file(urdf_robot_file)
+        q_limits_lower = []
+        q_limits_upper = []
+        for joint in robot_urdf.joints:
+            if joint.joint_type != 'fixed':
+                q_limits_lower.append(joint.limit.lower)
+                q_limits_upper.append(joint.limit.upper)
+
+        self.q_dim = len(q_limits_lower)
+        self.gripper_q_dim = gripper_q_dim
+        self.arm_q_dim = self.q_dim - self.gripper_q_dim
+        self.q_min = to_torch(q_limits_lower, **tensor_args)
+        self.q_max = to_torch(q_limits_upper, **tensor_args)
         self.q_min_np = to_numpy(self.q_min)
         self.q_max_np = to_numpy(self.q_max)
         self.q_distribution = torch.distributions.uniform.Uniform(self.q_min, self.q_max)
-        self.q_dim = len(self.q_min)
-        self.gripper_q_dim = gripper_q_dim
-        self.arm_q_dim = self.q_dim - self.gripper_q_dim
+
+        ################################################################################################
+        # Torchkin robot forward kinematics functions
+        self.robot_torchkin = torchkin.Robot.from_urdf_file(self.urdf_robot_file, **tensor_args)
+        print('-----------------------------------')
+        print(f'Torchkin robot: {self.robot_torchkin.name}')
+        print(f'Num links: {len(self.robot_torchkin.get_links())}')
+        print(f'DOF: {self.robot_torchkin.dof}\n')
+        print('-----------------------------------')
+
+        # kinematic functions for object collision
+        fk_object_collision, jfk_b_object_collision, jfk_s_object_collision = torchkin.get_forward_kinematics_fns(
+            robot=self.robot_torchkin, link_names=self.link_object_collision_names)
+        self.fk_object_collision = fk_object_collision
+        self.jfk_b_object_collision = jfk_b_object_collision
+        self.jfk_s_object_collision = jfk_s_object_collision
+
+        # kinematic functions for end-effector pose
+        fk_ee, jfk_b_ee, jfk_s_ee = torchkin.get_forward_kinematics_fns(
+            robot=self.robot_torchkin, link_names=[self.link_name_ee])
+        self.fk_ee = fk_ee
+        self.jfk_b_ee = jfk_b_ee
+        self.jfk_s_ee = jfk_s_ee
+
+        ################################################################################################
+        # Self collision field
+        self.df_collision_self = None
 
         ################################################################################################
         # Grasped object
         self.grasped_object = grasped_object
-        self.margin_for_grasped_object_collision_checking = margin_for_grasped_object_collision_checking
-
-        ################################################################################################
-        # Objects collision field
-        self.use_collision_spheres = use_collision_spheres
-
-        assert num_interpolated_points_for_object_collision_checking >= len(link_names_for_object_collision_checking)
-        if num_interpolated_points_for_object_collision_checking % len(link_names_for_object_collision_checking) != 0:
-            self.points_per_link_object_collision_checking = ceil(num_interpolated_points_for_object_collision_checking / len(link_names_for_object_collision_checking))
-            num_interpolated_points_for_object_collision_checking = self.points_per_link_object_collision_checking * len(link_names_for_object_collision_checking)
-        else:
-            self.points_per_link_object_collision_checking = int(num_interpolated_points_for_object_collision_checking / len(link_names_for_object_collision_checking))
-        self.self_collision_margin_robot = self_collision_margin_robot
-        self.num_interpolated_points_for_object_collision_checking = num_interpolated_points_for_object_collision_checking
-        self.link_names_for_object_collision_checking = link_names_for_object_collision_checking
-        self.n_links_for_object_collision_checking = len(link_names_for_object_collision_checking)
-        self.link_margins_for_object_collision_checking = link_margins_for_object_collision_checking
-        self.link_margins_for_object_collision_checking_robot_tensor = to_torch(
-            link_margins_for_object_collision_checking, **self.tensor_args).repeat_interleave(
-            int(num_interpolated_points_for_object_collision_checking / len(link_margins_for_object_collision_checking))
-        )
-
-        self.link_margins_for_object_collision_checking_tensor = self.link_margins_for_object_collision_checking_robot_tensor
-        # append grasped object margins
-        if self.grasped_object is not None:
-            self.link_margins_for_object_collision_checking_tensor = torch.cat(
-                (self.link_margins_for_object_collision_checking_tensor,
-                 torch.ones(self.grasped_object.n_base_points_for_collision, **self.tensor_args) * self.margin_for_grasped_object_collision_checking)
-            )
-
-        self.link_idxs_for_object_collision_checking = link_idxs_for_object_collision_checking
-
-        ################################################################################################
-        # Self collision field
-        if link_names_for_self_collision_checking is None:
-            self.df_collision_self = None
-        else:
-            assert num_interpolated_points_for_self_collision_checking >= len(link_names_for_self_collision_checking)
-            if num_interpolated_points_for_self_collision_checking % len(link_names_for_self_collision_checking) != 0:
-                self.points_per_link_self_collision_checking = ceil(num_interpolated_points_for_self_collision_checking / len(link_names_for_self_collision_checking))
-                num_interpolated_points_for_self_collision_checking = self.points_per_link_self_collision_checking * len(link_names_for_self_collision_checking)
-            else:
-                self.points_per_link_self_collision_checking = int(num_interpolated_points_for_self_collision_checking / len(link_names_for_self_collision_checking))
-
-            self.link_names_for_self_collision_checking = link_names_for_self_collision_checking
-            self.link_names_pairs_for_self_collision_checking = link_names_pairs_for_self_collision_checking
-
-            self.link_idxs_for_self_collision_checking = link_idxs_for_self_collision_checking
-
-            self.link_names_for_self_collision_checking_with_grasped_object = link_names_for_self_collision_checking_with_grasped_object
-
-            self.self_collision_margin_grasped_object = self_collision_margin_grasped_object
-
-            # build indices to retrieve distances from self collision distance matrix
-            # including the grasped object
-            idxs_links_distance_matrix = []
-            p = self.points_per_link_self_collision_checking
-            total_self_distances_robot = 0
-            for i, link_1 in enumerate(self.link_names_for_self_collision_checking):
-                if link_1 in self.link_names_pairs_for_self_collision_checking:
-                    for link_2 in self.link_names_pairs_for_self_collision_checking[link_1]:
-                        j = self.link_names_for_self_collision_checking.index(link_2)
-                        idxs = [(i*p + m, j*p + n) for m, n in list(itertools.product(range(p), range(p)))]
-                        idxs_links_distance_matrix.extend(idxs)
-                        total_self_distances_robot += len(idxs)
-
-            self_collision_margin_vector = [self.self_collision_margin_robot] * total_self_distances_robot
-
-            if self.grasped_object is not None:
-                total_self_distances_grasped_object = 0
-                self_collision_robot_last_row_idx = len(self.link_names_for_self_collision_checking) * p
-                n_grasped_points = self.grasped_object.n_base_points_for_collision
-                for link_1 in self.link_names_for_self_collision_checking_with_grasped_object:
-                    j = self.link_names_for_self_collision_checking.index(link_1)
-                    idxs = [(self_collision_robot_last_row_idx + m, j * p + n) for m, n in list(itertools.product(range(n_grasped_points), range(p)))]
-                    idxs_links_distance_matrix.extend(idxs)
-                    total_self_distances_grasped_object += len(idxs)
-
-                self_collision_margin_vector.extend([self.self_collision_margin_grasped_object] * total_self_distances_grasped_object)
-
-            self_collision_margin_vector = to_torch(self_collision_margin_vector, **self.tensor_args)
-
-            self.df_collision_self = CollisionSelfField(
-                self,
-                link_idxs_for_collision_checking=self.link_idxs_for_self_collision_checking,
-                idxs_links_distance_matrix=idxs_links_distance_matrix,
-                num_interpolated_points=num_interpolated_points_for_self_collision_checking,
-                cutoff_margin=self_collision_margin_vector,
-                tensor_args=self.tensor_args
-            )
 
     def random_q(self, n_samples=10):
         # Random position in configuration space
@@ -214,19 +248,6 @@ class RobotBase(ABC):
     def distance_q(self, q1, q2):
         return torch.linalg.norm(q1 - q2, dim=-1)
 
-    def fk_map_collision(self, q, **kwargs):
-        q_original_shape = q.shape
-        if len(q_original_shape) == 1:
-            q = q.unsqueeze(0)  # add batch dimension
-        task_space_positions = self.fk_map_collision_impl(q, **kwargs)
-        return task_space_positions
-
-    @abc.abstractmethod
-    def fk_map_collision_impl(self, q, **kwargs):
-        # q: (..., q_dim)
-        # return: (..., links_collision_positions, 3)
-        raise NotImplementedError
-
     @abc.abstractmethod
     def render(self, ax, **kwargs):
         raise NotImplementedError
@@ -236,19 +257,18 @@ class RobotBase(ABC):
         raise NotImplementedError
 
     def get_EE_pose(self, q, flatten_pos_quat=False, quat_xyzw=False):
-        # select only the first dimensions q_dim
-        # this is useful when the input q is of shape (..., q_dim + gripper_q_dim)
-        q_ = q[..., :self.q_dim]
+        _q = q
+        if _q.ndim == 1:
+            _q = _q.unsqueeze(0)
         if flatten_pos_quat:
-            orientation_quat_wxyz = self.get_EE_orientation(q_, rotation_matrix=False)
+            orientation_quat_wxyz = self.get_EE_orientation(_q, rotation_matrix=False)
             orientation_quat = orientation_quat_wxyz
             if quat_xyzw:
                 orientation_quat = q_convert_to_xyzw(orientation_quat_wxyz)
-            return torch.cat((self.get_EE_position(q_), orientation_quat), dim=-1)
+            return torch.cat((self.get_EE_position(_q), orientation_quat), dim=-1)
         else:
-            pose = self.robot_torchkin_fk(q_)[self.torchkin_link_ee_idx]
+            pose = self.fk_ee(_q)[0]
             return pose
-        # return self.diff_panda.compute_forward_kinematics_all_links(q, link_list=[self.link_name_ee])
 
     def get_EE_position(self, q):
         ee_pose = self.get_EE_pose(q)
@@ -260,3 +280,36 @@ class RobotBase(ABC):
             return link_rot_from_link_tensor(ee_pose)
         else:
             return link_quat_from_link_tensor(ee_pose)
+
+    def fk_map_collision(self, q, **kwargs):
+        _q = q
+        if _q.ndim == 1:
+            _q = _q.unsqueeze(0)  # add batch dimension
+        task_space_positions = self.fk_map_collision_impl(_q, **kwargs)
+        # Filter the positions from FK to the dimensions of the environment
+        # Some environments are defined in 2D, while the robot FK is always defined in 3D
+        task_space_positions = task_space_positions[..., :self.task_space_dim]
+        return task_space_positions
+
+    def fk_map_collision_impl(self, q, **kwargs):
+        # q: (..., q_dim)
+        # return: (..., links_collision_positions, 3)
+        q_orig_shape = q.shape
+        if len(q_orig_shape) == 3:
+            b, h, d = q_orig_shape
+            q = einops.rearrange(q, 'b h d -> (b h) d')
+        elif len(q_orig_shape) == 2:
+            h = 1
+            b, d = q_orig_shape
+        else:
+            raise NotImplementedError
+
+        link_poses = self.fk_object_collision(q)
+        links_poses_th = torch.stack(link_poses).transpose(0, 1)
+
+        if len(q_orig_shape) == 3:
+            links_poses_th = einops.rearrange(links_poses_th, "(b h) t d1 d2 -> b h t d1 d2", b=b, h=h)
+
+        link_positions_th = link_pos_from_link_tensor(links_poses_th)  # (batch horizon), taskspaces, x_dim
+
+        return link_positions_th

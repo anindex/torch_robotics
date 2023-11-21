@@ -8,6 +8,7 @@ import torch
 
 from torch_robotics.torch_planning_objectives.fields.distance_fields import CollisionWorkspaceBoundariesDistanceField, \
     CollisionSelfField, CollisionObjectDistanceField
+from torch_robotics.torch_utils.torch_timer import TimerCUDA
 from torch_robotics.trajectory.utils import interpolate_traj_via_points
 
 
@@ -56,11 +57,8 @@ class PlanningTask(Task):
         self.df_collision_objects = CollisionObjectDistanceField(
             self.robot,
             df_obj_list_fn=self.env.get_df_obj_list,
-            link_idxs_for_collision_checking=self.robot.link_idxs_for_object_collision_checking,
-            num_interpolated_points=self.robot.num_interpolated_points_for_object_collision_checking,
-            link_margins_for_object_collision_checking_tensor=self.robot.link_margins_for_object_collision_checking_tensor,
+            link_margins_for_object_collision_checking_tensor=self.robot.link_object_collision_margins,
             cutoff_margin=obstacle_cutoff_margin,
-            interpolate_link_pos=not self.robot.use_collision_spheres,
             tensor_args=self.tensor_args
         )
 
@@ -69,11 +67,8 @@ class PlanningTask(Task):
             self.df_collision_extra_objects = CollisionObjectDistanceField(
                 self.robot,
                 df_obj_list_fn=partial(self.env.get_df_obj_list, return_extra_objects_only=True),
-                link_idxs_for_collision_checking=self.robot.link_idxs_for_object_collision_checking,
-                num_interpolated_points=self.robot.num_interpolated_points_for_object_collision_checking,
-                link_margins_for_object_collision_checking_tensor=self.robot.link_margins_for_object_collision_checking_tensor,
+                link_margins_for_object_collision_checking_tensor=self.robot.link_object_collision_margins,
                 cutoff_margin=obstacle_cutoff_margin,
-                interpolate_link_pos=not self.robot.use_collision_spheres,
                 tensor_args=self.tensor_args
             )
             self._collision_fields_extra_objects = [self.df_collision_extra_objects]
@@ -83,11 +78,8 @@ class PlanningTask(Task):
         # collision field for workspace boundaries
         self.df_collision_ws_boundaries = CollisionWorkspaceBoundariesDistanceField(
             self.robot,
-            link_idxs_for_collision_checking=self.robot.link_idxs_for_object_collision_checking,
-            num_interpolated_points=self.robot.num_interpolated_points_for_object_collision_checking,
-            link_margins_for_object_collision_checking_tensor=self.robot.link_margins_for_object_collision_checking_tensor,
+            link_margins_for_object_collision_checking_tensor=self.robot.link_object_collision_margins,
             cutoff_margin=obstacle_cutoff_margin,
-            interpolate_link_pos=not self.robot.use_collision_spheres,
             ws_bounds_min=self.ws_min,
             ws_bounds_max=self.ws_max,
             tensor_args=self.tensor_args
@@ -99,8 +91,6 @@ class PlanningTask(Task):
 
         self.df_collision_objects = self.df_collision_objects if use_field_collision_objects else None
 
-        # TODO - workspace boundaries collision is not considered in the training data
-        assert not use_field_collision_ws_boundaries, "Workspace boundaries collision currently not well implemented"
         self.df_collision_ws_boundaries = self.df_collision_ws_boundaries if use_field_collision_ws_boundaries else None
 
         self._collision_fields = [
@@ -166,24 +156,24 @@ class PlanningTask(Task):
         q_pos = self.robot.get_position(x)
         return self._compute_collision_or_cost(q_pos, field_type='sdf', **kwargs)
 
-    def _compute_collision_or_cost(self, q, field_type='occupancy', **kwargs):
+    def _compute_collision_or_cost(self, q_pos, field_type='occupancy', **kwargs):
         # q.shape needs to be reshaped to (batch, horizon, q_dim)
-        q_original_shape = q.shape
+        q_original_shape = q_pos.shape
         b = 1
         h = 1
         collisions = None
-        if q.ndim == 1:
-            q = q.unsqueeze(0).unsqueeze(0)  # add batch and horizon dimensions for interface
+        if q_pos.ndim == 1:
+            q_pos = q_pos.unsqueeze(0).unsqueeze(0)  # add batch and horizon dimensions for interface
             collisions = torch.ones((1, ), **self.tensor_args)
-        elif q.ndim == 2:
-            b = q.shape[0]
-            q = q.unsqueeze(1)  # add horizon dimension for interface
+        elif q_pos.ndim == 2:
+            b = q_pos.shape[0]
+            q = q_pos.unsqueeze(1)  # add horizon dimension for interface
             collisions = torch.ones((b, 1), **self.tensor_args)  # (batch, 1)
-        elif q.ndim == 3:
-            b = q.shape[0]
-            h = q.shape[1]
+        elif q_pos.ndim == 3:
+            b = q_pos.shape[0]
+            h = q_pos.shape[1]
             collisions = torch.ones((b, h), **self.tensor_args)  # (batch, horizon)
-        elif q.ndim > 3:
+        elif q_pos.ndim > 3:
             raise NotImplementedError
 
         if self.use_occupancy_map:
@@ -233,24 +223,24 @@ class PlanningTask(Task):
             # For distance fields
 
             # forward kinematics
-            fk_collision_pos = self.robot.fk_map_collision(q)  # batch, horizon, taskspaces, x_dim
+            fk_collision_pos = self.robot.fk_map_collision(q_pos)  # batch, horizon, taskspaces, x_dim
 
             ########################
             # Self collision
             if self.df_collision_self is not None:
-                cost_collision_self = self.df_collision_self.compute_cost(q, fk_collision_pos, field_type=field_type, **kwargs)
+                cost_collision_self = self.df_collision_self.compute_cost(q_pos, fk_collision_pos, field_type=field_type, **kwargs)
             else:
                 cost_collision_self = 0
 
             # Object collision
             if self.df_collision_objects is not None:
-                cost_collision_objects = self.df_collision_objects.compute_cost(q, fk_collision_pos, field_type=field_type, **kwargs)
+                cost_collision_objects = self.df_collision_objects.compute_cost(q_pos, fk_collision_pos, field_type=field_type, **kwargs)
             else:
                 cost_collision_objects = 0
 
             # Workspace boundaries
             if self.df_collision_ws_boundaries is not None:
-                cost_collision_border = self.df_collision_ws_boundaries.compute_cost(q, fk_collision_pos, field_type=field_type, **kwargs)
+                cost_collision_border = self.df_collision_ws_boundaries.compute_cost(q_pos, fk_collision_pos, field_type=field_type, **kwargs)
             else:
                 cost_collision_border = 0
 

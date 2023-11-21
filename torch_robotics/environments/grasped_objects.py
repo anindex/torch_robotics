@@ -9,13 +9,13 @@ from torch_robotics.torch_utils.torch_utils import to_numpy
 
 class GraspedObject(ObjectField):
 
-    def __init__(self, primitive_fields, **kwargs):
-        # pos, ori - position and orientation are specified wrt to the end-effector link
-
-        # Only one primitive type
+    def __init__(self, primitive_fields, object_collision_margin=0.001, **kwargs):
         assert len(primitive_fields) == 1
-
         super().__init__(primitive_fields, **kwargs)
+
+        self.name = self.__class__.__name__
+
+        self.object_collision_margin = object_collision_margin
 
         # Geometry URDF
         self.geometry_urdf = self.get_geometry_urdf()
@@ -30,35 +30,34 @@ class GraspedObject(ObjectField):
             raise NotImplementedError
 
     @abc.abstractmethod
-    def get_base_points_for_collision(self):
+    def get_points_for_collision(self):
         raise NotImplementedError
 
 
-class GraspedObjectPandaBox(GraspedObject):
+class GraspedObjectBox(GraspedObject):
 
-    def __init__(self, tensor_args=None, **kwargs):
-        # One box
+    def __init__(self, attached_to_frame, tensor_args=None, **kwargs):
+        # Box sizes
         primitive_fields = [
             MultiBoxField(torch.zeros(3, **tensor_args).view(1, -1),
                           torch.tensor([0.05, 0.05, 0.15], **tensor_args).view(1, -1),
                           tensor_args=tensor_args)
         ]
 
-        # position and orientation wrt to the robots's end-effector link -> for panda reference_frame='panda_hand'
+        # Default position and orientation of the object center wrt to some frame of the robot (e.g., panda_hand)
         pos = torch.tensor([0., 0., 0.11], **tensor_args)
         ori = torch.tensor([0, 0.7071081, 0, 0.7071055], **tensor_args)
-
         super().__init__(
             primitive_fields,
-            name='GraspedObjectPandaBox',
-            pos=pos, ori=ori, reference_frame='panda_hand',
+            pos=pos, ori=ori, reference_frame=attached_to_frame,
             **kwargs)
 
-        self.base_points_for_collision = self.get_base_points_for_collision()
-        self.n_base_points_for_collision = len(self.base_points_for_collision)
+        self.points_for_collision = self.get_points_for_collision()
+        self.n_points_for_collision = len(self.points_for_collision)
 
-    def get_base_points_for_collision(self):
-        # points on vertices and centers of faces
+    def get_points_for_collision(self):
+        # Points on the box vertices and centers of faces
+        # These points are added to the robot's urdf for collision checking
         size = self.fields[0].sizes[0]
         x, y, z = size
         vertices = torch.tensor(

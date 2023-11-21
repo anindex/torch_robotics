@@ -1,21 +1,30 @@
+import os
+
 import numpy as np
 import torch
 
 from torch_robotics.robots.robot_base import RobotBase
+from torch_robotics.torch_kinematics_tree.utils.files import get_robot_path, get_configs_path
 from torch_robotics.torch_utils.torch_utils import to_numpy, tensor_linspace_v1, to_torch
 
 
 class RobotPlanar2Link(RobotBase):
 
+    link_name_ee = 'link_ee'  # must be in the urdf file
+
     def __init__(self,
-                 q_limits=torch.tensor([[-torch.pi, -torch.pi + 0.01], [torch.pi, torch.pi - 0.01]]),  # configuration space limits
+                 urdf_robot_file=os.path.join(get_robot_path(), "planar_robot_2_link.urdf"),
+                 collision_spheres_file_path=os.path.join(
+                     get_configs_path(), 'planar_robot_2_link/planar_robot_2_link_sphere_config.yaml'),
+                 task_space_dim=2,
                  **kwargs):
+
+        ##########################################################################################
         super().__init__(
-            q_limits=to_torch(q_limits, **kwargs['tensor_args']),
-            link_names_for_object_collision_checking=['link_0', 'link_1', 'link_2'],
-            link_margins_for_object_collision_checking=[0.01, 0.01, 0.01],
-            link_idxs_for_object_collision_checking=[0, 1, 2],
-            num_interpolated_points_for_object_collision_checking=10,
+            urdf_robot_file=urdf_robot_file,
+            collision_spheres_file_path=collision_spheres_file_path,
+            link_name_ee=self.link_name_ee,
+            task_space_dim=task_space_dim,
             **kwargs
         )
 
@@ -37,16 +46,12 @@ class RobotPlanar2Link(RobotBase):
 
         return pos_link0, pos_link1, pos_link2
 
-    def fk_map_collision_impl(self, q, **kwargs):
-        if q.ndim == 1:
-            q = q.unsqueeze(0)  # add batch dimension
-        points_along_links = 25
-        p0, p1, p2 = self.link_positions(q)
-
-        link_pos = torch.cat((p0, p1, p2), dim=-2)
-        return link_pos
-
     def render(self, ax, q=None, alpha=1.0, color='blue', linewidth=2.0, **kwargs):
+        # for H in self.fk_object_collision(q.unsqueeze(0)):
+        #     _p = H[0, :2, 3]
+        #     _p = to_numpy(_p)
+        #     ax.scatter(_p[0], _p[1], color='gray', linewidth=linewidth, alpha=alpha)
+        # return
         p0, p1, p2 = self.link_positions(q)
         p1, p2 = p1.squeeze(), p2.squeeze()
         l2 = to_numpy(torch.vstack((p1, p2)))
@@ -58,10 +63,10 @@ class RobotPlanar2Link(RobotBase):
     def render_trajectories(self, ax, trajs=None, start_state=None, goal_state=None, colors=['gray'], **kwargs):
         if trajs is not None:
             trajs_pos = self.get_position(trajs)
-            for q, color in zip(trajs_pos, colors):
-                q = q.view(1, -1)
-                self.render(ax, q, alpha=0.8, color=color)
+            for _trajs_pos in trajs_pos:
+                for q, color in zip(_trajs_pos, colors):
+                    self.render(ax, q, alpha=0.8, color=color)
         if start_state is not None:
-            self.render(ax, start_state.view(1, -1), alpha=1.0, color='blue')
+            self.render(ax, start_state, alpha=1.0, color='blue')
         if goal_state is not None:
-            self.render(ax, goal_state.view(1, -1), alpha=1.0, color='red')
+            self.render(ax, goal_state, alpha=1.0, color='red')

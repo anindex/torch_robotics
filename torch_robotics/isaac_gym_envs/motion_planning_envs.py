@@ -268,18 +268,6 @@ class MotionPlanningIsaacGymEnv:
         )
 
         ###############################################################################################################
-        # Modify the urdf to append the link of the grasped object
-        if self.robot.grasped_object is not None:
-            robot_asset_file_abs_path = os.path.join(asset_root, robot_asset_file)
-            robot_asset_file_abs_path_new = modidy_robot_urdf_grasped_object(
-                robot_asset_file_abs_path,
-                self.robot.grasped_object
-            )
-            robot_asset_file = os.path.join(
-                os.path.split(robot_asset_file)[0], os.path.split(robot_asset_file_abs_path_new)[-1]
-            )
-
-        ###############################################################################################################
         # ISAAC GYM options
         ###############################################################################################################
         # Setup simulator

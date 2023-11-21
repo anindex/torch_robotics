@@ -112,7 +112,11 @@ class PlanningVisualizer:
 
         idxs = np.round(np.linspace(0, S - 1, n_frames)).astype(int)
         trajs_selection = trajs[idxs]
-        control_points_selection = control_points[idxs]
+        if control_points is None:
+            # Assume the control points are the trajectory waypoints
+            control_points_selection = trajs_selection
+        else:
+            control_points_selection = control_points[idxs]
 
         fig, ax = create_fig_and_axes(dim=self.env.dim)
 

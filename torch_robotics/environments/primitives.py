@@ -556,7 +556,7 @@ MultiBoxField = MultiRoundedBoxField
 ########################################################################################################################
 class ObjectField(PrimitiveShapeField):
 
-    def __init__(self, primitive_fields, name='object', pos=None, ori=None, reference_frame='base'):
+    def __init__(self, primitive_fields, name='object', pos=None, ori=None, reference_frame='world'):
         """
         Holds an object made of primitives and manages its position and orientation in the environments.
         """
@@ -597,8 +597,8 @@ class ObjectField(PrimitiveShapeField):
         raise NotImplementedError
 
     def compute_signed_distance_impl(self, x, get_gradient=False):
-        # Transform the point before computing the SDF.
-        # The implemented SDFs assume the objects are centered around 0 and not rotated.
+        # The implemented objects SDFs assume the objects are centered around 0 and not rotated.
+        # Transform the point to the origin before computing the SDF.
         x_shape = x.shape
         if x_shape[-1] == 2:
             x_new = torch.cat((x, torch.zeros((x.shape[:-1]), **self.tensor_args).unsqueeze(-1)), dim=-1)
