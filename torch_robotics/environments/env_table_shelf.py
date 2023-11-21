@@ -77,9 +77,11 @@ class EnvTableShelf(EnvBase):
         table_sizes = table_obj_field.fields[0].sizes[0]
         dist_robot_to_table = 0.10
         theta = np.deg2rad(90)
+        ori = np.eye(3)
+        ori[:2, :2] = np.array([[np.cos(theta), -np.sin(theta)], [np.sin(theta), np.cos(theta)]])
         table_obj_field.set_position_orientation(
-            pos=(dist_robot_to_table + table_sizes[1].item()/2, 0, -table_sizes[2].item()/2),
-            ori=[np.cos(theta / 2), 0, 0, np.sin(theta / 2)]
+            pos=np.array([dist_robot_to_table + table_sizes[1].item()/2, 0, -table_sizes[2].item()/2]),
+            ori=ori
         )
 
         # shelf object field

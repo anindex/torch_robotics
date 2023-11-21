@@ -245,8 +245,8 @@ class EnvBase(ABC):
 
     def render_grad_sdf(self, ax=None, fig=None):
         # draw gradient of sdf
-        xs = torch.linspace(self.limits_np[0][0], self.limits_np[1][0], steps=5, **self.tensor_args)
-        ys = torch.linspace(self.limits_np[0][1], self.limits_np[1][1], steps=5, **self.tensor_args)
+        xs = torch.linspace(self.limits_np[0][0], self.limits_np[1][0], steps=10, **self.tensor_args)
+        ys = torch.linspace(self.limits_np[0][1], self.limits_np[1][1], steps=10, **self.tensor_args)
         if self.dim == 3:
             zs = torch.linspace(self.limits_np[0][2], self.limits_np[1][2], steps=5, **self.tensor_args)
             X, Y, Z = torch.meshgrid(xs, ys, zs, indexing='xy')
@@ -311,9 +311,9 @@ if __name__ == '__main__':
     obj_field = ObjectField([spheres, boxes])
 
     theta = np.deg2rad(45)
-    # obj_field.set_position_orientation(pos=[-0.5, 0., 0.])
-    # obj_field.set_position_orientation(ori=[np.cos(theta/2), 0, 0, np.sin(theta/2)])
-    obj_field.set_position_orientation(pos=[-0.5, 0., 0.], ori=[np.cos(theta/2), 0, 0, np.sin(theta/2)])
+    ori = np.eye(3)
+    ori[:2, :2] = np.array([[np.cos(theta), -np.sin(theta)], [np.sin(theta), np.cos(theta)]])
+    obj_field.set_position_orientation(pos=np.array([-0.5, 0., 0.]), ori=ori)
 
     ##############################################################################################################
     env = EnvBase(

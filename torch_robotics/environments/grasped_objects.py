@@ -46,7 +46,11 @@ class GraspedObjectBox(GraspedObject):
 
         # Default position and orientation of the object center wrt to some frame of the robot (e.g., panda_hand)
         pos = torch.tensor([0., 0., 0.11], **tensor_args)
-        ori = torch.tensor([0, 0.7071081, 0, 0.7071055], **tensor_args)
+        ori = torch.tensor([
+            [0, 0, 1],
+            [0, -1, 0],
+            [1, 0, 0]
+        ], **tensor_args)
         super().__init__(
             primitive_fields,
             pos=pos, ori=ori, reference_frame=attached_to_frame,

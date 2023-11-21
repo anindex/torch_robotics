@@ -300,7 +300,7 @@ class MultiBoxField(PrimitiveShapeField):
 
     def render(self, ax, pos=None, ori=None, color='gray', cmap='gray', **kwargs):
 
-        rot = q_to_rotation_matrix(ori).squeeze()
+        rot = ori
         if ax.name == '3d':
             x, y, z = self.get_cube()
             for center, size in zip(self.centers, self.sizes):
@@ -568,9 +568,8 @@ class ObjectField(PrimitiveShapeField):
         self.fields = primitive_fields
 
         # position and orientation
-        assert (pos is None and ori is None) or (pos.nelement() == 3 and ori.nelement() == 4)
         self.pos = torch.zeros(3, **self.tensor_args) if pos is None else pos
-        self.ori = torch.tensor([1, 0, 0, 0], **self.tensor_args) if ori is None else ori  # quat - wxyz
+        self.ori = torch.eye(3, **self.tensor_args) if ori is None else ori
 
         # Reference frame for the position and orientation
         self.reference_frame = reference_frame
@@ -587,7 +586,7 @@ class ObjectField(PrimitiveShapeField):
             assert len(pos) == 3
             self.pos = to_torch(pos, **self.tensor_args)
         if ori is not None:
-            assert len(ori) == 4, "quaternion wxyz"
+            assert ori.shape[-2:] == (3, 3)
             self.ori = to_torch(ori, **self.tensor_args)
 
     def get_position_orientation(self):
@@ -606,7 +605,7 @@ class ObjectField(PrimitiveShapeField):
             x_new = x
 
         # transform back to the origin
-        rot = q_to_rotation_matrix(self.ori).squeeze().transpose(-2, -1)
+        rot = self.ori.transpose(-2, -1)
         x_new = rotate_point(x_new-self.pos, rot)
         if x_shape[-1] == 2:
             x_new = x_new[..., :2]
@@ -662,9 +661,9 @@ if __name__ == '__main__':
     obj_field = ObjectField([spheres, boxes])
 
     theta = np.deg2rad(45)
-    # obj_field.set_position_orientation(pos=[-0.5, 0., 0.])
-    # obj_field.set_position_orientation(ori=[np.cos(theta/2), 0, 0, np.sin(theta/2)])
-    obj_field.set_position_orientation(pos=[-0.5, 0., 0.], ori=[np.cos(theta/2), 0, 0, np.sin(theta/2)])
+    ori = np.eye(3)
+    ori[:2, :2] = np.array([[np.cos(theta), -np.sin(theta)], [np.sin(theta), np.cos(theta)]])
+    obj_field.set_position_orientation(pos=np.array([-0.5, 0., 0.]), ori=ori)
 
     # # Render objects
     fig, ax = plt.subplots()
@@ -689,8 +688,8 @@ if __name__ == '__main__':
     ax.set_ylim(-1, 1)
 
     # Render gradient sdf
-    xs = torch.linspace(-1, 1, steps=40, **tensor_args)
-    ys = torch.linspace(-1, 1, steps=40, **tensor_args)
+    xs = torch.linspace(-1, 1, steps=20, **tensor_args)
+    ys = torch.linspace(-1, 1, steps=20, **tensor_args)
     X, Y = torch.meshgrid(xs, ys, indexing='xy')
     X_flat = torch.flatten(X)
     Y_flat = torch.flatten(Y)
