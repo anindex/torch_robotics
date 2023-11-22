@@ -1,5 +1,5 @@
 <?xml version="1.0" ?>
-<robot name="planar_robot_2_link" version="1.0">
+<robot name="planar_robot_4_link" version="1.0">
    <link name="world"/>
    <joint name="base_joint" type="fixed">
       <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
@@ -11,8 +11,8 @@
          <geometry>
             <cylinder radius="0.01" length="0.01"/>
          </geometry>
-         <material name="black">
-            <color rgba="0.0 0.0 0.0 1.0"/>
+         <material name="blue">
+            <color rgba="0.0 0.0 1.0 1.0"/>
          </material>
       </visual>
       <collision>
@@ -26,7 +26,7 @@
       <axis xyz="0.0 0.0 1.0"/>
       <parent link="base_link"/>
       <child link="link_1"/>
-      <limit effort="320.0" lower="-2.9670597283903604" upper="2.9670597283903604" velocity="2.35619449019"/>
+      <limit effort="320.0" lower="-2.97" upper="2.97" velocity="2.35619449019"/>
    </joint>
    <link name="link_1">
       <visual>
@@ -34,8 +34,8 @@
          <geometry>
             <cylinder radius="0.01" length="0.2"/>
          </geometry>
-         <material name="black">
-            <color rgba="0.0 0.0 0.0 1.0"/>
+         <material name="blue">
+            <color rgba="0.0 0.0 1.0 1.0"/>
          </material>
       </visual>
       <collision>
@@ -50,34 +50,82 @@
       <axis xyz="0.0 0.0 1.0"/>
       <parent link="link_1"/>
       <child link="link_2"/>
-      <limit effort="320.0" lower="-2.0943951023931953" upper="2.0943951023931953" velocity="2.35619449019"/>
+      <limit effort="320.0" lower="-2.36" upper="2.36" velocity="2.35619449019"/>
    </joint>
    <link name="link_2">
       <visual>
-         <origin xyz="0.2 0.0 0.0" rpy="0.0 1.57079632679 0.0"/>
+         <origin xyz="0.1 0.0 0.0" rpy="0.0 1.57079632679 0.0"/>
          <geometry>
-            <cylinder radius="0.01" length="0.4"/>
+            <cylinder radius="0.01" length="0.2"/>
          </geometry>
-         <material name="black">
-            <color rgba="0.0 0.0 0.0 1.0"/>
+         <material name="blue">
+            <color rgba="0.0 0.0 1.0 1.0"/>
          </material>
       </visual>
       <collision>
-         <origin xyz="0.2 0.0 0.0" rpy="0.0 1.57079632679 0.0"/>
+         <origin xyz="0.1 0.0 0.0" rpy="0.0 1.57079632679 0.0"/>
          <geometry>
-            <cylinder radius="0.01" length="0.4"/>
+            <cylinder radius="0.01" length="0.2"/>
+         </geometry>
+      </collision>
+   </link>
+   <joint name="joint_3" type="revolute">
+      <origin xyz="0.2 0.0 0.0" rpy="0 0 0"/>
+      <axis xyz="0.0 0.0 1.0"/>
+      <parent link="link_2"/>
+      <child link="link_3"/>
+      <limit effort="320.0" lower="-2.36" upper="2.36" velocity="2.35619449019"/>
+   </joint>
+   <link name="link_3">
+      <visual>
+         <origin xyz="0.1 0.0 0.0" rpy="0.0 1.57079632679 0.0"/>
+         <geometry>
+            <cylinder radius="0.01" length="0.2"/>
+         </geometry>
+         <material name="blue">
+            <color rgba="0.0 0.0 1.0 1.0"/>
+         </material>
+      </visual>
+      <collision>
+         <origin xyz="0.1 0.0 0.0" rpy="0.0 1.57079632679 0.0"/>
+         <geometry>
+            <cylinder radius="0.01" length="0.2"/>
+         </geometry>
+      </collision>
+   </link>
+   <joint name="joint_4" type="revolute">
+      <origin xyz="0.2 0.0 0.0" rpy="0 0 0"/>
+      <axis xyz="0.0 0.0 1.0"/>
+      <parent link="link_3"/>
+      <child link="link_4"/>
+      <limit effort="320.0" lower="-2.36" upper="2.36" velocity="2.35619449019"/>
+   </joint>
+   <link name="link_4">
+      <visual>
+         <origin xyz="0.1 0.0 0.0" rpy="0.0 1.57079632679 0.0"/>
+         <geometry>
+            <cylinder radius="0.01" length="0.2"/>
+         </geometry>
+         <material name="blue">
+            <color rgba="0.0 0.0 1.0 1.0"/>
+         </material>
+      </visual>
+      <collision>
+         <origin xyz="0.1 0.0 0.0" rpy="0.0 1.57079632679 0.0"/>
+         <geometry>
+            <cylinder radius="0.01" length="0.2"/>
          </geometry>
       </collision>
    </link>
    <joint name="joint_ee" type="fixed">
-      <origin xyz="0.4 0.0 0.0" rpy="0 0 0"/>
+      <origin xyz="0.2 0.0 0.0" rpy="0 0 0"/>
       <axis xyz="1.0 0.0 0.0"/>
-      <parent link="link_2"/>
+      <parent link="link_4"/>
       <child link="link_ee"/>
    </joint>
    <link name="link_ee">
       <visual>
-         <origin xyz="0.01 0.0 0.0" rpy="0.0 0.0 0.0"/>
+         <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
          <geometry>
             <sphere radius="0.02"/>
          </geometry>
@@ -86,7 +134,7 @@
          </material>
       </visual>
       <collision>
-         <origin xyz="0.01 0.0 0.0" rpy="0.0 0.0 0.0"/>
+         <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
          <geometry>
             <sphere radius="0.02"/>
          </geometry>
@@ -171,7 +219,7 @@
       </visual>
    </link>
    <joint name="joint_link_2_sphere_1" type="fixed">
-      <origin xyz="0.05 0.0 0.0" rpy="0 0 0"/>
+      <origin xyz="0.04 0.0 0.0" rpy="0 0 0"/>
       <parent link="link_2"/>
       <child link="link_2_1"/>
    </joint>
@@ -184,7 +232,7 @@
       </visual>
    </link>
    <joint name="joint_link_2_sphere_2" type="fixed">
-      <origin xyz="0.1 0.0 0.0" rpy="0 0 0"/>
+      <origin xyz="0.08 0.0 0.0" rpy="0 0 0"/>
       <parent link="link_2"/>
       <child link="link_2_2"/>
    </joint>
@@ -197,7 +245,7 @@
       </visual>
    </link>
    <joint name="joint_link_2_sphere_3" type="fixed">
-      <origin xyz="0.15 0.0 0.0" rpy="0 0 0"/>
+      <origin xyz="0.12 0.0 0.0" rpy="0 0 0"/>
       <parent link="link_2"/>
       <child link="link_2_3"/>
    </joint>
@@ -210,7 +258,7 @@
       </visual>
    </link>
    <joint name="joint_link_2_sphere_4" type="fixed">
-      <origin xyz="0.2 0.0 0.0" rpy="0 0 0"/>
+      <origin xyz="0.16 0.0 0.0" rpy="0 0 0"/>
       <parent link="link_2"/>
       <child link="link_2_4"/>
    </joint>
@@ -222,12 +270,12 @@
          </geometry>
       </visual>
    </link>
-   <joint name="joint_link_2_sphere_5" type="fixed">
-      <origin xyz="0.25 0.0 0.0" rpy="0 0 0"/>
-      <parent link="link_2"/>
-      <child link="link_2_5"/>
+   <joint name="joint_link_3_sphere_0" type="fixed">
+      <origin xyz="0.0 0.0 0.0" rpy="0 0 0"/>
+      <parent link="link_3"/>
+      <child link="link_3_0"/>
    </joint>
-   <link name="link_2_5">
+   <link name="link_3_0">
       <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
       <visual>
          <geometry>
@@ -235,12 +283,12 @@
          </geometry>
       </visual>
    </link>
-   <joint name="joint_link_2_sphere_6" type="fixed">
-      <origin xyz="0.3 0.0 0.0" rpy="0 0 0"/>
-      <parent link="link_2"/>
-      <child link="link_2_6"/>
+   <joint name="joint_link_3_sphere_1" type="fixed">
+      <origin xyz="0.04 0.0 0.0" rpy="0 0 0"/>
+      <parent link="link_3"/>
+      <child link="link_3_1"/>
    </joint>
-   <link name="link_2_6">
+   <link name="link_3_1">
       <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
       <visual>
          <geometry>
@@ -248,12 +296,12 @@
          </geometry>
       </visual>
    </link>
-   <joint name="joint_link_2_sphere_7" type="fixed">
-      <origin xyz="0.35 0.0 0.0" rpy="0 0 0"/>
-      <parent link="link_2"/>
-      <child link="link_2_7"/>
+   <joint name="joint_link_3_sphere_2" type="fixed">
+      <origin xyz="0.08 0.0 0.0" rpy="0 0 0"/>
+      <parent link="link_3"/>
+      <child link="link_3_2"/>
    </joint>
-   <link name="link_2_7">
+   <link name="link_3_2">
       <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
       <visual>
          <geometry>
@@ -261,12 +309,103 @@
          </geometry>
       </visual>
    </link>
-   <joint name="joint_link_2_sphere_8" type="fixed">
-      <origin xyz="0.4 0.0 0.0" rpy="0 0 0"/>
-      <parent link="link_2"/>
-      <child link="link_2_8"/>
+   <joint name="joint_link_3_sphere_3" type="fixed">
+      <origin xyz="0.12 0.0 0.0" rpy="0 0 0"/>
+      <parent link="link_3"/>
+      <child link="link_3_3"/>
    </joint>
-   <link name="link_2_8">
+   <link name="link_3_3">
+      <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+      <visual>
+         <geometry>
+            <sphere radius="0.01"/>
+         </geometry>
+      </visual>
+   </link>
+   <joint name="joint_link_3_sphere_4" type="fixed">
+      <origin xyz="0.16 0.0 0.0" rpy="0 0 0"/>
+      <parent link="link_3"/>
+      <child link="link_3_4"/>
+   </joint>
+   <link name="link_3_4">
+      <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+      <visual>
+         <geometry>
+            <sphere radius="0.01"/>
+         </geometry>
+      </visual>
+   </link>
+   <joint name="joint_link_4_sphere_0" type="fixed">
+      <origin xyz="0.0 0.0 0.0" rpy="0 0 0"/>
+      <parent link="link_4"/>
+      <child link="link_4_0"/>
+   </joint>
+   <link name="link_4_0">
+      <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+      <visual>
+         <geometry>
+            <sphere radius="0.01"/>
+         </geometry>
+      </visual>
+   </link>
+   <joint name="joint_link_4_sphere_1" type="fixed">
+      <origin xyz="0.04 0.0 0.0" rpy="0 0 0"/>
+      <parent link="link_4"/>
+      <child link="link_4_1"/>
+   </joint>
+   <link name="link_4_1">
+      <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+      <visual>
+         <geometry>
+            <sphere radius="0.01"/>
+         </geometry>
+      </visual>
+   </link>
+   <joint name="joint_link_4_sphere_2" type="fixed">
+      <origin xyz="0.08 0.0 0.0" rpy="0 0 0"/>
+      <parent link="link_4"/>
+      <child link="link_4_2"/>
+   </joint>
+   <link name="link_4_2">
+      <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+      <visual>
+         <geometry>
+            <sphere radius="0.01"/>
+         </geometry>
+      </visual>
+   </link>
+   <joint name="joint_link_4_sphere_3" type="fixed">
+      <origin xyz="0.12 0.0 0.0" rpy="0 0 0"/>
+      <parent link="link_4"/>
+      <child link="link_4_3"/>
+   </joint>
+   <link name="link_4_3">
+      <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+      <visual>
+         <geometry>
+            <sphere radius="0.01"/>
+         </geometry>
+      </visual>
+   </link>
+   <joint name="joint_link_4_sphere_4" type="fixed">
+      <origin xyz="0.16 0.0 0.0" rpy="0 0 0"/>
+      <parent link="link_4"/>
+      <child link="link_4_4"/>
+   </joint>
+   <link name="link_4_4">
+      <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+      <visual>
+         <geometry>
+            <sphere radius="0.01"/>
+         </geometry>
+      </visual>
+   </link>
+   <joint name="joint_link_4_sphere_5" type="fixed">
+      <origin xyz="0.2 0.0 0.0" rpy="0 0 0"/>
+      <parent link="link_4"/>
+      <child link="link_4_5"/>
+   </joint>
+   <link name="link_4_5">
       <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
       <visual>
          <geometry>

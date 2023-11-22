@@ -135,6 +135,7 @@ class RobotBase(ABC):
         self.name = self.__class__.__name__
         self.tensor_args = tensor_args
 
+        assert link_name_ee is not None, 'link_name_ee must be defined'
         self.link_name_ee = link_name_ee
         self.gripper_q_dim = gripper_q_dim
         self.grasped_object = grasped_object
@@ -205,12 +206,18 @@ class RobotBase(ABC):
         self.jfk_b_object_collision = jfk_b_object_collision
         self.jfk_s_object_collision = jfk_s_object_collision
 
-        # kinematic functions for end-effector pose
+        # kinematic functions for end-effector link
         fk_ee, jfk_b_ee, jfk_s_ee = torchkin.get_forward_kinematics_fns(
             robot=self.robot_torchkin, link_names=[self.link_name_ee])
         self.fk_ee = fk_ee
         self.jfk_b_ee = jfk_b_ee
         self.jfk_s_ee = jfk_s_ee
+
+        # kinematic functions for all links
+        fk_all, jfk_b_all, jfk_s_all = torchkin.get_forward_kinematics_fns(robot=self.robot_torchkin)
+        self.fk_all = fk_all
+        self.jfk_b_all = jfk_b_all
+        self.jfk_s_all = jfk_s_all
 
         ################################################################################################
         # Self collision field
