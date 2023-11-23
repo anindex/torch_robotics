@@ -40,14 +40,15 @@ class RobotPlanar2Link(RobotBase):
             self.robot_torchkin.link_map[self.link_name_ee].id
         ]
 
-    def render(self, ax, q=None, alpha=1.0, color='blue', linewidth=2.0, **kwargs):
+    def render(self, ax, q=None, alpha=1.0, color='blue', linewidth=2.0, zorder=1, **kwargs):
         H_all = self.fk_all(q.unsqueeze(0))
         p_all = [link_pos_from_link_tensor(H_all[idx]).squeeze() for idx in self.link_idxs]
         p_all = to_numpy([to_numpy(p) for p in p_all])
-        ax.plot([0, p_all[0][0]], [0, p_all[0][1]], color=color, linewidth=linewidth, alpha=alpha)
+        ax.plot([0, p_all[0][0]], [0, p_all[0][1]], color=color, linewidth=linewidth, alpha=alpha, zorder=zorder)
         for p1, p2 in zip(p_all[:-1], p_all[1:]):
-            ax.plot([p1[0], p2[0]], [p1[1], p2[1]], color=color, linewidth=linewidth, alpha=alpha)
-        ax.scatter(p_all[-1][0], p_all[-1][1], color=color, marker='o')
+            ax.plot([p1[0], p2[0]], [p1[1], p2[1]], color=color, linewidth=linewidth, alpha=alpha, zorder=zorder)
+        # render end-effector
+        ax.scatter(p_all[-1][0], p_all[-1][1], color=color, marker='o', zorder=zorder)
 
     def render_trajectories(self, ax, trajs=None, start_state=None, goal_state=None, colors=['gray'],
                             n_skip_points=None,
@@ -60,11 +61,11 @@ class RobotPlanar2Link(RobotBase):
                 # skip some points for visualization
                 _trajs_pos = _trajs_pos[::n_skip_points] if n_skip_points is not None else _trajs_pos
                 for q in _trajs_pos:
-                    self.render(ax, q, alpha=0.8, color=color)
+                    self.render(ax, q, alpha=0.8, color=color, zorder=3)
         if start_state is not None:
-            self.render(ax, start_state, alpha=1.0, color='blue')
+            self.render(ax, start_state, alpha=1.0, color='blue', zorder=10)
         if goal_state is not None:
-            self.render(ax, goal_state, alpha=1.0, color='red')
+            self.render(ax, goal_state, alpha=1.0, color='red', zorder=10)
 
 
 class RobotPlanar4Link(RobotPlanar2Link):
