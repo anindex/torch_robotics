@@ -1,5 +1,9 @@
 import os
 
+import numpy as np
+from colour import Color
+from matplotlib.colors import to_rgb
+
 from torch_robotics.robots.robot_base import RobotBase
 from torch_robotics.torch_kinematics_tree.geometrics.utils import link_pos_from_link_tensor
 from torch_robotics.torch_kinematics_tree.utils.files import get_robot_path, get_configs_path
@@ -43,13 +47,19 @@ class RobotPlanar2Link(RobotBase):
         ax.plot([0, p_all[0][0]], [0, p_all[0][1]], color=color, linewidth=linewidth, alpha=alpha)
         for p1, p2 in zip(p_all[:-1], p_all[1:]):
             ax.plot([p1[0], p2[0]], [p1[1], p2[1]], color=color, linewidth=linewidth, alpha=alpha)
-        ax.scatter(p_all[-1][0], p_all[-1][1], color='red', marker='o')
+        ax.scatter(p_all[-1][0], p_all[-1][1], color=color, marker='o')
 
-    def render_trajectories(self, ax, trajs=None, start_state=None, goal_state=None, colors=['gray'], **kwargs):
+    def render_trajectories(self, ax, trajs=None, start_state=None, goal_state=None, colors=['gray'],
+                            n_skip_points=None,
+                            **kwargs):
         if trajs is not None:
             trajs_pos = self.get_position(trajs)
-            for _trajs_pos in trajs_pos:
-                for q, color in zip(_trajs_pos, colors):
+            if trajs_pos.ndim == 2:
+                trajs_pos = trajs_pos.unsqueeze(0)
+            for _trajs_pos, color in zip(trajs_pos, colors):
+                # skip some points for visualization
+                _trajs_pos = _trajs_pos[::n_skip_points] if n_skip_points is not None else _trajs_pos
+                for q in _trajs_pos:
                     self.render(ax, q, alpha=0.8, color=color)
         if start_state is not None:
             self.render(ax, start_state, alpha=1.0, color='blue')
