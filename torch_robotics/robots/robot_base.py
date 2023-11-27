@@ -8,6 +8,7 @@ from xml.etree import ElementTree as ET
 import einops
 import torch
 import yaml
+from filelock import FileLock
 from urdf_parser_py.urdf import URDF, Joint, Link, Visual, Collision, Pose, Sphere
 
 import torchkin
@@ -16,6 +17,18 @@ from torch_robotics.torch_kinematics_tree.geometrics.utils import (
     link_pos_from_link_tensor, link_rot_from_link_tensor, link_quat_from_link_tensor)
 from torch_robotics.torch_utils.torch_utils import to_numpy, to_torch
 from torch_robotics.trajectory.utils import finite_difference_vector
+
+
+def write_robot_urdf_file(robot_urdf_file, xmlstr):
+    robot_urdf_file_posix = robot_urdf_file.as_posix()
+    robot_file_posix_lockfile = robot_urdf_file_posix + ".lock"
+    lock = FileLock(robot_file_posix_lockfile, timeout=5)
+    lock.acquire()
+    try:
+        with open(str(robot_urdf_file), "w") as f:
+            f.write(xmlstr)
+    finally:
+        lock.release()
 
 
 def modidy_robot_urdf_collision_model(
@@ -53,12 +66,13 @@ def modidy_robot_urdf_collision_model(
             link_collision_margins.append(sphere[-1])
 
     # replace the robots file
-    robot_file = Path(str(urdf_robot_file).replace('.urdf', '_collision_model.urdf'))
+    robot_urdf_file = Path(str(urdf_robot_file).replace('.urdf', '_collision_model.urdf'))
     xmlstr = minidom.parseString(ET.tostring(robot_urdf.to_xml())).toprettyxml(indent="   ")
-    with open(str(robot_file), "w") as f:
-        f.write(xmlstr)
 
-    return robot_file, link_collision_names, link_collision_margins
+    # Write the file with a lock
+    write_robot_urdf_file(robot_urdf_file, xmlstr)
+
+    return robot_urdf_file, link_collision_names, link_collision_margins
 
 
 def modidy_robot_urdf_grasped_object(urdf_robot_file, grasped_object, parent_link):
@@ -111,8 +125,9 @@ def modidy_robot_urdf_grasped_object(urdf_robot_file, grasped_object, parent_lin
     # replace the robots file
     robot_file = Path(str(urdf_robot_file).replace('.urdf', '_grasped_object.urdf'))
     xmlstr = minidom.parseString(ET.tostring(robot_urdf.to_xml())).toprettyxml(indent="   ")
-    with open(str(robot_file), "w") as f:
-        f.write(xmlstr)
+
+    # Write the file with a lock
+    write_robot_urdf_file(robot_file, xmlstr)
 
     return robot_file, link_collision_names
 
@@ -173,7 +188,16 @@ class RobotBase(ABC):
 
         ################################################################################################
         # Configuration space limits
-        robot_urdf = URDF.from_xml_file(urdf_robot_file)
+        # Lock the urdf robot file because of multiprocessing
+        urdf_robot_file_posix = self.urdf_robot_file
+        urdf_robot_file_posix_lockfile = urdf_robot_file_posix + ".lock"
+        lock = FileLock(urdf_robot_file_posix_lockfile, timeout=5)
+        lock.acquire()
+        try:
+            robot_urdf = URDF.from_xml_file(self.urdf_robot_file)
+        finally:
+            lock.release()
+
         q_limits_lower = []
         q_limits_upper = []
         for joint in robot_urdf.joints:
@@ -192,7 +216,16 @@ class RobotBase(ABC):
 
         ################################################################################################
         # Torchkin robot forward kinematics functions
-        self.robot_torchkin = torchkin.Robot.from_urdf_file(self.urdf_robot_file, **tensor_args)
+        # Lock the urdf robot file because of multiprocessing
+        urdf_robot_file_posix = self.urdf_robot_file
+        urdf_robot_file_posix_lockfile = urdf_robot_file_posix + ".lock"
+        lock = FileLock(urdf_robot_file_posix_lockfile, timeout=5)
+        lock.acquire()
+        try:
+            self.robot_torchkin = torchkin.Robot.from_urdf_file(self.urdf_robot_file, **tensor_args)
+        finally:
+            lock.release()
+
         print('-----------------------------------')
         print(f'Torchkin robot: {self.robot_torchkin.name}')
         print(f'Num links: {len(self.robot_torchkin.get_links())}')

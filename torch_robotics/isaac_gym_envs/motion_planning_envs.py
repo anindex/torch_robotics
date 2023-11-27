@@ -466,7 +466,7 @@ class MotionPlanningIsaacGymEnv:
         # CAMERA GLOBAL
         # point camera at middle env
         if camera_global_from_top:
-            cam_pos = gymapi.Vec3(1e-3, -1e-3, 2)
+            cam_pos = gymapi.Vec3(1e-3, -1e-3, 1.75)
             cam_target = gymapi.Vec3(0, -1e-3, -1)
         else:
             cam_pos = gymapi.Vec3(1.8, -0.2, 0.9)
