@@ -25,7 +25,6 @@ class EnvPlanar4Link(EnvBase):
         obj_list = [obj_field]
 
         super().__init__(
-            name=self.__class__.__name__,
             limits=torch.tensor([[-1, -1], [1, 1]], **tensor_args),  # environments limits
             obj_fixed_list=obj_list,
             tensor_args=tensor_args,

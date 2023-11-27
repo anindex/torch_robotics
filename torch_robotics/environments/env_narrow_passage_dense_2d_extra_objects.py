@@ -70,7 +70,6 @@ class EnvNarrowPassageDense2DExtraObjects(EnvNarrowPassageDense2D):
         ]
 
         super().__init__(
-            name=self.__class__.__name__,
             obj_extra_list=[ObjectField(obj_extra_list, 'dense2d-extraobjects')],
             tensor_args=tensor_args,
             **kwargs

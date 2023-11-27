@@ -46,7 +46,6 @@ class EnvCircle2D(EnvBase):
         ]
 
         super().__init__(
-            name=name,
             limits=torch.tensor([[-1, -1], [1, 1]], **tensor_args),  # environments limits
             obj_fixed_list=[ObjectField(obj_list, 'dense2d')],
             precompute_sdf_obj_fixed=precompute_sdf_obj_fixed,

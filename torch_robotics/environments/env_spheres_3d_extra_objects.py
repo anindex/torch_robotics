@@ -54,7 +54,6 @@ class EnvSpheres3DExtraObjects(EnvSpheres3D):
         ]
 
         super().__init__(
-            name=self.__class__.__name__,
             obj_extra_list=[ObjectField(obj_extra_list, 'extra-objects')],
             tensor_args=tensor_args,
             **kwargs

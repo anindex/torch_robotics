@@ -15,7 +15,6 @@ class EnvGridCircles2D(EnvBase):
         obj_list = create_grid_spheres(rows=7, cols=7, heights=0, radius=0.1, tensor_args=tensor_args)
 
         super().__init__(
-            name=self.__class__.__name__,
             limits=torch.tensor([[-1, -1], [1, 1]], **tensor_args),  # environments limits
             obj_fixed_list=obj_list,
             tensor_args=tensor_args,

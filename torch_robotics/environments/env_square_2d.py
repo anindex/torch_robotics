@@ -29,7 +29,6 @@ class EnvSquare2D(EnvBase):
         ]
 
         super().__init__(
-            name=self.__class__.__name__,
             limits=torch.tensor([[-1, -1], [1, 1]], **tensor_args),  # environments limits
             obj_fixed_list=[ObjectField(obj_list, 'square2d')],
             tensor_args=tensor_args,

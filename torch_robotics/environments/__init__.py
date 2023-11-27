@@ -9,9 +9,11 @@ from .env_narrow_passage_dense_2d import *
 from .env_narrow_passage_dense_2d_extra_objects import *
 from .env_planar2link import *
 from .env_planar4link import *
+from .env_planar4link_extra_objects import *
 from .env_spheres_3d import *
 from .env_spheres_3d_extra_objects import *
 from .env_square_2d import *
 from .env_table_shelf import *
+from .env_table_shelf_extra_objects import *
 
 

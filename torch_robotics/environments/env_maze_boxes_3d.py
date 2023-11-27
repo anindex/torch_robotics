@@ -58,7 +58,6 @@ class EnvMazeBoxes3D(EnvBase):
         obj_list = create_3d_rectangles_objects(tensor_args=tensor_args)
 
         super().__init__(
-            name=self.__class__.__name__,
             limits=torch.tensor([[-1, -1, -1], [1, 1, 1]], **tensor_args),  # environments limits
             obj_fixed_list=obj_list,
             tensor_args=tensor_args,
