@@ -12,6 +12,7 @@ from moviepy.video.io.VideoFileClip import VideoFileClip
 from isaacgym import gymapi
 from isaacgym import gymutil
 from isaacgym import gymtorch
+from isaacgym.gymutil import parse_device_str
 from isaacgym.torch_utils import *
 
 import torch
@@ -276,9 +277,7 @@ class MotionPlanningIsaacGymEnv:
         self.gym = gymapi.acquire_gym()
 
         # gym arguments
-        self.gym_args = gymutil.parse_arguments()
-        self.gym_args.use_gpu_pipeline = use_gpu_pipeline
-        self.gym_args.use_gpu = use_gpu_pipeline
+        # self.gym_args = gymutil.parse_arguments()  # we cannot call this function because it parses cmd line arguments
 
         # configure sim
         sim_params = gymapi.SimParams()
@@ -287,8 +286,9 @@ class MotionPlanningIsaacGymEnv:
         sim_params.gravity = gymapi.Vec3(0.0, 0.0, 0.0)
         sim_params.dt = 1/60.
         sim_params.substeps = 2
-        sim_params.use_gpu_pipeline = self.gym_args.use_gpu_pipeline
-        if self.gym_args.physics_engine == gymapi.SIM_PHYSX:
+        sim_params.use_gpu_pipeline = use_gpu_pipeline
+        physics_engine = gymapi.SIM_PHYSX
+        if physics_engine == gymapi.SIM_PHYSX:
             sim_params.physx.solver_type = 1
             sim_params.physx.num_position_iterations = 8
             sim_params.physx.num_velocity_iterations = 1
@@ -296,14 +296,15 @@ class MotionPlanningIsaacGymEnv:
             sim_params.physx.contact_offset = 0.0001
             sim_params.physx.friction_offset_threshold = 0.001
             sim_params.physx.friction_correlation_distance = 0.0005
-            sim_params.physx.num_threads = self.gym_args.num_threads
-            sim_params.physx.use_gpu = self.gym_args.use_gpu
+            sim_params.physx.num_threads = 0
+            sim_params.physx.use_gpu = use_gpu_pipeline
         else:
             raise Exception("Can only be used with PhysX")
 
         # create simulation
-        self.sim = self.gym.create_sim(
-            self.gym_args.compute_device_id, self.gym_args.graphics_device_id, self.gym_args.physics_engine, sim_params)
+        graphics_device_id = 0
+        sim_device_type, compute_device_id = parse_device_str(self.tensor_args['device'].type)
+        self.sim = self.gym.create_sim(compute_device_id, graphics_device_id, physics_engine, sim_params)
         if self.sim is None:
             raise Exception("Failed to create sim")
 
@@ -370,7 +371,7 @@ class MotionPlanningIsaacGymEnv:
         ###############################################################################################################
         # Create environments
         num_per_row = int(np.sqrt(self.num_envs))
-        spacing = 1.0
+        spacing = 1.5
         env_lower = gymapi.Vec3(-spacing, -spacing, 0.0)
         env_upper = gymapi.Vec3(spacing, spacing, spacing)
         print(f"Creating {self.num_envs} environments")
@@ -498,9 +499,10 @@ class MotionPlanningIsaacGymEnv:
 
         # get dof state tensor
         _dof_states = self.gym.acquire_dof_state_tensor(self.sim)
-        self.robot_dof_states = gymtorch.wrap_tensor(_dof_states)
-        self.robot_dof_pos = self.robot_dof_states[:, 0].view(self.num_envs, self.robot_num_dofs, 1)
-        self.robot_dof_vel = self.robot_dof_states[:, 1].view(self.num_envs, self.robot_num_dofs, 1)
+        self.robot_dof_states = gymtorch.wrap_tensor(_dof_states).view(self.num_envs, self.robot_num_dofs, 2)
+        self.robot_dof_pos = self.robot_dof_states[..., 0]
+        self.robot_dof_vel = self.robot_dof_states[..., 1]
+        self.gym.refresh_dof_state_tensor(self.sim)
 
         ###############################################################################################################
         # Simulation step counter
@@ -530,28 +532,25 @@ class MotionPlanningIsaacGymEnv:
         # Reset to zero velocity
         dof_pos_tensor = torch.zeros((self.num_envs, self.robot_num_dofs), **self.tensor_args)
         if self.draw_goal_configuration:
-            dof_pos_tensor[:-1, :self.robot.arm_q_dim] = start_joint_positions
+            dof_pos_tensor[:start_joint_positions.shape[0], :self.robot.arm_q_dim] = start_joint_positions
             assert goal_joint_position is not None
             self.goal_joint_position = goal_joint_position
             dof_pos_tensor[-1, :self.robot.arm_q_dim] = goal_joint_position
         else:
-            dof_pos_tensor[..., :self.robot.arm_q_dim] = start_joint_positions
+            # dof_pos_tensor[..., :self.robot.arm_q_dim] = start_joint_positions
+            dof_pos_tensor[:start_joint_positions.shape[0], :self.robot.arm_q_dim] = start_joint_positions
 
         # Grippers open
         if self.robot.gripper_q_dim > 0:
             dof_pos_tensor[..., self.robot.arm_q_dim:] = to_torch(
                 self.robot_dof_upper_limits, **self.tensor_args)[None, self.robot.arm_q_dim:]
 
-        # TODO - convert to tensor API
         self.set_dof_positions(dof_pos_tensor)
-        # self.gym.set_dof_state_tensor(self.sim, gymtorch.unwrap_tensor(dof_state_tensor))
-        # self.gym.set_dof_position_target_tensor(self.sim, gymtorch.unwrap_tensor(dof_pos_tensor))
 
+        # Get current joint states
         # refresh tensors
         self.gym.refresh_dof_state_tensor(self.sim)
-        # Get current joint states
-        joint_states_current = gymtorch.wrap_tensor(self.gym.acquire_dof_state_tensor(self.sim)).view(
-            self.num_envs, self.robot_num_dofs, 2)
+        joint_states_current = self.robot_dof_states
         if self.draw_goal_configuration:
             joint_states_current = joint_states_current[:-1, ...]
 
@@ -563,38 +562,37 @@ class MotionPlanningIsaacGymEnv:
 
         return joint_states_current
 
-    def get_envs(self):
+    def get_envs(self, first_n_envs=None):
         if self.all_robots_in_one_env:
             envs = self.envs * self.num_envs
         else:
             envs = self.envs
+        if first_n_envs is not None:
+            envs_tmp = envs[:first_n_envs]
+            if self.draw_goal_configuration:  # append the last environment
+                envs_tmp.append(envs[-1])
+            envs = envs_tmp
         return envs
 
     def set_dof_positions(self, dof_pos_tensor):
-        # TODO - convert to tensor API
-        envs = self.get_envs()
-        for env, handle, joints_pos in zip(envs, self.robot_handles, dof_pos_tensor):
-            joint_state_des = self.gym.get_actor_dof_states(env, handle, gymapi.STATE_ALL)
-            joint_state_des['pos'] = np.zeros_like(joint_state_des['pos'])
-            joint_state_des['vel'] = np.zeros_like(joint_state_des['vel'])
-            joint_state_des['pos'][:self.robot.arm_q_dim] = to_numpy(joints_pos[:self.robot.arm_q_dim])
-            joint_state_des['pos'][-1] = joints_pos[-1]
-            joint_state_des['pos'][-2] = joints_pos[-2]
-            self.gym.set_actor_dof_states(env, handle, joint_state_des, gymapi.STATE_ALL)
-            self.gym.set_actor_dof_position_targets(env, handle, joint_state_des['pos'])
+        joint_states_current = self.robot_dof_states
+        joint_states_current[..., 0] = dof_pos_tensor
+        self.gym.set_dof_state_tensor(self.sim, gymtorch.unwrap_tensor(joint_states_current))
+        self.gym.set_dof_position_target_tensor(self.sim, gymtorch.unwrap_tensor(dof_pos_tensor))
 
     def step(self, actions):
         ###############################################################################################################
         # Deploy control based on type
         action_dof_target = torch.zeros_like(self.robot_dof_pos).squeeze(-1)
         if self.draw_goal_configuration:
-            action_dof_target[:-1, :self.robot.arm_q_dim] = actions[..., :self.robot.arm_q_dim]
+            action_dof_target[:actions.shape[0], :self.robot.arm_q_dim] = actions[..., :self.robot.arm_q_dim]
             if self.controller_type == 'position':
                 action_dof_target[-1, :self.robot.arm_q_dim] = self.goal_joint_position
             else:
                 raise NotImplementedError
         else:
-            action_dof_target[..., :self.robot.arm_q_dim] = actions[..., :self.robot.arm_q_dim]
+            # action_dof_target[..., :self.robot.arm_q_dim] = actions[..., :self.robot.arm_q_dim]
+            action_dof_target[:actions.shape[0], :self.robot.arm_q_dim] = actions[..., :self.robot.arm_q_dim]
 
         # gripper is open
         if self.robot.gripper_q_dim > 0:
@@ -620,12 +618,11 @@ class MotionPlanningIsaacGymEnv:
 
         ###############################################################################################################
         # Check collisions between robots and objects
-        envs_with_robot_in_contact = self.get_envs_with_contacts()
+        envs_with_robot_in_contact = self.get_envs_with_contacts(first_n_envs=actions.shape[0])
 
         ###############################################################################################################
         # Get current joint states
-        joint_states_current = gymtorch.wrap_tensor(self.gym.acquire_dof_state_tensor(self.sim)).view(
-            self.num_envs, self.robot_num_dofs, 2)
+        joint_states_current = self.robot_dof_states
         if self.draw_goal_configuration:
             joint_states_current = joint_states_current[:-1, ...]
 
@@ -708,9 +705,9 @@ class MotionPlanningIsaacGymEnv:
 
         return joint_states_current, envs_with_robot_in_contact
 
-    def get_envs_with_contacts(self):
+    def get_envs_with_contacts(self, first_n_envs=None):
         # TODO - implement vectorized version
-        envs = self.get_envs()
+        envs = self.get_envs(first_n_envs=first_n_envs)
         robot_handles = self.robot_handles
         if self.draw_goal_configuration:
             # remove last environment/configuration, since it should not have collisions
@@ -724,6 +721,10 @@ class MotionPlanningIsaacGymEnv:
                 for contact in rigid_contacts:
                     body1_idx = contact[2]
                     env_idx = self.map_rigid_body_idxs_to_env_idx[body1_idx]
+                    # discard env_idx if it is not in the selected environments
+                    # the environments are selected sequentially
+                    if env_idx > len(envs) - 1:
+                        continue
                     if env_idx in envs_with_robot_in_contact:
                         pass
                     else:
@@ -742,9 +743,10 @@ class MotionPlanningIsaacGymEnv:
             return False
         return self.gym.query_viewer_has_closed(self.viewer)
 
-    def clean_up(self):
-        # cleanup
+    def clean_viewer(self):
         self.gym.destroy_viewer(self.viewer)
+
+    def clean_sim(self):
         self.gym.destroy_sim(self.sim)
 
 
@@ -802,18 +804,11 @@ class MotionPlanningController:
                 break
             _, _ = self.mp_isaac_env.step(joint_positions_last)
 
-        # clean up isaac gym
-        self.mp_isaac_env.clean_up()
-
         ###############################################################################################################
         # STATISTICS
         # Get number of trajectories that were in collision
         statistics = dict()
-        envs_with_robot_in_contact_unique = []
-        for envs_idxs in envs_with_robot_in_contact_l:
-            for idx in envs_idxs:
-                if idx not in envs_with_robot_in_contact_unique:
-                    envs_with_robot_in_contact_unique.append(idx)
+        envs_with_robot_in_contact_unique = np.unique([item for sublist in envs_with_robot_in_contact_l for item in sublist])
         statistics['trajectories_collision'] = len(envs_with_robot_in_contact_unique)
         statistics['trajectories_free'] = B - len(envs_with_robot_in_contact_unique)
         statistics['trajectories_free_fraction'] = (B - len(envs_with_robot_in_contact_unique)) / B

@@ -24,7 +24,7 @@ class RobotPanda(RobotBase):
 
         if gripper:
             urdf_robot_file = os.path.join(
-                get_robot_path(), 'franka_description', 'robots', 'panda_arm_hand.urdf')
+                get_robot_path(), 'franka_description', 'robots', 'panda_arm_hand_fixed_gripper.urdf')
         else:
             urdf_robot_file = os.path.join(
                 get_robot_path(), 'franka_description', 'robots', 'panda_arm_hand_no_gripper.urdf')
@@ -34,7 +34,7 @@ class RobotPanda(RobotBase):
             urdf_robot_file=urdf_robot_file,
             collision_spheres_file_path=os.path.join(get_configs_path(), 'panda/panda_sphere_config.yaml'),
             link_name_ee=self.link_name_ee,
-            gripper_q_dim=2 if gripper else 0,
+            gripper_q_dim=0 if gripper else 0,  # the gripper is fixed
             grasped_object=grasped_object,
             tensor_args=tensor_args,
             **kwargs
