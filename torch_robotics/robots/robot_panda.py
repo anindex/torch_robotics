@@ -42,7 +42,7 @@ class RobotPanda(RobotBase):
 
         ##########################################################################################
         # Differentiable franka panda model for visualization
-        self.diff_panda = self.diff_panda = DifferentiableFrankaPanda(
+        self.diff_panda = DifferentiableFrankaPanda(
             gripper=gripper, device=tensor_args['device'], grasped_object=grasped_object
         )
 

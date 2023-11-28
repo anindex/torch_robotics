@@ -14,12 +14,12 @@ class EnvTableShelfExtraObjects(EnvTableShelf):
             MultiBoxField(
                 np.array(
                     [
-                        [0.9, 0.1, 0.25/2],
+                        [0.95, 0.1, 0.25/2],
                         [0.6, -0.15, 0.3 / 2],
                     ]),
                 np.array(
                     [
-                        [0.25, 0.25, 0.25],
+                        [0.1, 0.25, 0.25],
                         [0.25, 0.25, 0.3],
                     ]
                 )

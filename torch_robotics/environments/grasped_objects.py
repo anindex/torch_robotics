@@ -40,7 +40,7 @@ class GraspedObjectBox(GraspedObject):
         # Box sizes
         primitive_fields = [
             MultiBoxField(torch.zeros(3, **tensor_args).view(1, -1),
-                          torch.tensor([0.05, 0.05, 0.15], **tensor_args).view(1, -1),
+                          torch.tensor([0.05, 0.05, 0.10], **tensor_args).view(1, -1),
                           tensor_args=tensor_args)
         ]
 

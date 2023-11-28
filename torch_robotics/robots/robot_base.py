@@ -12,7 +12,8 @@ from filelock import FileLock
 from urdf_parser_py.urdf import URDF, Joint, Link, Visual, Collision, Pose, Sphere
 
 import torchkin
-from torch_robotics.torch_kinematics_tree.geometrics.quaternion import q_convert_to_xyzw, q_to_euler
+from torch_robotics.torch_kinematics_tree.geometrics.quaternion import q_convert_to_xyzw, q_to_euler, \
+    rotation_matrix_to_q
 from torch_robotics.torch_kinematics_tree.geometrics.utils import (
     link_pos_from_link_tensor, link_rot_from_link_tensor, link_quat_from_link_tensor)
 from torch_robotics.torch_utils.torch_utils import to_numpy, to_torch
@@ -86,7 +87,7 @@ def modidy_robot_urdf_grasped_object(urdf_robot_file, grasped_object, parent_lin
         child=link_grasped_object,
         joint_type='fixed',
         origin=Pose(xyz=to_numpy(grasped_object.pos.squeeze()),
-                    rpy=to_numpy(q_to_euler(grasped_object.ori).squeeze())
+                    rpy=to_numpy(q_to_euler(rotation_matrix_to_q(grasped_object.ori)).squeeze())
                     )
     )
     robot_urdf.add_joint(joint)
@@ -107,7 +108,7 @@ def modidy_robot_urdf_grasped_object(urdf_robot_file, grasped_object, parent_lin
         link_collision = f'link_{grasped_object.name}_point_{i}'
         joint = Joint(
             name=f'joint_fixed_{grasped_object.name}_point_{i}',
-            parent=f'{grasped_object.reference_frame}',
+            parent=link_grasped_object,
             child=link_collision,
             joint_type='fixed',
             origin=Pose(xyz=to_numpy(point_collision))
@@ -160,18 +161,10 @@ class RobotBase(ABC):
         # If the task space is 2D (point mass or plannar robot), then the z coordinate is set to 0
         self.task_space_dim = task_space_dim
 
-        # The raw version of the original urdf file is used for collision checking with ompl
-        self.urdf_robot_file_raw = copy(urdf_robot_file)
-
         ################################################################################################
         # Robot collision model (links and margins) for object collision avoidance
         self.link_object_collision_names = []
         self.link_object_collision_margins = []
-        # Modify the urdf to append links of the collision model
-        urdf_robot_file, link_collision_names, link_collision_margins = modidy_robot_urdf_collision_model(
-            urdf_robot_file, collision_spheres_file_path)
-        self.link_object_collision_names.extend(link_collision_names)
-        self.link_object_collision_margins.extend(link_collision_margins)
 
         # Modify the urdf to append the link and collision points of the grasped object
         if grasped_object is not None:
@@ -179,6 +172,19 @@ class RobotBase(ABC):
                 urdf_robot_file, grasped_object, 'panda_hand')
             self.link_object_collision_names.extend(link_collision_names)
             self.link_object_collision_margins.extend([grasped_object.object_collision_margin] * len(link_collision_names))
+
+        # The raw version of the original urdf file with the grasped object is used
+        # for collision checking and visualization
+        try:
+            self.urdf_robot_file_raw = copy(urdf_robot_file).as_posix()
+        except AttributeError:
+            self.urdf_robot_file_raw = copy(urdf_robot_file)
+
+        # Modify the urdf to append links of the collision model
+        urdf_robot_file, link_collision_names, link_collision_margins = modidy_robot_urdf_collision_model(
+            urdf_robot_file, collision_spheres_file_path)
+        self.link_object_collision_names.extend(link_collision_names)
+        self.link_object_collision_margins.extend(link_collision_margins)
 
         assert len(self.link_object_collision_names) == len(self.link_object_collision_margins)
 

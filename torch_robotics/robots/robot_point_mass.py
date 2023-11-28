@@ -16,7 +16,7 @@ class RobotPointMass2D(RobotBase):
     link_name_ee = 'robot'  # must be in the urdf file
 
     def __init__(self,
-                 urdf_robot_file=os.path.join(get_robot_path(), "point_mass_robot_2d.urdf"),
+                 urdf_robot_file=os.path.join(get_robot_path(), 'point_mass', 'point_mass_robot_2d.urdf'),
                  collision_spheres_file_path=os.path.join(
                      get_configs_path(), 'point_mass_robot_2d/point_mass_robot_2d_sphere_config.yaml'),
                  task_space_dim=2,
@@ -114,7 +114,7 @@ class RobotPointMass3D(RobotPointMass2D):
 
     def __init__(self, **kwargs):
         super().__init__(
-            urdf_robot_file=os.path.join(get_robot_path(), "point_mass_robot_3d.urdf"),
+            urdf_robot_file=os.path.join(get_robot_path(), 'point_mass', 'point_mass_robot_3d.urdf'),
             collision_spheres_file_path=os.path.join(
                 get_configs_path(), 'point_mass_robot_3d/point_mass_robot_3d_sphere_config.yaml'),
             task_space_dim=3,

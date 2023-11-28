@@ -15,7 +15,7 @@ class RobotPlanar2Link(RobotBase):
     link_name_ee = 'link_ee'  # must be in the urdf file
 
     def __init__(self,
-                 urdf_robot_file=os.path.join(get_robot_path(), "planar_robot_2_link.urdf"),
+                 urdf_robot_file=os.path.join(get_robot_path(), 'planar_robot', 'planar_robot_2_link.urdf'),
                  collision_spheres_file_path=os.path.join(
                      get_configs_path(), 'planar_robot_2_link/planar_robot_2_link_sphere_config.yaml'),
                  task_space_dim=2,
@@ -71,7 +71,7 @@ class RobotPlanar2Link(RobotBase):
 class RobotPlanar4Link(RobotPlanar2Link):
 
     def __init__(self,
-                 urdf_robot_file=os.path.join(get_robot_path(), "planar_robot_4_link.urdf"),
+                 urdf_robot_file=os.path.join(get_robot_path(), 'planar_robot', 'planar_robot_4_link.urdf'),
                  collision_spheres_file_path=os.path.join(
                      get_configs_path(), 'planar_robot_4_link/planar_robot_4_link_sphere_config.yaml'),
                  **kwargs):
