@@ -302,7 +302,8 @@ class MotionPlanningIsaacGymEnv:
             raise Exception("Can only be used with PhysX")
 
         # create simulation
-        graphics_device_id = 0
+        # https://forums.developer.nvidia.com/t/not-sure-what-to-set-for-graphics-device-id/193625/2
+        graphics_device_id = 0 if show_viewer or render_camera_global else -1
         sim_device_type, compute_device_id = parse_device_str(self.tensor_args['device'].type)
         self.sim = self.gym.create_sim(compute_device_id, graphics_device_id, physics_engine, sim_params)
         if self.sim is None:
@@ -748,6 +749,10 @@ class MotionPlanningIsaacGymEnv:
 
     def clean_sim(self):
         self.gym.destroy_sim(self.sim)
+
+    def clean_up(self):
+        self.clean_viewer()
+        self.clean_sim()
 
 
 class MotionPlanningController:
