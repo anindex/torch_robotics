@@ -45,42 +45,32 @@ class EnvBase(ABC):
             for obj in obj_extra_list:
                 assert (isinstance(obj, ObjectField)), "Objects must be instances of ObjectField class"
 
-        self.obj_fixed_list = obj_fixed_list
-        self.obj_extra_list = obj_extra_list
-        self.obj_all_list = set(itertools.chain.from_iterable((
-            self.obj_fixed_list if self.obj_fixed_list is not None else [],
-            self.obj_extra_list if self.obj_extra_list is not None else [])
-        ))
+        self.obj_fixed_list = obj_fixed_list if obj_fixed_list is not None else []
+        self.obj_extra_list = obj_extra_list if obj_extra_list is not None else []
         self.simplify_primitives()
+        self.obj_all_list = None
+        self.update_obj_all_list()
 
         ################################################################################################
-        # Precompute the SDF map of fixed objects
+        # Precompute the SDF map of fixed and extra objects
+        self.sdf_cell_size = 0.01 if self.dim == 3 else 0.001
         self.grid_map_sdf_obj_fixed = None
-        if precompute_sdf_obj_fixed:
-            with TimerCUDA() as t:
-                # Compute SDF grid
-                self.grid_map_sdf_obj_fixed = GridMapSDF(
-                    self.limits, sdf_cell_size, self.obj_fixed_list, tensor_args=self.tensor_args
-                )
-            print(f'Precomputing the SDF grid and gradients of FIXED objects took: {t.elapsed:.3f} sec')
-
-        if self.obj_extra_list is not None:
-            self.grid_map_sdf_obj_extra = None
-            if precompute_sdf_obj_extra:
-                with TimerCUDA() as t:
-                    # Compute SDF grid
-                    self.grid_map_sdf_obj_extra = GridMapSDF(
-                        self.limits, sdf_cell_size, self.obj_extra_list, tensor_args=self.tensor_args
-                    )
-                print(f'Precomputing the SDF grid and gradients of EXTRA objects took: {t.elapsed:.3f} sec')
+        self.grid_map_sdf_obj_extra = None
+        self.build_sdf_grid(precompute_sdf_obj_fixed, precompute_sdf_obj_extra)
 
         ################################################################################################
         # Occupancy map
         self.occupancy_map = None
         self.cell_size = None
 
+    def update_obj_all_list(self):
+        self.obj_all_list = set(itertools.chain.from_iterable((self.obj_fixed_list, self.obj_extra_list)))
+
     def get_obj_list(self):
         return self.obj_all_list
+
+    def get_obj_extra_list(self):
+        return self.obj_extra_list
 
     def get_df_obj_list(self, return_extra_objects_only=False):
         df_obj_l = []
@@ -92,7 +82,7 @@ class EnvBase(ABC):
                 df_obj_l.extend(self.obj_fixed_list)
 
         # obj_extra_list objects
-        if self.obj_extra_list is not None:
+        if self.obj_extra_list:
             if self.grid_map_sdf_obj_extra is not None:
                 df_obj_l.append(self.grid_map_sdf_obj_extra)
             else:
@@ -100,10 +90,36 @@ class EnvBase(ABC):
 
         return df_obj_l
 
-    def add_obj(self, obj):
-        # Adds an object to the environments
-        raise NotImplementedError
+    def build_sdf_grid(self, compute_sdf_obj_fixed=False, compute_sdf_obj_extra=False):
+        if compute_sdf_obj_fixed:
+            with TimerCUDA() as t:
+                # Compute SDF grid
+                self.grid_map_sdf_obj_fixed = GridMapSDF(
+                    self.limits, self.sdf_cell_size, self.obj_fixed_list, tensor_args=self.tensor_args
+                )
+            print(f'Computing the SDF grid and gradients of FIXED objects took: {t.elapsed:.3f} sec')
+
+        if self.obj_extra_list and compute_sdf_obj_extra:
+            with TimerCUDA() as t:
+                # Compute SDF grid
+                self.grid_map_sdf_obj_extra = GridMapSDF(
+                    self.limits, self.sdf_cell_size, self.obj_extra_list, tensor_args=self.tensor_args
+                )
+            print(f'Computing the SDF grid and gradients of EXTRA objects took: {t.elapsed:.3f} sec')
+
+    def add_objects_extra(self, obj_l):
+        for obj in obj_l:
+            # Adds an object to the environment, as an extra object
+            assert (isinstance(obj, ObjectField)), "Objects must be instances of ObjectField class"
+            self.obj_extra_list.append(obj)
         self.simplify_primitives()
+        self.update_objects_extra()
+
+    def update_objects_extra(self):
+        # update the list of all objects
+        self.update_obj_all_list()
+        # update the sdf grid
+        self.build_sdf_grid(compute_sdf_obj_fixed=False, compute_sdf_obj_extra=True)
 
     def simplify_primitives(self):
         return
@@ -133,11 +149,11 @@ class EnvBase(ABC):
                 raise NotImplementedError
 
     def render(self, ax=None):
-        if self.obj_fixed_list is not None:
+        if self.obj_fixed_list:
             for obj in self.obj_fixed_list:
                 obj.render(ax)
 
-        if self.obj_extra_list is not None:
+        if self.obj_extra_list:
             for obj in self.obj_extra_list:
                 obj.render(ax, color='red', cmap='Reds')
 
@@ -181,7 +197,7 @@ class EnvBase(ABC):
 
         # compute sdf of extra objects
         sdf_extra_objects = None
-        if self.obj_extra_list is not None:
+        if self.obj_extra_list:
             if self.grid_map_sdf_obj_extra is not None:
                 sdf_extra_objects = self.grid_map_sdf_obj_extra(x)
                 if reshape_shape:
@@ -321,7 +337,7 @@ if __name__ == '__main__':
         limits=torch.tensor([[-1, -1], [1, 1]], **tensor_args),
         obj_fixed_list=[obj_field],
         precompute_sdf_obj_fixed=True,
-        sdf_cell_size=0.005,
+        sdf_cell_size=0.001,
         tensor_args=tensor_args,
     )
     fig, ax = create_fig_and_axes(env.dim)
@@ -335,4 +351,25 @@ if __name__ == '__main__':
     # Render gradient of sdf
     env.render_grad_sdf(ax, fig)
     plt.show()
+
+    ##############################################################################################################
+    # Add new objects extra
+    obj_field_extra = ObjectField([boxes])
+    obj_field_extra.set_position_orientation(pos=np.array([0.5, 0., 0.]), ori=ori)
+    env.add_objects_extra([obj_field_extra])
+
+
+    fig, ax = create_fig_and_axes(env.dim)
+    env.render(ax)
+    plt.show()
+
+    # Render sdf
+    fig, ax = create_fig_and_axes(env.dim)
+    env.render_sdf(ax, fig)
+
+    # Render gradient of sdf
+    env.render_grad_sdf(ax, fig)
+    plt.show()
+
+    print(env.get_obj_list())
 
