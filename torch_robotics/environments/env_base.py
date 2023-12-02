@@ -22,7 +22,6 @@ class EnvBase(ABC):
                  obj_extra_list=None,
                  precompute_sdf_obj_fixed=True,
                  precompute_sdf_obj_extra=True,
-                 sdf_cell_size=0.01,
                  tensor_args=None,
                  **kwargs
                  ):
@@ -55,12 +54,14 @@ class EnvBase(ABC):
 
         ################################################################################################
         # Precompute the SDF map of fixed objects
+        self.sdf_cell_size = 0.01 if self.dim == 3 else 0.001
+
         self.grid_map_sdf_obj_fixed = None
         if precompute_sdf_obj_fixed:
             with TimerCUDA() as t:
                 # Compute SDF grid
                 self.grid_map_sdf_obj_fixed = GridMapSDF(
-                    self.limits, sdf_cell_size, self.obj_fixed_list, tensor_args=self.tensor_args
+                    self.limits, self.sdf_cell_size, self.obj_fixed_list, tensor_args=self.tensor_args
                 )
             print(f'Precomputing the SDF grid and gradients of FIXED objects took: {t.elapsed:.3f} sec')
 
@@ -70,7 +71,7 @@ class EnvBase(ABC):
                 with TimerCUDA() as t:
                     # Compute SDF grid
                     self.grid_map_sdf_obj_extra = GridMapSDF(
-                        self.limits, sdf_cell_size, self.obj_extra_list, tensor_args=self.tensor_args
+                        self.limits, self.sdf_cell_size, self.obj_extra_list, tensor_args=self.tensor_args
                     )
                 print(f'Precomputing the SDF grid and gradients of EXTRA objects took: {t.elapsed:.3f} sec')
 
