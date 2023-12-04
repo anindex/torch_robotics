@@ -23,7 +23,7 @@ from torch_robotics.trajectory.utils import finite_difference_vector
 def write_robot_urdf_file(robot_urdf_file, xmlstr):
     robot_urdf_file_posix = robot_urdf_file.as_posix()
     robot_file_posix_lockfile = robot_urdf_file_posix + ".lock"
-    lock = FileLock(robot_file_posix_lockfile, timeout=5)
+    lock = FileLock(robot_file_posix_lockfile, timeout=120)
     lock.acquire()
     try:
         with open(str(robot_urdf_file), "w") as f:
@@ -197,7 +197,7 @@ class RobotBase(ABC):
         # Lock the urdf robot file because of multiprocessing
         urdf_robot_file_posix = self.urdf_robot_file
         urdf_robot_file_posix_lockfile = urdf_robot_file_posix + ".lock"
-        lock = FileLock(urdf_robot_file_posix_lockfile, timeout=5)
+        lock = FileLock(urdf_robot_file_posix_lockfile, timeout=120)
         lock.acquire()
         try:
             robot_urdf = URDF.from_xml_file(self.urdf_robot_file)
@@ -225,7 +225,7 @@ class RobotBase(ABC):
         # Lock the urdf robot file because of multiprocessing
         urdf_robot_file_posix = self.urdf_robot_file
         urdf_robot_file_posix_lockfile = urdf_robot_file_posix + ".lock"
-        lock = FileLock(urdf_robot_file_posix_lockfile, timeout=5)
+        lock = FileLock(urdf_robot_file_posix_lockfile, timeout=120)
         lock.acquire()
         try:
             self.robot_torchkin = torchkin.Robot.from_urdf_file(self.urdf_robot_file, **tensor_args)
