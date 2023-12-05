@@ -231,6 +231,11 @@
    </joint>
    <link name="panda_link2_0">
       <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+      <visual>
+         <geometry>
+            <sphere radius="0.06"/>
+         </geometry>
+      </visual>
    </link>
    <joint name="joint_panda_link2_sphere_1" type="fixed">
       <origin xyz="0.0 0.0 0.08" rpy="0 0 0"/>
@@ -239,6 +244,11 @@
    </joint>
    <link name="panda_link2_1">
       <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+      <visual>
+         <geometry>
+            <sphere radius="0.06"/>
+         </geometry>
+      </visual>
    </link>
    <joint name="joint_panda_link2_sphere_2" type="fixed">
       <origin xyz="0.0 -0.12 0.0" rpy="0 0 0"/>
@@ -247,6 +257,11 @@
    </joint>
    <link name="panda_link2_2">
       <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+      <visual>
+         <geometry>
+            <sphere radius="0.06"/>
+         </geometry>
+      </visual>
    </link>
    <joint name="joint_panda_link2_sphere_3" type="fixed">
       <origin xyz="0.0 -0.17 0.0" rpy="0 0 0"/>
@@ -255,6 +270,11 @@
    </joint>
    <link name="panda_link2_3">
       <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+      <visual>
+         <geometry>
+            <sphere radius="0.06"/>
+         </geometry>
+      </visual>
    </link>
    <joint name="joint_panda_link3_sphere_0" type="fixed">
       <origin xyz="0.0 0.0 -0.06" rpy="0 0 0"/>
@@ -263,6 +283,11 @@
    </joint>
    <link name="panda_link3_0">
       <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+      <visual>
+         <geometry>
+            <sphere radius="0.05"/>
+         </geometry>
+      </visual>
    </link>
    <joint name="joint_panda_link3_sphere_1" type="fixed">
       <origin xyz="0.0 0.0 -0.1" rpy="0 0 0"/>
@@ -271,6 +296,11 @@
    </joint>
    <link name="panda_link3_1">
       <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+      <visual>
+         <geometry>
+            <sphere radius="0.06"/>
+         </geometry>
+      </visual>
    </link>
    <joint name="joint_panda_link3_sphere_2" type="fixed">
       <origin xyz="0.08 0.06 0.0" rpy="0 0 0"/>
@@ -279,6 +309,11 @@
    </joint>
    <link name="panda_link3_2">
       <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+      <visual>
+         <geometry>
+            <sphere radius="0.055"/>
+         </geometry>
+      </visual>
    </link>
    <joint name="joint_panda_link3_sphere_3" type="fixed">
       <origin xyz="0.08 0.02 0.0" rpy="0 0 0"/>
@@ -287,6 +322,11 @@
    </joint>
    <link name="panda_link3_3">
       <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+      <visual>
+         <geometry>
+            <sphere radius="0.055"/>
+         </geometry>
+      </visual>
    </link>
    <joint name="joint_panda_link4_sphere_0" type="fixed">
       <origin xyz="0.0 0.0 0.02" rpy="0 0 0"/>
@@ -295,6 +335,11 @@
    </joint>
    <link name="panda_link4_0">
       <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+      <visual>
+         <geometry>
+            <sphere radius="0.055"/>
+         </geometry>
+      </visual>
    </link>
    <joint name="joint_panda_link4_sphere_1" type="fixed">
       <origin xyz="0.0 0.0 0.06" rpy="0 0 0"/>
@@ -303,6 +348,11 @@
    </joint>
    <link name="panda_link4_1">
       <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+      <visual>
+         <geometry>
+            <sphere radius="0.055"/>
+         </geometry>
+      </visual>
    </link>
    <joint name="joint_panda_link4_sphere_2" type="fixed">
       <origin xyz="-0.08 0.095 0.0" rpy="0 0 0"/>
@@ -311,6 +361,11 @@
    </joint>
    <link name="panda_link4_2">
       <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+      <visual>
+         <geometry>
+            <sphere radius="0.06"/>
+         </geometry>
+      </visual>
    </link>
    <joint name="joint_panda_link4_sphere_3" type="fixed">
       <origin xyz="-0.08 0.06 0.0" rpy="0 0 0"/>
@@ -319,6 +374,11 @@
    </joint>
    <link name="panda_link4_3">
       <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+      <visual>
+         <geometry>
+            <sphere radius="0.055"/>
+         </geometry>
+      </visual>
    </link>
    <joint name="joint_panda_link5_sphere_0" type="fixed">
       <origin xyz="0.0 0.055 0.0" rpy="0 0 0"/>
@@ -327,6 +387,11 @@
    </joint>
    <link name="panda_link5_0">
       <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+      <visual>
+         <geometry>
+            <sphere radius="0.06"/>
+         </geometry>
+      </visual>
    </link>
    <joint name="joint_panda_link5_sphere_1" type="fixed">
       <origin xyz="0.0 0.075 0.0" rpy="0 0 0"/>
@@ -335,6 +400,11 @@
    </joint>
    <link name="panda_link5_1">
       <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+      <visual>
+         <geometry>
+            <sphere radius="0.06"/>
+         </geometry>
+      </visual>
    </link>
    <joint name="joint_panda_link5_sphere_2" type="fixed">
       <origin xyz="0.0 0.0 -0.22" rpy="0 0 0"/>
@@ -343,6 +413,11 @@
    </joint>
    <link name="panda_link5_2">
       <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+      <visual>
+         <geometry>
+            <sphere radius="0.06"/>
+         </geometry>
+      </visual>
    </link>
    <joint name="joint_panda_link5_sphere_3" type="fixed">
       <origin xyz="0.0 0.05 -0.18" rpy="0 0 0"/>
@@ -351,6 +426,11 @@
    </joint>
    <link name="panda_link5_3">
       <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+      <visual>
+         <geometry>
+            <sphere radius="0.05"/>
+         </geometry>
+      </visual>
    </link>
    <joint name="joint_panda_link5_sphere_4" type="fixed">
       <origin xyz="0.01 0.08 -0.14" rpy="0 0 0"/>
@@ -359,6 +439,11 @@
    </joint>
    <link name="panda_link5_4">
       <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+      <visual>
+         <geometry>
+            <sphere radius="0.025"/>
+         </geometry>
+      </visual>
    </link>
    <joint name="joint_panda_link5_sphere_5" type="fixed">
       <origin xyz="0.01 0.085 -0.11" rpy="0 0 0"/>
@@ -367,6 +452,11 @@
    </joint>
    <link name="panda_link5_5">
       <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+      <visual>
+         <geometry>
+            <sphere radius="0.025"/>
+         </geometry>
+      </visual>
    </link>
    <joint name="joint_panda_link5_sphere_6" type="fixed">
       <origin xyz="0.01 0.09 -0.08" rpy="0 0 0"/>
@@ -375,6 +465,11 @@
    </joint>
    <link name="panda_link5_6">
       <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+      <visual>
+         <geometry>
+            <sphere radius="0.025"/>
+         </geometry>
+      </visual>
    </link>
    <joint name="joint_panda_link5_sphere_7" type="fixed">
       <origin xyz="0.01 0.095 -0.05" rpy="0 0 0"/>
@@ -383,6 +478,11 @@
    </joint>
    <link name="panda_link5_7">
       <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+      <visual>
+         <geometry>
+            <sphere radius="0.025"/>
+         </geometry>
+      </visual>
    </link>
    <joint name="joint_panda_link5_sphere_8" type="fixed">
       <origin xyz="-0.01 0.08 -0.14" rpy="0 0 0"/>
@@ -391,6 +491,11 @@
    </joint>
    <link name="panda_link5_8">
       <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+      <visual>
+         <geometry>
+            <sphere radius="0.025"/>
+         </geometry>
+      </visual>
    </link>
    <joint name="joint_panda_link5_sphere_9" type="fixed">
       <origin xyz="-0.01 0.085 -0.11" rpy="0 0 0"/>
@@ -399,6 +504,11 @@
    </joint>
    <link name="panda_link5_9">
       <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+      <visual>
+         <geometry>
+            <sphere radius="0.025"/>
+         </geometry>
+      </visual>
    </link>
    <joint name="joint_panda_link5_sphere_10" type="fixed">
       <origin xyz="-0.01 0.09 -0.08" rpy="0 0 0"/>
@@ -407,6 +517,11 @@
    </joint>
    <link name="panda_link5_10">
       <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+      <visual>
+         <geometry>
+            <sphere radius="0.025"/>
+         </geometry>
+      </visual>
    </link>
    <joint name="joint_panda_link5_sphere_11" type="fixed">
       <origin xyz="-0.01 0.095 -0.05" rpy="0 0 0"/>
@@ -415,6 +530,11 @@
    </joint>
    <link name="panda_link5_11">
       <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+      <visual>
+         <geometry>
+            <sphere radius="0.025"/>
+         </geometry>
+      </visual>
    </link>
    <joint name="joint_panda_link6_sphere_0" type="fixed">
       <origin xyz="0.0 0.0 0.0" rpy="0 0 0"/>
@@ -423,6 +543,11 @@
    </joint>
    <link name="panda_link6_0">
       <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+      <visual>
+         <geometry>
+            <sphere radius="0.06"/>
+         </geometry>
+      </visual>
    </link>
    <joint name="joint_panda_link6_sphere_1" type="fixed">
       <origin xyz="0.08 0.03 0.0" rpy="0 0 0"/>
@@ -431,6 +556,11 @@
    </joint>
    <link name="panda_link6_1">
       <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+      <visual>
+         <geometry>
+            <sphere radius="0.06"/>
+         </geometry>
+      </visual>
    </link>
    <joint name="joint_panda_link6_sphere_2" type="fixed">
       <origin xyz="0.08 -0.01 0.0" rpy="0 0 0"/>
@@ -439,6 +569,11 @@
    </joint>
    <link name="panda_link6_2">
       <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+      <visual>
+         <geometry>
+            <sphere radius="0.06"/>
+         </geometry>
+      </visual>
    </link>
    <joint name="joint_panda_link7_sphere_0" type="fixed">
       <origin xyz="0.0 0.0 0.07" rpy="0 0 0"/>
@@ -447,6 +582,11 @@
    </joint>
    <link name="panda_link7_0">
       <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+      <visual>
+         <geometry>
+            <sphere radius="0.05"/>
+         </geometry>
+      </visual>
    </link>
    <joint name="joint_panda_link7_sphere_1" type="fixed">
       <origin xyz="0.02 0.04 0.08" rpy="0 0 0"/>
@@ -455,6 +595,11 @@
    </joint>
    <link name="panda_link7_1">
       <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+      <visual>
+         <geometry>
+            <sphere radius="0.025"/>
+         </geometry>
+      </visual>
    </link>
    <joint name="joint_panda_link7_sphere_2" type="fixed">
       <origin xyz="0.04 0.02 0.08" rpy="0 0 0"/>
@@ -463,6 +608,11 @@
    </joint>
    <link name="panda_link7_2">
       <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+      <visual>
+         <geometry>
+            <sphere radius="0.025"/>
+         </geometry>
+      </visual>
    </link>
    <joint name="joint_panda_link7_sphere_3" type="fixed">
       <origin xyz="0.04 0.06 0.085" rpy="0 0 0"/>
@@ -471,6 +621,11 @@
    </joint>
    <link name="panda_link7_3">
       <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+      <visual>
+         <geometry>
+            <sphere radius="0.02"/>
+         </geometry>
+      </visual>
    </link>
    <joint name="joint_panda_link7_sphere_4" type="fixed">
       <origin xyz="0.06 0.04 0.085" rpy="0 0 0"/>
@@ -479,6 +634,11 @@
    </joint>
    <link name="panda_link7_4">
       <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+      <visual>
+         <geometry>
+            <sphere radius="0.02"/>
+         </geometry>
+      </visual>
    </link>
    <joint name="joint_panda_hand_sphere_0" type="fixed">
       <origin xyz="0.0 -0.075 0.01" rpy="0 0 0"/>
@@ -487,6 +647,11 @@
    </joint>
    <link name="panda_hand_0">
       <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+      <visual>
+         <geometry>
+            <sphere radius="0.028"/>
+         </geometry>
+      </visual>
    </link>
    <joint name="joint_panda_hand_sphere_1" type="fixed">
       <origin xyz="0.0 -0.045 0.01" rpy="0 0 0"/>
@@ -495,6 +660,11 @@
    </joint>
    <link name="panda_hand_1">
       <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+      <visual>
+         <geometry>
+            <sphere radius="0.028"/>
+         </geometry>
+      </visual>
    </link>
    <joint name="joint_panda_hand_sphere_2" type="fixed">
       <origin xyz="0.0 -0.015 0.01" rpy="0 0 0"/>
@@ -503,6 +673,11 @@
    </joint>
    <link name="panda_hand_2">
       <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+      <visual>
+         <geometry>
+            <sphere radius="0.028"/>
+         </geometry>
+      </visual>
    </link>
    <joint name="joint_panda_hand_sphere_3" type="fixed">
       <origin xyz="0.0 0.015 0.01" rpy="0 0 0"/>
@@ -511,6 +686,11 @@
    </joint>
    <link name="panda_hand_3">
       <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+      <visual>
+         <geometry>
+            <sphere radius="0.028"/>
+         </geometry>
+      </visual>
    </link>
    <joint name="joint_panda_hand_sphere_4" type="fixed">
       <origin xyz="0.0 0.045 0.01" rpy="0 0 0"/>
@@ -519,6 +699,11 @@
    </joint>
    <link name="panda_hand_4">
       <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+      <visual>
+         <geometry>
+            <sphere radius="0.028"/>
+         </geometry>
+      </visual>
    </link>
    <joint name="joint_panda_hand_sphere_5" type="fixed">
       <origin xyz="0.0 0.075 0.01" rpy="0 0 0"/>
@@ -527,6 +712,11 @@
    </joint>
    <link name="panda_hand_5">
       <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+      <visual>
+         <geometry>
+            <sphere radius="0.028"/>
+         </geometry>
+      </visual>
    </link>
    <joint name="joint_panda_hand_sphere_6" type="fixed">
       <origin xyz="0.0 -0.075 0.03" rpy="0 0 0"/>
@@ -535,6 +725,11 @@
    </joint>
    <link name="panda_hand_6">
       <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+      <visual>
+         <geometry>
+            <sphere radius="0.026"/>
+         </geometry>
+      </visual>
    </link>
    <joint name="joint_panda_hand_sphere_7" type="fixed">
       <origin xyz="0.0 -0.045 0.03" rpy="0 0 0"/>
@@ -543,6 +738,11 @@
    </joint>
    <link name="panda_hand_7">
       <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+      <visual>
+         <geometry>
+            <sphere radius="0.026"/>
+         </geometry>
+      </visual>
    </link>
    <joint name="joint_panda_hand_sphere_8" type="fixed">
       <origin xyz="0.0 -0.015 0.03" rpy="0 0 0"/>
@@ -551,6 +751,11 @@
    </joint>
    <link name="panda_hand_8">
       <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+      <visual>
+         <geometry>
+            <sphere radius="0.026"/>
+         </geometry>
+      </visual>
    </link>
    <joint name="joint_panda_hand_sphere_9" type="fixed">
       <origin xyz="0.0 0.015 0.03" rpy="0 0 0"/>
@@ -559,6 +764,11 @@
    </joint>
    <link name="panda_hand_9">
       <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+      <visual>
+         <geometry>
+            <sphere radius="0.026"/>
+         </geometry>
+      </visual>
    </link>
    <joint name="joint_panda_hand_sphere_10" type="fixed">
       <origin xyz="0.0 0.045 0.03" rpy="0 0 0"/>
@@ -567,6 +777,11 @@
    </joint>
    <link name="panda_hand_10">
       <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+      <visual>
+         <geometry>
+            <sphere radius="0.026"/>
+         </geometry>
+      </visual>
    </link>
    <joint name="joint_panda_hand_sphere_11" type="fixed">
       <origin xyz="0.0 0.075 0.03" rpy="0 0 0"/>
@@ -575,6 +790,11 @@
    </joint>
    <link name="panda_hand_11">
       <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+      <visual>
+         <geometry>
+            <sphere radius="0.026"/>
+         </geometry>
+      </visual>
    </link>
    <joint name="joint_panda_hand_sphere_12" type="fixed">
       <origin xyz="0.0 -0.075 0.05" rpy="0 0 0"/>
@@ -583,6 +803,11 @@
    </joint>
    <link name="panda_hand_12">
       <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+      <visual>
+         <geometry>
+            <sphere radius="0.024"/>
+         </geometry>
+      </visual>
    </link>
    <joint name="joint_panda_hand_sphere_13" type="fixed">
       <origin xyz="0.0 -0.045 0.05" rpy="0 0 0"/>
@@ -591,6 +816,11 @@
    </joint>
    <link name="panda_hand_13">
       <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+      <visual>
+         <geometry>
+            <sphere radius="0.024"/>
+         </geometry>
+      </visual>
    </link>
    <joint name="joint_panda_hand_sphere_14" type="fixed">
       <origin xyz="0.0 -0.015 0.05" rpy="0 0 0"/>
@@ -599,6 +829,11 @@
    </joint>
    <link name="panda_hand_14">
       <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+      <visual>
+         <geometry>
+            <sphere radius="0.024"/>
+         </geometry>
+      </visual>
    </link>
    <joint name="joint_panda_hand_sphere_15" type="fixed">
       <origin xyz="0.0 0.015 0.05" rpy="0 0 0"/>
@@ -607,6 +842,11 @@
    </joint>
    <link name="panda_hand_15">
       <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+      <visual>
+         <geometry>
+            <sphere radius="0.024"/>
+         </geometry>
+      </visual>
    </link>
    <joint name="joint_panda_hand_sphere_16" type="fixed">
       <origin xyz="0.0 0.045 0.05" rpy="0 0 0"/>
@@ -615,6 +855,11 @@
    </joint>
    <link name="panda_hand_16">
       <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+      <visual>
+         <geometry>
+            <sphere radius="0.024"/>
+         </geometry>
+      </visual>
    </link>
    <joint name="joint_panda_hand_sphere_17" type="fixed">
       <origin xyz="0.0 0.075 0.05" rpy="0 0 0"/>
@@ -623,5 +868,88 @@
    </joint>
    <link name="panda_hand_17">
       <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+      <visual>
+         <geometry>
+            <sphere radius="0.024"/>
+         </geometry>
+      </visual>
+   </link>
+   <joint name="joint_panda_hand_sphere_18" type="fixed">
+      <origin xyz="0.0 -0.075 0.08" rpy="0 0 0"/>
+      <parent link="panda_hand"/>
+      <child link="panda_hand_18"/>
+   </joint>
+   <link name="panda_hand_18">
+      <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+      <visual>
+         <geometry>
+            <sphere radius="0.02"/>
+         </geometry>
+      </visual>
+   </link>
+   <joint name="joint_panda_hand_sphere_19" type="fixed">
+      <origin xyz="0.0 -0.045 0.08" rpy="0 0 0"/>
+      <parent link="panda_hand"/>
+      <child link="panda_hand_19"/>
+   </joint>
+   <link name="panda_hand_19">
+      <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+      <visual>
+         <geometry>
+            <sphere radius="0.02"/>
+         </geometry>
+      </visual>
+   </link>
+   <joint name="joint_panda_hand_sphere_20" type="fixed">
+      <origin xyz="0.0 -0.015 0.08" rpy="0 0 0"/>
+      <parent link="panda_hand"/>
+      <child link="panda_hand_20"/>
+   </joint>
+   <link name="panda_hand_20">
+      <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+      <visual>
+         <geometry>
+            <sphere radius="0.02"/>
+         </geometry>
+      </visual>
+   </link>
+   <joint name="joint_panda_hand_sphere_21" type="fixed">
+      <origin xyz="0.0 0.015 0.08" rpy="0 0 0"/>
+      <parent link="panda_hand"/>
+      <child link="panda_hand_21"/>
+   </joint>
+   <link name="panda_hand_21">
+      <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+      <visual>
+         <geometry>
+            <sphere radius="0.02"/>
+         </geometry>
+      </visual>
+   </link>
+   <joint name="joint_panda_hand_sphere_22" type="fixed">
+      <origin xyz="0.0 0.045 0.08" rpy="0 0 0"/>
+      <parent link="panda_hand"/>
+      <child link="panda_hand_22"/>
+   </joint>
+   <link name="panda_hand_22">
+      <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+      <visual>
+         <geometry>
+            <sphere radius="0.02"/>
+         </geometry>
+      </visual>
+   </link>
+   <joint name="joint_panda_hand_sphere_23" type="fixed">
+      <origin xyz="0.0 0.075 0.08" rpy="0 0 0"/>
+      <parent link="panda_hand"/>
+      <child link="panda_hand_23"/>
+   </joint>
+   <link name="panda_hand_23">
+      <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+      <visual>
+         <geometry>
+            <sphere radius="0.02"/>
+         </geometry>
+      </visual>
    </link>
 </robot>

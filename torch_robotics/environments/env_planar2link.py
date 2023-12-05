@@ -12,12 +12,11 @@ class EnvPlanar2Link(EnvBase):
 
     def __init__(self, tensor_args=None, **kwargs):
         circles = np.array([
-            (0.2, 0.5, 0.3),
-            (0.3, 0.15, 0.1),
-            (0.5, 0.5, 0.1),
-            (0.3, -0.5, 0.2),
-            (-0.5, 0.5, 0.3),
-            (-0.5, -0.5, 0.3),
+            (0.32, 0.3, 0.1),
+            (0.37, -0.1, 0.1),
+            (0.32, -0.5, 0.15),
+            (-0.32, 0.3, 0.20),
+            (-0.40, -0.4, 0.25),
         ])
         spheres = MultiSphereField(circles[:, :2], circles[:, 2], tensor_args=tensor_args)
         obj_field = ObjectField([spheres], 'planar2link-spheres')
