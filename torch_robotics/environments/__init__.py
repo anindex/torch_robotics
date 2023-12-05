@@ -7,6 +7,7 @@ from .env_grid_circles_2d import *
 from .env_maze_boxes_3d import *
 from .env_narrow_passage_dense_2d import *
 from .env_narrow_passage_dense_2d_extra_objects import *
+from .env_pilars_3d import *
 from .env_planar2link import *
 from .env_planar4link import *
 from .env_planar4link_extra_objects import *

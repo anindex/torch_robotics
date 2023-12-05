@@ -5,6 +5,7 @@ from math import ceil
 
 import cv2
 import imageio
+import matplotlib
 import numpy as np
 from moviepy.video.io.ImageSequenceClip import ImageSequenceClip
 from moviepy.video.io.VideoFileClip import VideoFileClip
@@ -265,9 +266,6 @@ class MotionPlanningIsaacGymEnv:
         self.axes_geom = gymutil.AxesGeometry(0.15)
         self.axes_geom_ee_goal = gymutil.AxesGeometry(0.3)
         self.end_effector_positions_visualization = None
-        self.sphere_geom_end_effector = gymutil.WireframeSphereGeometry(
-            0.005, 10, 10, gymapi.Transform(), color=(0, 0, 1)
-        )
 
         ###############################################################################################################
         # ISAAC GYM options
@@ -396,6 +394,20 @@ class MotionPlanningIsaacGymEnv:
         color_obj_fixed = GYM_COLORS['grey']
         color_obj_extra = GYM_COLORS['red']
 
+        # robot colors
+        cmap = matplotlib.cm.get_cmap('viridis')
+        self.robot_colors = [cmap(m)[:3] for m in np.linspace(0, 1, self.num_envs)]
+        if self.color_robots:
+            self.sphere_geom_end_effector_l = [gymutil.WireframeSphereGeometry(
+                0.005, 10, 10, gymapi.Transform(), color=(c[0], c[1], c[2]))
+                for c in self.robot_colors
+            ]
+        else:
+            self.sphere_geom_end_effector_l = [gymutil.WireframeSphereGeometry(
+                0.005, 10, 10, gymapi.Transform(), color=(0, 0, 1))
+                for _ in self.robot_colors
+            ]
+
         # Maps the global rigid body index to the environments index
         # Useful to know which trajectories are in collision
         self.map_rigid_body_idxs_to_env_idx = {}
@@ -447,7 +459,7 @@ class MotionPlanningIsaacGymEnv:
 
             if color_robots:
                 if not (self.draw_goal_configuration and i == self.num_envs - 1):
-                    c = np.random.random(3)
+                    c = self.robot_colors[i]
                     color = gymapi.Vec3(c[0], c[1], c[2])
                     for j in range(n_rigid_bodies):
                         self.gym.set_rigid_body_color(env, robot_handle, j, gymapi.MESH_VISUAL_AND_COLLISION, color)
@@ -652,7 +664,7 @@ class MotionPlanningIsaacGymEnv:
                     ee_position_l = [ee_position]
                     for ee_position in ee_position_l:
                         link_transform = gymapi.Transform(p=gymapi.Vec3(*ee_position))
-                        gymutil.draw_lines(self.sphere_geom_end_effector, self.gym, self.viewer, env, link_transform)
+                        gymutil.draw_lines(self.sphere_geom_end_effector_l[k], self.gym, self.viewer, env, link_transform)
 
                 # color robots in collision
                 if self.collor_robots_in_collision:
