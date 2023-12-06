@@ -147,11 +147,6 @@
    </joint>
    <link name="link_1_0">
       <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
-      <visual>
-         <geometry>
-            <sphere radius="0.01"/>
-         </geometry>
-      </visual>
    </link>
    <joint name="joint_link_1_sphere_1" type="fixed">
       <origin xyz="0.04 0.0 0.0" rpy="0 0 0"/>
@@ -160,11 +155,6 @@
    </joint>
    <link name="link_1_1">
       <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
-      <visual>
-         <geometry>
-            <sphere radius="0.01"/>
-         </geometry>
-      </visual>
    </link>
    <joint name="joint_link_1_sphere_2" type="fixed">
       <origin xyz="0.08 0.0 0.0" rpy="0 0 0"/>
@@ -173,11 +163,6 @@
    </joint>
    <link name="link_1_2">
       <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
-      <visual>
-         <geometry>
-            <sphere radius="0.01"/>
-         </geometry>
-      </visual>
    </link>
    <joint name="joint_link_1_sphere_3" type="fixed">
       <origin xyz="0.12 0.0 0.0" rpy="0 0 0"/>
@@ -186,11 +171,6 @@
    </joint>
    <link name="link_1_3">
       <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
-      <visual>
-         <geometry>
-            <sphere radius="0.01"/>
-         </geometry>
-      </visual>
    </link>
    <joint name="joint_link_1_sphere_4" type="fixed">
       <origin xyz="0.16 0.0 0.0" rpy="0 0 0"/>
@@ -199,11 +179,6 @@
    </joint>
    <link name="link_1_4">
       <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
-      <visual>
-         <geometry>
-            <sphere radius="0.01"/>
-         </geometry>
-      </visual>
    </link>
    <joint name="joint_link_2_sphere_0" type="fixed">
       <origin xyz="0.0 0.0 0.0" rpy="0 0 0"/>
@@ -212,11 +187,6 @@
    </joint>
    <link name="link_2_0">
       <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
-      <visual>
-         <geometry>
-            <sphere radius="0.01"/>
-         </geometry>
-      </visual>
    </link>
    <joint name="joint_link_2_sphere_1" type="fixed">
       <origin xyz="0.04 0.0 0.0" rpy="0 0 0"/>
@@ -225,11 +195,6 @@
    </joint>
    <link name="link_2_1">
       <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
-      <visual>
-         <geometry>
-            <sphere radius="0.01"/>
-         </geometry>
-      </visual>
    </link>
    <joint name="joint_link_2_sphere_2" type="fixed">
       <origin xyz="0.08 0.0 0.0" rpy="0 0 0"/>
@@ -238,11 +203,6 @@
    </joint>
    <link name="link_2_2">
       <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
-      <visual>
-         <geometry>
-            <sphere radius="0.01"/>
-         </geometry>
-      </visual>
    </link>
    <joint name="joint_link_2_sphere_3" type="fixed">
       <origin xyz="0.12 0.0 0.0" rpy="0 0 0"/>
@@ -251,11 +211,6 @@
    </joint>
    <link name="link_2_3">
       <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
-      <visual>
-         <geometry>
-            <sphere radius="0.01"/>
-         </geometry>
-      </visual>
    </link>
    <joint name="joint_link_2_sphere_4" type="fixed">
       <origin xyz="0.16 0.0 0.0" rpy="0 0 0"/>
@@ -264,11 +219,6 @@
    </joint>
    <link name="link_2_4">
       <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
-      <visual>
-         <geometry>
-            <sphere radius="0.01"/>
-         </geometry>
-      </visual>
    </link>
    <joint name="joint_link_3_sphere_0" type="fixed">
       <origin xyz="0.0 0.0 0.0" rpy="0 0 0"/>
@@ -277,11 +227,6 @@
    </joint>
    <link name="link_3_0">
       <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
-      <visual>
-         <geometry>
-            <sphere radius="0.01"/>
-         </geometry>
-      </visual>
    </link>
    <joint name="joint_link_3_sphere_1" type="fixed">
       <origin xyz="0.04 0.0 0.0" rpy="0 0 0"/>
@@ -290,11 +235,6 @@
    </joint>
    <link name="link_3_1">
       <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
-      <visual>
-         <geometry>
-            <sphere radius="0.01"/>
-         </geometry>
-      </visual>
    </link>
    <joint name="joint_link_3_sphere_2" type="fixed">
       <origin xyz="0.08 0.0 0.0" rpy="0 0 0"/>
@@ -303,11 +243,6 @@
    </joint>
    <link name="link_3_2">
       <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
-      <visual>
-         <geometry>
-            <sphere radius="0.01"/>
-         </geometry>
-      </visual>
    </link>
    <joint name="joint_link_3_sphere_3" type="fixed">
       <origin xyz="0.12 0.0 0.0" rpy="0 0 0"/>
@@ -316,11 +251,6 @@
    </joint>
    <link name="link_3_3">
       <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
-      <visual>
-         <geometry>
-            <sphere radius="0.01"/>
-         </geometry>
-      </visual>
    </link>
    <joint name="joint_link_3_sphere_4" type="fixed">
       <origin xyz="0.16 0.0 0.0" rpy="0 0 0"/>
@@ -329,11 +259,6 @@
    </joint>
    <link name="link_3_4">
       <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
-      <visual>
-         <geometry>
-            <sphere radius="0.01"/>
-         </geometry>
-      </visual>
    </link>
    <joint name="joint_link_4_sphere_0" type="fixed">
       <origin xyz="0.0 0.0 0.0" rpy="0 0 0"/>
@@ -342,11 +267,6 @@
    </joint>
    <link name="link_4_0">
       <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
-      <visual>
-         <geometry>
-            <sphere radius="0.01"/>
-         </geometry>
-      </visual>
    </link>
    <joint name="joint_link_4_sphere_1" type="fixed">
       <origin xyz="0.04 0.0 0.0" rpy="0 0 0"/>
@@ -355,11 +275,6 @@
    </joint>
    <link name="link_4_1">
       <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
-      <visual>
-         <geometry>
-            <sphere radius="0.01"/>
-         </geometry>
-      </visual>
    </link>
    <joint name="joint_link_4_sphere_2" type="fixed">
       <origin xyz="0.08 0.0 0.0" rpy="0 0 0"/>
@@ -368,11 +283,6 @@
    </joint>
    <link name="link_4_2">
       <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
-      <visual>
-         <geometry>
-            <sphere radius="0.01"/>
-         </geometry>
-      </visual>
    </link>
    <joint name="joint_link_4_sphere_3" type="fixed">
       <origin xyz="0.12 0.0 0.0" rpy="0 0 0"/>
@@ -381,11 +291,6 @@
    </joint>
    <link name="link_4_3">
       <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
-      <visual>
-         <geometry>
-            <sphere radius="0.01"/>
-         </geometry>
-      </visual>
    </link>
    <joint name="joint_link_4_sphere_4" type="fixed">
       <origin xyz="0.16 0.0 0.0" rpy="0 0 0"/>
@@ -394,11 +299,6 @@
    </joint>
    <link name="link_4_4">
       <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
-      <visual>
-         <geometry>
-            <sphere radius="0.01"/>
-         </geometry>
-      </visual>
    </link>
    <joint name="joint_link_4_sphere_5" type="fixed">
       <origin xyz="0.2 0.0 0.0" rpy="0 0 0"/>
@@ -407,10 +307,5 @@
    </joint>
    <link name="link_4_5">
       <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
-      <visual>
-         <geometry>
-            <sphere radius="0.02"/>
-         </geometry>
-      </visual>
    </link>
 </robot>
