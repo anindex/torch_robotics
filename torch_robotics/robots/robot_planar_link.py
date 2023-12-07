@@ -52,6 +52,7 @@ class RobotPlanar2Link(RobotBase):
 
     def render_trajectories(self, ax, trajs=None, start_state=None, goal_state=None, colors=['gray'],
                             n_skip_points=None,
+                            ee_goal_position=None,
                             **kwargs):
         if trajs is not None:
             trajs_pos = self.get_position(trajs)
@@ -66,6 +67,9 @@ class RobotPlanar2Link(RobotBase):
             self.render(ax, start_state, alpha=1.0, color='blue', zorder=10)
         if goal_state is not None:
             self.render(ax, goal_state, alpha=1.0, color='red', zorder=10)
+        if ee_goal_position is not None:
+            ee_goal_position_np = to_numpy(ee_goal_position)
+            ax.scatter(ee_goal_position_np[0], ee_goal_position_np[1], color='red', marker='*', s=10**2.2, zorder=10)
 
 
 class RobotPlanar4Link(RobotPlanar2Link):

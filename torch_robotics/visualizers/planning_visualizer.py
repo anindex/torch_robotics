@@ -144,6 +144,7 @@ class PlanningVisualizer:
             pos_start_state=None, pos_goal_state=None,
             vel_start_state=None, vel_goal_state=None,
             set_joint_limits=True,
+            control_points=None,
             **kwargs
     ):
         if trajs is None:
@@ -183,7 +184,7 @@ class PlanningVisualizer:
         axs[0, 1].set_title('Velocity')
         axs[-1, 0].set_xlabel('Timesteps')
         axs[-1, 1].set_xlabel('Timesteps')
-        timesteps = np.arange(H).reshape(1, -1)
+        timesteps = np.linspace(0, 1, H).reshape(1, -1)
         for i, ax in enumerate(axs):
             for trajs_filtered, color in zip([(trajs_coll_pos_np, trajs_coll_vel_np), (trajs_free_pos_np, trajs_free_vel_np)],
                                              ['black', 'orange']):
@@ -207,15 +208,23 @@ class PlanningVisualizer:
             if vel_start_state is not None:
                 ax[1].scatter(0, vel_start_state[i], color='green')
             if pos_goal_state is not None:
-                ax[0].scatter(H-1, pos_goal_state[i], color='purple')
+                ax[0].scatter(1, pos_goal_state[i], color='purple')
             if vel_goal_state is not None:
-                ax[1].scatter(H-1, vel_goal_state[i], color='purple')
+                ax[1].scatter(1, vel_goal_state[i], color='purple')
             # Y label
             ax[0].set_ylabel(f'q_{i}')
             # Set limits
             if set_joint_limits:
                 ax[0].set_ylim(self.robot.q_min_np[i], self.robot.q_max_np[i])
                 # ax[1].set_ylim(self.robot.q_vel_min_np[i], self.robot.q_vel_max_np[i])
+
+        # plot control points
+        if control_points is not None:
+            control_points_np = to_numpy(control_points)
+            control_points_timesteps = np.linspace(0, 1, control_points_np.shape[1])
+            for control_points_np_one in control_points_np:
+                for i, ax in enumerate(axs):
+                    ax[0].scatter(control_points_timesteps, control_points_np_one[:, i], color='red', s=2 ** 2, zorder=10)
 
         return fig, axs
 
