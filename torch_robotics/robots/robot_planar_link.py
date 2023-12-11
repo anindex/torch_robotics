@@ -67,6 +67,8 @@ class RobotPlanar2Link(RobotBase):
             self.render(ax, start_state, alpha=1.0, color='blue', zorder=10)
         if goal_state is not None:
             self.render(ax, goal_state, alpha=1.0, color='red', zorder=10)
+        elif trajs is not None:
+            self.render(ax, trajs_pos[0][-1], alpha=1.0, color='magenta', zorder=10)
         if ee_goal_position is not None:
             ee_goal_position_np = to_numpy(ee_goal_position)
             ax.scatter(ee_goal_position_np[0], ee_goal_position_np[1], color='red', marker='*', s=10**2.2, zorder=10)
