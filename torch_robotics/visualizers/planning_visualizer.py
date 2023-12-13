@@ -140,10 +140,15 @@ class PlanningVisualizer:
             self,
             fig=None, axs=None,
             trajs=None,
+            trajs_vel=None,
+            trajs_acc=None,
             traj_best=None,
             pos_start_state=None, pos_goal_state=None,
             vel_start_state=None, vel_goal_state=None,
+            acc_start_state=None, acc_goal_state=None,
             set_joint_limits=True,
+            set_joint_vel_limits=True,
+            set_joint_acc_limits=True,
             control_points=None,
             **kwargs
     ):
@@ -155,68 +160,119 @@ class PlanningVisualizer:
         B, H, D = trajs_np.shape
 
         # Separate trajectories in collision and free (not in collision)
-        trajs_coll, trajs_free = self.task.get_trajs_collision_and_free(trajs, **kwargs)
+        trajs_coll, trajs_coll_idxs, trajs_free, trajs_free_idxs, _ = self.task.get_trajs_collision_and_free(trajs, return_indices=True, **kwargs)
 
         trajs_coll_pos_np = to_numpy([])
         trajs_coll_vel_np = to_numpy([])
+        trajs_coll_acc_np = to_numpy([])
         if trajs_coll is not None:
             trajs_coll_pos_np = to_numpy(self.robot.get_position(trajs_coll))
-            trajs_coll_vel_np = to_numpy(self.robot.get_velocity(trajs_coll))
+            if trajs_vel is not None:
+                trajs_coll_vel_np = to_numpy(trajs_vel[trajs_coll_idxs.squeeze()])
+                if trajs_coll_vel_np.ndim == 2:
+                    trajs_coll_vel_np = trajs_coll_vel_np[None, ...]
+            else:
+                trajs_coll_vel_np = to_numpy(self.robot.get_velocity(trajs_coll))
+            if trajs_acc is not None:
+                trajs_coll_acc_np = to_numpy(trajs_acc[trajs_coll_idxs.squeeze()])
+                if trajs_coll_acc_np.ndim == 2:
+                    trajs_coll_acc_np = trajs_coll_acc_np[None, ...]
+            else:
+                trajs_coll_acc_np = to_numpy(self.robot.get_acceleration(trajs_coll))
 
         trajs_free_pos_np = to_numpy([])
         trajs_free_vel_np = to_numpy([])
+        trajs_free_acc_np = to_numpy([])
         if trajs_free is not None:
             trajs_free_pos_np = to_numpy(self.robot.get_position(trajs_free))
-            trajs_free_vel_np = to_numpy(self.robot.get_velocity(trajs_free))
+            if trajs_vel is not None:
+                trajs_free_vel_np = to_numpy(trajs_vel[trajs_free_idxs.squeeze()])
+                if trajs_free_vel_np.ndim == 2:
+                    trajs_free_vel_np = trajs_free_vel_np[None, ...]
+            else:
+                trajs_free_vel_np = to_numpy(self.robot.get_velocity(trajs_free))
+            if trajs_acc is not None:
+                trajs_free_acc_np = to_numpy(trajs_acc[trajs_free_idxs.squeeze()])
+                if trajs_free_acc_np.ndim == 2:
+                    trajs_free_acc_np = trajs_free_acc_np[None, ...]
+            else:
+                trajs_free_acc_np = to_numpy(self.robot.get_acceleration(trajs_free))
 
         if pos_start_state is not None:
             pos_start_state = to_numpy(pos_start_state)
         if vel_start_state is not None:
             vel_start_state = to_numpy(vel_start_state)
+        if acc_start_state is not None:
+            acc_start_state = to_numpy(acc_start_state)
         if pos_goal_state is not None:
             pos_goal_state = to_numpy(pos_goal_state)
         if vel_goal_state is not None:
             vel_goal_state = to_numpy(vel_goal_state)
+        if acc_goal_state is not None:
+            acc_goal_state = to_numpy(acc_goal_state)
 
         if fig is None or axs is None:
-            fig, axs = plt.subplots(self.robot.q_dim, 2, squeeze=False)
+            fig, axs = plt.subplots(self.robot.q_dim, 3, squeeze=False)
         axs[0, 0].set_title('Position')
         axs[0, 1].set_title('Velocity')
+        axs[0, 2].set_title('Acceleration')
         axs[-1, 0].set_xlabel('Timesteps')
         axs[-1, 1].set_xlabel('Timesteps')
+        axs[-1, 2].set_xlabel('Timesteps')
         timesteps = np.linspace(0, 1, H).reshape(1, -1)
         for i, ax in enumerate(axs):
-            for trajs_filtered, color in zip([(trajs_coll_pos_np, trajs_coll_vel_np), (trajs_free_pos_np, trajs_free_vel_np)],
+            for trajs_filtered, color in zip([(trajs_coll_pos_np, trajs_coll_vel_np, trajs_coll_acc_np),
+                                              (trajs_free_pos_np, trajs_free_vel_np, trajs_free_acc_np)],
                                              ['black', 'orange']):
                 # Positions and velocities
                 for j, trajs_filtered_ in enumerate(trajs_filtered):
                     if trajs_filtered_.size > 0:
                         timesteps_ = np.repeat(timesteps, trajs_filtered_.shape[0], axis=0)
-                        plot_multiline(ax[j], timesteps_, trajs_filtered_[..., i], color=color, **kwargs)
+                        try:
+                            plot_multiline(ax[j], timesteps_, trajs_filtered_[..., i], color=color, **kwargs)
+                        except:
+                            pass
 
             if traj_best is not None:
                 traj_best_pos = self.robot.get_position(traj_best)
                 traj_best_vel = self.robot.get_velocity(traj_best)
+                traj_best_acc = self.robot.get_acceleration(traj_best)
                 traj_best_pos_np = to_numpy(traj_best_pos)
                 traj_best_vel_np = to_numpy(traj_best_vel)
+                traj_best_acc_np = to_numpy(traj_best_acc)
                 plot_multiline(ax[0], timesteps, traj_best_pos_np[..., i].reshape(1, -1), color='blue', **kwargs)
                 plot_multiline(ax[1], timesteps, traj_best_vel_np[..., i].reshape(1, -1), color='blue', **kwargs)
+                plot_multiline(ax[2], timesteps, traj_best_acc_np[..., i].reshape(1, -1), color='blue', **kwargs)
 
             # Start and goal
             if pos_start_state is not None:
                 ax[0].scatter(0, pos_start_state[i], color='green')
             if vel_start_state is not None:
                 ax[1].scatter(0, vel_start_state[i], color='green')
+            if acc_start_state is not None:
+                ax[2].scatter(0, acc_start_state[i], color='green')
             if pos_goal_state is not None:
                 ax[0].scatter(1, pos_goal_state[i], color='purple')
             if vel_goal_state is not None:
                 ax[1].scatter(1, vel_goal_state[i], color='purple')
+            if acc_goal_state is not None:
+                ax[2].scatter(1, acc_goal_state[i], color='purple')
             # Y label
             ax[0].set_ylabel(f'q_{i}')
             # Set limits
             if set_joint_limits:
-                ax[0].set_ylim(self.robot.q_min_np[i], self.robot.q_max_np[i])
-                # ax[1].set_ylim(self.robot.q_vel_min_np[i], self.robot.q_vel_max_np[i])
+                ax[0].plot([0, 1], [self.robot.q_min_np[i], self.robot.q_min_np[i]], color='k', linestyle='--')
+                ax[0].plot([0, 1], [self.robot.q_max_np[i], self.robot.q_max_np[i]], color='k', linestyle='--')
+                # ax[0].set_ylim(self.robot.q_min_np[i], self.robot.q_max_np[i])
+            if set_joint_vel_limits and self.robot.dq_max_np is not None:
+                ax[1].plot([0, 1], [self.robot.dq_max_np[i], self.robot.dq_max_np[i]], color='k', linestyle='--')
+                ax[1].plot([0, 1], [-self.robot.dq_max_np[i], -self.robot.dq_max_np[i]], color='k', linestyle='--')
+                # ax[1].set_ylim(-self.robot.dq_max_np[i], self.robot.dq_max_np[i])
+            if set_joint_acc_limits and self.robot.ddq_max_np is not None:
+                ax[2].plot([0, 1], [self.robot.ddq_max_np[i], self.robot.ddq_max_np[i]], color='k', linestyle='--')
+                ax[2].plot([0, 1], [-self.robot.ddq_max_np[i], -self.robot.ddq_max_np[i]], color='k', linestyle='--')
+                # ax[2].set_ylim(-self.robot.ddq_max_np[i], self.robot.ddq_max_np[i])
+
 
         # plot control points
         if control_points is not None:
@@ -230,6 +286,7 @@ class PlanningVisualizer:
 
     def animate_opt_iters_joint_space_state(
             self, trajs=None, traj_best=None, n_frames=10,
+            trajs_vel=None, trajs_acc=None,
             **kwargs
     ):
         # trajs: steps, batch, horizon, q_dim
@@ -241,9 +298,17 @@ class PlanningVisualizer:
 
         idxs = np.round(np.linspace(0, S - 1, n_frames)).astype(int)
         trajs_selection = trajs[idxs]
+        trajs_vel_selection = None
+        if trajs_vel is not None:
+            trajs_vel_selection = trajs_vel[idxs]
+        trajs_acc_selection = None
+        if trajs_acc is not None:
+            trajs_acc_selection = trajs_acc[idxs]
 
         fig, axs = self.plot_joint_space_state_trajectories(
             trajs=trajs_selection[0],
+            trajs_vel=trajs_vel_selection[0] if trajs_vel is not None else None,
+            trajs_acc=trajs_acc_selection[0] if trajs_acc is not None else None,
             **kwargs)
 
         def animate_fn(i):
@@ -252,13 +317,18 @@ class PlanningVisualizer:
             self.plot_joint_space_state_trajectories(
                 fig=fig, axs=axs,
                 trajs=trajs_selection[i],
+                trajs_vel=trajs_vel_selection[i] if trajs_vel is not None else None,
+                trajs_acc=trajs_acc_selection[i] if trajs_acc is not None else None,
                 **kwargs
             )
-            if i == n_frames -1 and traj_best is not None:
+            if i == n_frames - 1 and traj_best is not None:
                 self.plot_joint_space_state_trajectories(
                     fig=fig, axs=axs,
                     trajs=trajs_selection[i],
-                    traj_best=traj_best, **kwargs
+                    traj_best=traj_best,
+                    trajs_vel=trajs_vel_selection[i] if trajs_vel is not None else None,
+                    trajs_acc=trajs_acc_selection[i] if trajs_acc is not None else None,
+                    **kwargs
                 )
 
         create_animation_video(fig, animate_fn, n_frames=n_frames, **kwargs)

@@ -31,7 +31,7 @@ class PlanningTask(Task):
             margin_for_waypoint_collision_checking=0.0,
             use_field_collision_self=False,  # consider self collision
             use_field_collision_objects=True,  # consider object collision
-            use_field_collision_ws_boundaries=False,  # consider workspace boundaries collision
+            use_field_collision_ws_boundaries=True,  # consider workspace boundaries collision
             **kwargs
     ):
         super().__init__(**kwargs)
@@ -110,6 +110,9 @@ class PlanningTask(Task):
 
     def get_collision_extra_objects_field(self):
         return self.df_collision_extra_objects
+
+    def get_collision_ws_boundaries_field(self):
+        return self.df_collision_ws_boundaries
 
     def distance_q(self, q1, q2):
         return self.robot.distance_q(q1, q2)

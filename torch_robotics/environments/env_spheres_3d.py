@@ -42,7 +42,7 @@ class EnvSpheres3D(EnvBase):
         obj_list = [obj_field]
 
         super().__init__(
-            limits=torch.tensor([[-1, -1, -1], [1, 1, 1]], **tensor_args),  # environments limits
+            limits=torch.tensor([[-2, -2, -2], [2, 2, 2]], **tensor_args),  # environments limits
             obj_fixed_list=obj_list,
             tensor_args=tensor_args,
             **kwargs

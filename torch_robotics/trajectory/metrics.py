@@ -11,13 +11,13 @@ def compute_path_length(trajs, robot):
     return path_length
 
 
-def compute_smoothness(trajs, robot, trajs_vel=None):
-    if trajs_vel is None:
+def compute_smoothness(trajs, robot, trajs_acc=None):
+    if trajs_acc is None:
         assert trajs.ndim == 3
-        trajs_vel = robot.get_velocity(trajs)
+        trajs_acc = robot.get_acceleration(trajs)
     else:
-        assert trajs_vel.ndim == 3
-    smoothness = torch.linalg.norm(torch.diff(trajs_vel, dim=-2), dim=-1)
+        assert trajs_acc.ndim == 3
+    smoothness = torch.linalg.norm(trajs_acc, dim=-1)
     smoothness = smoothness.sum(-1)  # sum over the trajectory horizon
     return smoothness
 

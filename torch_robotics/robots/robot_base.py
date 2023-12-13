@@ -133,6 +133,12 @@ def modidy_robot_urdf_grasped_object(urdf_robot_file, grasped_object, parent_lin
     return robot_file, link_collision_names
 
 
+def load_joint_limits(joint_limits_file_path):
+    with open(joint_limits_file_path) as file:
+        joint_limits = yaml.load(file, Loader=yaml.FullLoader)
+    return joint_limits
+
+
 class RobotBase(ABC):
     link_name_ee = None
 
@@ -140,6 +146,7 @@ class RobotBase(ABC):
             self,
             urdf_robot_file,
             collision_spheres_file_path,
+            joint_limits_file_path=None,
             link_name_ee=None,
             gripper_q_dim=0,
             grasped_object=None,
@@ -265,6 +272,20 @@ class RobotBase(ABC):
         ################################################################################################
         # Grasped object
         self.grasped_object = grasped_object
+
+        ################################################################################################
+        # Joint limits file
+        self.dq_max = None
+        self.dq_max_np = None
+        self.ddq_max = None
+        self.ddq_max_np = None
+        self.joint_limits_file_path = joint_limits_file_path
+        if joint_limits_file_path is not None:
+            self.joint_limits_d = load_joint_limits(self.joint_limits_file_path)
+            self.dq_max = to_torch([v['qdot_max'] for k, v in self.joint_limits_d.items()], **tensor_args)
+            self.dq_max_np = to_numpy(self.dq_max)
+            self.ddq_max = to_torch([v['qddot_max'] for k, v in self.joint_limits_d.items()], **tensor_args)
+            self.ddq_max_np = to_numpy(self.ddq_max)
 
     def random_q(self, n_samples=10):
         # Random position in configuration space
