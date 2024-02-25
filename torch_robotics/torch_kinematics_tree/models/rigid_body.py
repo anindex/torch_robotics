@@ -61,6 +61,7 @@ from torch_robotics.torch_kinematics_tree.geometrics.spatial_vector import (
     x_rot,
 )
 from torch_robotics.torch_kinematics_tree.geometrics.frame import Frame
+from torch_robotics.torch_kinematics_tree.geometrics.utils import vector3_to_skew_symm_matrix, cross_product
 
 
 class DifferentiableRigidBody(torch.nn.Module):
@@ -71,7 +72,7 @@ class DifferentiableRigidBody(torch.nn.Module):
     _parents: Optional["DifferentiableRigidBody"]
     _children: List["DifferentiableRigidBody"]
 
-    def __init__(self, rigid_body_params, device='cpu'):
+    def __init__(self, rigid_body_params, device="cpu"):
 
         super().__init__()
 
@@ -79,11 +80,16 @@ class DifferentiableRigidBody(torch.nn.Module):
         self._parents = None
         self._children = []
 
-        self._device = device
+        self.device = device
         self.joint_id = rigid_body_params["joint_id"]
         self.name = rigid_body_params["link_name"]
 
+        # dynamics parameters
+        self.mass = rigid_body_params["mass"]
+        self.com = rigid_body_params["com"]
+        self.inertia_mat = rigid_body_params["inertia_mat"]
         self.joint_damping = rigid_body_params["joint_damping"]
+
         self.trans = rigid_body_params["trans"].reshape(1, 3)
         self.rot_angles = rigid_body_params["rot_angles"].reshape(1, 3)
         rot_angles_vals = self.rot_angles
@@ -107,18 +113,18 @@ class DifferentiableRigidBody(torch.nn.Module):
         self.joint_type = rigid_body_params["joint_type"]
         self.joint_limits = rigid_body_params["joint_limits"]
 
-        self.joint_pose = Frame(device=self._device)
+        self.joint_pose = Frame(device=self.device)
         self.joint_pose.set_translation(torch.reshape(self.trans, (1, 3)))
 
         # local velocities and accelerations (w.r.t. joint coordinate frame):
-        self.joint_vel = MotionVec(device=self._device)
-        self.joint_acc = MotionVec(device=self._device)
+        self.joint_vel = MotionVec(device=self.device)
+        self.joint_acc = MotionVec(device=self.device)
 
         self.update_joint_state(
-            torch.zeros([1, 1], device=self._device),
-            torch.zeros([1, 1], device=self._device),
+            torch.zeros([1, 1], device=self.device),
+            torch.zeros([1, 1], device=self.device),
         )
-        self.update_joint_acc(torch.zeros([1, 1], device=self._device))
+        self.update_joint_acc(torch.zeros([1, 1], device=self.device))
 
         self.reset()
 
@@ -126,12 +132,13 @@ class DifferentiableRigidBody(torch.nn.Module):
         '''
         Reset pose, velocity and acceleration to init state.
         '''
-        self.pose = Frame(device=self._device)
-        self.vel = MotionVec(device=self._device)
-        self.acc = MotionVec(device=self._device)
+        self.pose = Frame(device=self.device)
+        self.vel = MotionVec(device=self.device)
+        self.acc = MotionVec(device=self.device)
+        self.force = MotionVec(device=self.device)
 
     def update_pose(self, pose_vec):
-        pose = Frame(device=self._device)
+        pose = Frame(device=self.device)
         pose.set_pose(pose_vec)
         self.pose = pose
 
@@ -170,7 +177,7 @@ class DifferentiableRigidBody(torch.nn.Module):
                 joint_pose = Frame(
                     rot=self.fixed_rotation.repeat(batch_size, 1, 1) @ rot,
                     trans=self.trans.repeat(batch_size, 1),
-                    device=self._device,
+                    device=self.device,
                 )
             elif self.joint_type == 'prismatic':
                 trans = self.joint_axis * q_clamped
@@ -178,7 +185,7 @@ class DifferentiableRigidBody(torch.nn.Module):
                 joint_pose = Frame(
                     rot=self.fixed_rotation.repeat(batch_size, 1, 1),
                     trans=self.trans + trans,
-                    device=self._device,
+                    device=self.device,
                 )
             else:
                 raise NotImplementedError()
@@ -186,7 +193,7 @@ class DifferentiableRigidBody(torch.nn.Module):
             joint_pose = Frame(
                 rot=self.fixed_rotation.repeat(batch_size, 1, 1),
                 trans=self.trans.repeat(batch_size, 1),
-                device=self._device,
+                device=self.device,
             )
             if self.is_root:
                 joint_pose = self.pose.multiply_transform(joint_pose)
@@ -203,7 +210,7 @@ class DifferentiableRigidBody(torch.nn.Module):
                 base_pose = Frame(
                     rot=self.pose.rotation.repeat(batch_size, 1, 1),
                     trans=self.pose.translation.repeat(batch_size, 1),
-                    device=self._device,
+                    device=self.device,
                 )
                 result[body_name] = base_pose
             else:
@@ -261,7 +268,25 @@ class DifferentiableRigidBody(torch.nn.Module):
         self.joint_acc = MotionVec(
             torch.zeros_like(joint_ang_acc), joint_ang_acc
         )
-        return
+
+    def multiply_inertia_with_motion_vec(self, motion_vec: MotionVec) -> MotionVec:
+
+        mass, com, inertia_mat = self._get_dynamics_parameters_values()
+
+        mcom = com * mass
+        com_skew_symm_mat = vector3_to_skew_symm_matrix(com)
+        inertia = inertia_mat + mass * (
+            com_skew_symm_mat @ com_skew_symm_mat.transpose(-2, -1)
+        )
+
+        return MotionVec(
+            mass * motion_vec.lin - cross_product(mcom, motion_vec.ang),
+            (inertia @ motion_vec.ang.unsqueeze(2)).squeeze(2)
+            + cross_product(mcom, motion_vec.lin),
+        )
+
+    def _get_dynamics_parameters_values(self):
+        return self.mass, self.com, self.inertia_mat
 
     def get_joint_limits(self):
         return self.joint_limits

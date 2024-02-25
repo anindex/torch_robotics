@@ -69,6 +69,15 @@ class DifferentiableFrankaPanda(DifferentiableTree):
         super().__init__(self.model_path, self.name, link_list=link_list, device=device)
 
 
+class DifferentiableFrankaPandaDynamics(DifferentiableTree):
+    def __init__(self, link_list: Optional[str] = None, device='cpu'):
+        robot_file = get_robot_path() / 'franka_description' / 'robots' / 'panda_arm_full_dynamics.urdf'
+
+        self.model_path = robot_file.as_posix()
+        self.name = "differentiable_franka_panda_dynamics"
+        super().__init__(self.model_path, self.name, link_list=link_list, device=device)
+
+
 class DifferentiableUR10(DifferentiableTree):
     def __init__(self, link_list: Optional[str] = None, attach_gripper=False, device='cpu'):
         robot_path = get_robot_path()

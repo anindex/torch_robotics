@@ -52,19 +52,16 @@
 # SOFTWARE.
 
 from typing import List, Tuple, Dict, Optional
-from dataclasses import dataclass
-
 import torch
 import numpy as np
 from torch.autograd.functional import jacobian
 
 from torch_robotics.torch_kinematics_tree.geometrics.quaternion import q_to_axis_angles, q_div, q_convert_wxyz
-from torch_robotics.torch_kinematics_tree.geometrics.skeleton import get_skeleton_from_model
 from torch_robotics.torch_kinematics_tree.models.rigid_body import DifferentiableRigidBody
-from torch_robotics.torch_kinematics_tree.models.utils import URDFRobotModel, MJCFRobotModel
+from torch_robotics.torch_kinematics_tree.models.utils import URDFRobotModel
 from torch_robotics.torch_kinematics_tree.geometrics.spatial_vector import MotionVec
 from torch_robotics.torch_kinematics_tree.geometrics.utils import SE3_distance, link_pos_from_link_tensor, \
-    link_quat_from_link_tensor, link_rot_from_link_tensor
+    link_quat_from_link_tensor, link_rot_from_link_tensor, cross_product
 from torch_robotics.torch_utils.torch_utils import to_torch, torch_intersect_1d
 
 
@@ -81,14 +78,10 @@ class DifferentiableTree(torch.nn.Module):
         self.name = name
         self.link_list = link_list
 
-        self._device = device
+        self.device = device
         self.model_type = model_path.split('.')[-1]
-        if self.model_type == 'urdf':
-            self._model = URDFRobotModel(model_path=model_path, device=self._device)
-        elif self.model_type == 'xml':
-            self._model = MJCFRobotModel(model_path=model_path, device=self._device)
-        else:
-            raise NotImplementedError(f'{self.model_type} is not supported!')
+        self._model = URDFRobotModel(model_path=model_path, device=self.device)
+
         self._bodies = torch.nn.ModuleList()
         self._n_dofs = 0
         self._controlled_joints = []
@@ -102,7 +95,7 @@ class DifferentiableTree(torch.nn.Module):
             # Initialize body object
             rigid_body_params = self._model.get_body_parameters(i, link)
             body = DifferentiableRigidBody(
-                rigid_body_params=rigid_body_params, device=self._device
+                rigid_body_params=rigid_body_params, device=self.device
             )
             if i == 0:
                 body.is_root = True  # set root
@@ -160,8 +153,8 @@ class DifferentiableTree(torch.nn.Module):
         # we assume a non-moving base
         parent_body = self._bodies[0]
         parent_body.vel = MotionVec(
-            torch.zeros((batch_size, 3), device=self._device),
-            torch.zeros((batch_size, 3), device=self._device),
+            torch.zeros((batch_size, 3), device=self.device),
+            torch.zeros((batch_size, 3), device=self.device),
         )
 
         # propagate the new joint state through the kinematic chain to update bodies position/velocities
@@ -187,7 +180,6 @@ class DifferentiableTree(torch.nn.Module):
             # + the velocity created by this body's joint
             body.vel = body.joint_vel.add_motion_vec(new_vel)
 
-        return
 
     def compute_forward_kinematics(
         self, q: torch.Tensor,  qd: torch.Tensor, link_name: str, state_less: bool = False
@@ -228,8 +220,8 @@ class DifferentiableTree(torch.nn.Module):
         batch_size = q.shape[0]
         ee_pos, ee_rot = self.compute_forward_kinematics(q, qd, link_name)
 
-        lin_jac = torch.zeros([batch_size, 3, self._n_dofs], device=self._device)
-        ang_jac = torch.zeros([batch_size, 3, self._n_dofs], device=self._device)
+        lin_jac = torch.zeros([batch_size, 3, self._n_dofs], device=self.device)
+        ang_jac = torch.zeros([batch_size, 3, self._n_dofs], device=self.device)
         # any joints larger than this joint, will have 0 in the jacobian
         # parent_name = self._urdf_model.get_name_of_parent_body(link_name)
         parent_joint_id = self._model.find_joint_of_body(link_name)
@@ -266,7 +258,7 @@ class DifferentiableTree(torch.nn.Module):
 
     def compute_forward_kinematics_all_links(
         self, q: torch.Tensor, return_dict=False, link_list=None
-    ) -> [torch.Tensor, dict]:
+    ) -> Tuple[torch.Tensor, dict]:
         """
         Stateless forward kinematics
         Args:
@@ -329,14 +321,14 @@ class DifferentiableTree(torch.nn.Module):
         lower, upper, _, _ = self.get_joint_limit_array()
         lower += eps_joint_lim
         upper -= eps_joint_lim
-        lower = to_torch(lower, device=self._device)
-        upper = to_torch(upper, device=self._device)
+        lower = to_torch(lower, device=self.device)
+        upper = to_torch(upper, device=self.device)
         if q0 is None:
-            q0 = torch.rand(batch_size, self._n_dofs, device=self._device)
+            q0 = torch.rand(batch_size, self._n_dofs, device=self.device)
             q0 = lower + q0 * (upper - lower)
         else:
             # add some noise to get diverse solutions
-            q0 += torch.randn(batch_size, self._n_dofs, device=self._device) * q0_noise
+            q0 += torch.randn(batch_size, self._n_dofs, device=self.device) * q0_noise
             q0 = torch.clamp(q0, lower, upper)
             assert q0.shape[0] == batch_size
             assert q0.shape[1] == self._n_dofs
@@ -490,3 +482,241 @@ class DifferentiableTree(torch.nn.Module):
         names = self.get_link_names()
         for i in range(len(names)):
             print(names[i])
+    
+    def print_dynamics_info(self) -> None:
+        """
+
+        print the names of all links
+
+        """
+        for i in range(len(self._bodies)):
+            print(self._bodies[i].name)
+            print(self._bodies[i]._get_dynamics_parameters_values())
+
+    def iterative_newton_euler(
+        self, base_lin_acc: torch.Tensor, base_ang_acc: torch.Tensor
+    ) -> None:
+        r"""
+
+        Args:
+            base_lin_acc: linear acceleration of base (for fixed manipulators this is zero)
+            base_ang_acc: angular acceleration of base (for fixed manipulators this is zero)
+
+        """
+
+        body = self._bodies[0]
+        body.joint_acc = MotionVec(base_lin_acc, base_ang_acc)
+
+        for i in range(1, len(self._bodies)):
+            body = self._bodies[i]
+            parent_name = self._model.get_name_of_parent_body(body.name)
+
+            parent_body = self._bodies[self._name_to_idx_map[parent_name]]
+
+            # get the inverse of the current joint pose
+            inv_pose = body.joint_pose.inverse()
+            new_acc = parent_body.acc.transform(inv_pose).add_motion_vec(body.joint_acc)
+
+            # body velocity cross joint vel
+            bv_cross_jv = body.vel.cross_motion_vec(body.joint_vel)
+            body.acc = bv_cross_jv.add_motion_vec(new_acc)
+
+        child_body = self._bodies[-1]
+
+        # after recursion is done, we propagate forces back up (from endeffector link to base)
+        for i in range(len(self._bodies) - 2, 0, -1):
+            body = self._bodies[i]
+            joint_pose = child_body.joint_pose
+
+            # pose x children_force
+            child_force = child_body.force.transform(joint_pose)
+
+            IcAcc = body.multiply_inertia_with_motion_vec(body.acc)
+            IcVel = body.multiply_inertia_with_motion_vec(body.vel)
+
+            # body vel x IcVel
+            tmp_force = IcVel.cross_motion_vec(body.vel)
+
+            body.force = child_force.add_motion_vec(tmp_force).add_motion_vec(IcAcc)
+            child_body = body
+
+    def compute_inverse_dynamics(
+        self,
+        q: torch.Tensor,
+        qd: torch.Tensor,
+        qdd_des: torch.Tensor,
+        include_gravity: Optional[bool] = True,
+    ) -> torch.Tensor:
+        r"""
+
+        Args:
+            q: joint angles [batch_size x n_dofs]
+            qd: joint velocities [batch_size x n_dofs]
+            qdd_des: desired joint accelerations [batch_size x n_dofs]
+            include_gravity: when False, we assume gravity compensation is already taken care off
+
+        Returns: forces to achieve desired accelerations
+
+        """
+        assert q.ndim == 2
+        assert qd.ndim == 2
+        assert qdd_des.ndim == 2
+        assert q.shape[1] == self._n_dofs
+        assert qd.shape[1] == self._n_dofs
+        assert qdd_des.shape[1] == self._n_dofs
+        
+        q = q.to(device=self.device)
+        qd = qd.to(device=self.device)
+        qdd_des = qdd_des.to(device=self.device)
+
+        batch_size = qdd_des.shape[0]
+        force = torch.zeros_like(qdd_des)
+
+        # we set the current state of the robot
+        self.update_kinematic_state(q, qd)
+
+        # we set the acceleration of all controlled joints to the desired accelerations
+        for i in range(self._n_dofs):
+            idx = self._controlled_joints[i]
+            self._bodies[idx].update_joint_acc(qdd_des[:, i].unsqueeze(1))
+
+        # forces at the base are either 0, or gravity
+        base_ang_acc = q.new_zeros((batch_size, 3))
+        base_lin_acc = q.new_zeros((batch_size, 3))
+        if include_gravity:
+            base_lin_acc[:, 2] = 9.81 * torch.ones(batch_size, device=self.device)
+
+        # we propagate the base forces
+        self.iterative_newton_euler(base_lin_acc, base_ang_acc)
+
+        # we extract the relevant forces for all controlled joints
+        for i in range(qdd_des.shape[1]):
+            idx = self._controlled_joints[i]
+            rot_axis = torch.zeros((batch_size, 3)).to(device=self.device)
+            rot_axis[:, 2] = torch.ones(batch_size).to(device=self.device)
+            force[:, i] += (
+                self._bodies[idx].force.ang.unsqueeze(1) @ rot_axis.unsqueeze(2)
+            ).squeeze()
+
+        # we add forces to counteract damping
+        damping_const = torch.zeros(1, self._n_dofs, device=self.device)
+        for i in range(self._n_dofs):
+            idx = self._controlled_joints[i]
+            damping_const[:, i] = self._bodies[idx].get_joint_damping_const()
+        force += damping_const.repeat(batch_size, 1) * qd
+
+        return force
+
+    def compute_non_linear_effects(
+        self, q: torch.Tensor, qd: torch.Tensor, include_gravity: Optional[bool] = True
+    ) -> torch.Tensor:
+        r"""
+
+        Compute the non-linear effects (Coriolis, centrifugal, gravitational, and damping effects).
+
+        Args:
+            q: joint angles [batch_size x n_dofs]
+            qd: [batch_size x n_dofs]
+            include_gravity: set to False if your robot has gravity compensation
+
+        Returns:
+
+        """
+        zero_qdd = q.new_zeros(q.shape)
+        return self.compute_inverse_dynamics(q, qd, zero_qdd, include_gravity)
+
+    def compute_lagrangian_inertia_matrix(
+        self, q: torch.Tensor, include_gravity: Optional[bool] = True
+    ) -> torch.Tensor:
+        r"""
+
+        Args:
+            q: joint angles [batch_size x n_dofs]
+            include_gravity: set to False if your robot has gravity compensation
+
+        Returns:
+
+        """
+        assert q.shape[1] == self._n_dofs
+        batch_size = q.shape[0]
+        identity_tensor = torch.eye(q.shape[1]).unsqueeze(0).repeat(batch_size, 1, 1)
+        zero_qd = q.new_zeros(q.shape)
+        zero_qdd = q.new_zeros(q.shape)
+        if include_gravity:
+            gravity_term = self.compute_inverse_dynamics(
+                q, zero_qd, zero_qdd, include_gravity
+            )
+        else:
+            gravity_term = q.new_zeros(q.shape)
+
+        H = torch.stack(
+            [
+                (
+                    self.compute_inverse_dynamics(
+                        q, zero_qd, identity_tensor[:, :, j], include_gravity
+                    )
+                    - gravity_term
+                )
+                for j in range(self._n_dofs)
+            ],
+            dim=2,
+        )
+        return H
+    
+    def get_dynamics(
+        self,
+        q: torch.Tensor,
+        qd: torch.Tensor,
+        include_gravity: Optional[bool] = True,
+    ):
+        r"""
+
+        Args:
+            q: joint angles [batch_size x n_dofs]
+            qd: joint velocities [batch_size x n_dofs]
+            include_gravity: set to False if your robot has gravity compensation
+
+        Returns: M, C, G, D
+
+        """
+
+        nle = self.compute_non_linear_effects(
+            q=q, qd=qd, include_gravity=include_gravity
+        )
+        inertia_mat = self.compute_lagrangian_inertia_matrix(
+            q=q, include_gravity=include_gravity
+        )
+        damping_const = torch.zeros(1, self._n_dofs, device=self.device)
+        for i in range(self._n_dofs):
+            idx = self._controlled_joints[i]
+            damping_const[:, i] = self._bodies[idx].get_joint_damping_const()
+        return inertia_mat, nle, damping_const
+
+    def compute_forward_dynamics(
+        self,
+        q: torch.Tensor,
+        qd: torch.Tensor,
+        f: torch.Tensor,
+        include_gravity: Optional[bool] = True,
+    ) -> torch.Tensor:
+        r"""
+        Computes next qdd by solving the Euler-Lagrange equation
+        qdd = H^{-1} (F - Cv - G - damping_term)
+
+        Args:
+            q: joint angles [batch_size x n_dofs]
+            qd: joint velocities [batch_size x n_dofs]
+            f: forces to be applied [batch_size x n_dofs]
+            include_gravity: set to False if your robot has gravity compensation
+
+        Returns: accelerations that are the result of applying forces f in state q, qd
+
+        """
+
+        inertia_mat, nle, _ = self.get_dynamics(q, qd, include_gravity)
+        # Solve H qdd = F - Cv - G - damping_term
+        print(f, nle)
+        print(inertia_mat)
+        qdd = torch.linalg.solve(inertia_mat, f - nle)
+
+        return qdd
