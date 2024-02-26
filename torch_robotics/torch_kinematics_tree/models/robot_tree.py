@@ -144,7 +144,7 @@ class DifferentiableTree(torch.nn.Module):
         batch_size = q.shape[0]
 
         # update the state of the joints
-        for i in range(q.shape[1]):
+        for i in range(q.shape[-1]):
             idx = self._controlled_joints[i]
             self._bodies[idx].update_joint_state(
                 q[:, i].unsqueeze(1), qd[:, i].unsqueeze(1)
@@ -167,11 +167,12 @@ class DifferentiableTree(torch.nn.Module):
 
             # transformation operator from child link to parent link
             childToParentT = body.joint_pose
-            # transformation operator from parent link to child link
-            parentToChildT = childToParentT.inverse()
 
             # the position and orientation of the body in world coordinates, with origin at the joint
             body.pose = parent_body.pose.multiply_transform(childToParentT)
+
+            # transformation operator from parent link to child link
+            parentToChildT = childToParentT.inverse()
 
             # we rotate the velocity of the parent's body into the child frame
             new_vel = parent_body.vel.transform(parentToChildT)
@@ -179,7 +180,6 @@ class DifferentiableTree(torch.nn.Module):
             # this body's angular velocity is combination of the velocity experienced at it's parent's link
             # + the velocity created by this body's joint
             body.vel = body.joint_vel.add_motion_vec(new_vel)
-
 
     def compute_forward_kinematics(
         self, q: torch.Tensor,  qd: torch.Tensor, link_name: str, state_less: bool = False
@@ -505,7 +505,7 @@ class DifferentiableTree(torch.nn.Module):
         """
 
         body = self._bodies[0]
-        body.joint_acc = MotionVec(base_lin_acc, base_ang_acc)
+        body.acc = MotionVec(base_lin_acc, base_ang_acc)
 
         for i in range(1, len(self._bodies)):
             body = self._bodies[i]
@@ -515,30 +515,38 @@ class DifferentiableTree(torch.nn.Module):
 
             # get the inverse of the current joint pose
             inv_pose = body.joint_pose.inverse()
-            new_acc = parent_body.acc.transform(inv_pose).add_motion_vec(body.joint_acc)
 
+            # transform spatial acceleration of parent body into this body's frame
+            acc_parent_body = parent_body.acc.transform(inv_pose)
             # body velocity cross joint vel
-            bv_cross_jv = body.vel.cross_motion_vec(body.joint_vel)
-            body.acc = bv_cross_jv.add_motion_vec(new_acc)
+            tmp = body.vel.cross_motion_vec(body.joint_vel)
+            body.acc = acc_parent_body.add_motion_vec(body.joint_acc).add_motion_vec(
+                tmp
+            )
 
-        child_body = self._bodies[-1]
+        # reset all forces for backward pass
+        for i in range(0, len(self._bodies)):
+            self._bodies[i].force = MotionVec(device=self.device)
 
-        # after recursion is done, we propagate forces back up (from endeffector link to base)
-        for i in range(len(self._bodies) - 2, 0, -1):
+        # backward pass to propagate forces up (from endeffector to root body)
+        for i in range(len(self._bodies) - 1, 0, -1):
             body = self._bodies[i]
-            joint_pose = child_body.joint_pose
+            joint_pose = body.joint_pose
 
-            # pose x children_force
-            child_force = child_body.force.transform(joint_pose)
+            # body force on joint
+            icxacc = body.inertia.multiply_motion_vec(body.acc)
+            icxvel = body.inertia.multiply_motion_vec(body.vel)
+            tmp_force = body.vel.cross_motion_vec(icxvel)
 
-            IcAcc = body.multiply_inertia_with_motion_vec(body.acc)
-            IcVel = body.multiply_inertia_with_motion_vec(body.vel)
+            body.force = body.force.add_motion_vec(icxacc).add_motion_vec(tmp_force)
 
-            # body vel x IcVel
-            tmp_force = IcVel.cross_motion_vec(body.vel)
+            # pose x body_force => propagate to parent
+            if i > 0:
+                parent_name = self._model.get_name_of_parent_body(body.name)
+                parent_body = self._bodies[self._name_to_idx_map[parent_name]]
 
-            body.force = child_force.add_motion_vec(tmp_force).add_motion_vec(IcAcc)
-            child_body = body
+                backprop_force = body.force.transform(joint_pose)
+                parent_body.force = parent_body.force.add_motion_vec(backprop_force)
 
     def compute_inverse_dynamics(
         self,
@@ -662,7 +670,7 @@ class DifferentiableTree(torch.nn.Module):
             dim=2,
         )
         return H
-    
+
     def get_dynamics(
         self,
         q: torch.Tensor,
@@ -686,11 +694,7 @@ class DifferentiableTree(torch.nn.Module):
         inertia_mat = self.compute_lagrangian_inertia_matrix(
             q=q, include_gravity=include_gravity
         )
-        damping_const = torch.zeros(1, self._n_dofs, device=self.device)
-        for i in range(self._n_dofs):
-            idx = self._controlled_joints[i]
-            damping_const[:, i] = self._bodies[idx].get_joint_damping_const()
-        return inertia_mat, nle, damping_const
+        return inertia_mat, nle
 
     def compute_forward_dynamics(
         self,
@@ -713,10 +717,8 @@ class DifferentiableTree(torch.nn.Module):
 
         """
 
-        inertia_mat, nle, _ = self.get_dynamics(q, qd, include_gravity)
+        inertia_mat, nle = self.get_dynamics(q, qd, include_gravity)
         # Solve H qdd = F - Cv - G - damping_term
-        print(f, nle)
-        print(inertia_mat)
         qdd = torch.linalg.solve(inertia_mat, f - nle)
 
         return qdd

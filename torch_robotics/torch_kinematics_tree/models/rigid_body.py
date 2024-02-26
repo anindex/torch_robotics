@@ -64,6 +64,74 @@ from torch_robotics.torch_kinematics_tree.geometrics.frame import Frame
 from torch_robotics.torch_kinematics_tree.geometrics.utils import vector3_to_skew_symm_matrix, cross_product
 
 
+
+class DifferentiableSpatialRigidBodyInertia(torch.nn.Module):
+    def __init__(self, rigid_body_params, device="cpu"):
+        super().__init__()
+        self.mass = rigid_body_params["mass"]
+        self.com = rigid_body_params["com"]
+        self.inertia_mat = rigid_body_params["inertia_mat"]
+
+        self.device = torch.device(device)
+
+    def _get_parameter_values(self):
+        return self.mass, self.com, self.inertia_mat
+
+    def multiply_motion_vec(self, smv):
+        mass, com, inertia_mat = self._get_parameter_values()
+        mcom = com * mass
+        com_skew_symm_mat = vector3_to_skew_symm_matrix(com)
+        inertia = inertia_mat + mass * (
+            com_skew_symm_mat @ com_skew_symm_mat.transpose(-2, -1)
+        )
+
+        batch_size = smv.lin.shape[0]
+        new_lin_force = mass * smv.lin - cross_product(
+            mcom.repeat(batch_size, 1), smv.ang
+        )
+        new_ang_force = (
+            inertia.repeat(batch_size, 1, 1) @ smv.ang.unsqueeze(2)
+        ).squeeze(2) + cross_product(mcom.repeat(batch_size, 1), smv.lin)
+
+        return MotionVec(new_lin_force, new_ang_force, device=self.device)
+
+    def get_spatial_mat(self):
+        mass, com, inertia_mat = self._get_parameter_values()
+        mcom = mass * com
+        com_skew_symm_mat = vector3_to_skew_symm_matrix(com)
+        inertia = inertia_mat + mass * (
+            com_skew_symm_mat @ com_skew_symm_mat.transpose(-2, -1)
+        )
+        mat = torch.zeros((6, 6), device=self.device)
+        mat[:3, :3] = inertia
+        mat[3, 0] = 0
+        mat[3, 1] = mcom[0, 2]
+        mat[3, 2] = -mcom[0, 1]
+        mat[4, 0] = -mcom[0, 2]
+        mat[4, 1] = 0.0
+        mat[4, 2] = mcom[0, 0]
+        mat[5, 0] = mcom[0, 1]
+        mat[5, 1] = -mcom[0, 0]
+        mat[5, 2] = 0.0
+
+        mat[0, 3] = 0
+        mat[0, 4] = -mcom[0, 2]
+        mat[0, 5] = mcom[0, 1]
+        mat[1, 3] = mcom[0, 2]
+        mat[1, 4] = 0.0
+        mat[1, 5] = -mcom[0, 0]
+        mat[2, 3] = -mcom[0, 1]
+        mat[2, 4] = mcom[0, 0]
+        mat[2, 5] = 0.0
+
+        mat[3, 3] = mass
+        mat[4, 4] = mass
+        mat[5, 5] = mass
+        return mat
+
+
+
+
 class DifferentiableRigidBody(torch.nn.Module):
     """
     Differentiable Representation of a link
@@ -85,9 +153,9 @@ class DifferentiableRigidBody(torch.nn.Module):
         self.name = rigid_body_params["link_name"]
 
         # dynamics parameters
-        self.mass = rigid_body_params["mass"]
-        self.com = rigid_body_params["com"]
-        self.inertia_mat = rigid_body_params["inertia_mat"]
+        self.inertia = DifferentiableSpatialRigidBodyInertia(
+            rigid_body_params, device=self.device
+        )
         self.joint_damping = rigid_body_params["joint_damping"]
 
         self.trans = rigid_body_params["trans"].reshape(1, 3)
@@ -269,24 +337,24 @@ class DifferentiableRigidBody(torch.nn.Module):
             torch.zeros_like(joint_ang_acc), joint_ang_acc
         )
 
-    def multiply_inertia_with_motion_vec(self, motion_vec: MotionVec) -> MotionVec:
+    # def multiply_inertia_with_motion_vec(self, motion_vec: MotionVec) -> MotionVec:
 
-        mass, com, inertia_mat = self._get_dynamics_parameters_values()
+    #     mass, com, inertia_mat = self._get_dynamics_parameters_values()
 
-        mcom = com * mass
-        com_skew_symm_mat = vector3_to_skew_symm_matrix(com)
-        inertia = inertia_mat + mass * (
-            com_skew_symm_mat @ com_skew_symm_mat.transpose(-2, -1)
-        )
+    #     mcom = com * mass
+    #     com_skew_symm_mat = vector3_to_skew_symm_matrix(com)
+    #     inertia = inertia_mat + mass * (
+    #         com_skew_symm_mat @ com_skew_symm_mat.transpose(-2, -1)
+    #     )
 
-        return MotionVec(
-            mass * motion_vec.lin - cross_product(mcom, motion_vec.ang),
-            (inertia @ motion_vec.ang.unsqueeze(2)).squeeze(2)
-            + cross_product(mcom, motion_vec.lin),
-        )
+    #     return MotionVec(
+    #         mass * motion_vec.lin - cross_product(mcom, motion_vec.ang),
+    #         (inertia @ motion_vec.ang.unsqueeze(2)).squeeze(2)
+    #         + cross_product(mcom, motion_vec.lin),
+    #     )
 
     def _get_dynamics_parameters_values(self):
-        return self.mass, self.com, self.inertia_mat
+        return self.inertia._get_parameter_values()
 
     def get_joint_limits(self):
         return self.joint_limits

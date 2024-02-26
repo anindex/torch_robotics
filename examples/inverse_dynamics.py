@@ -22,12 +22,11 @@ if __name__ == "__main__":
     print(diff_panda.print_dynamics_info())
     print(diff_panda._n_dofs)
     with TimerCUDA() as t:
-        q = torch.rand(batch_size, diff_panda._n_dofs).to(device).requires_grad_(True)
-        qd = torch.rand(batch_size, diff_panda._n_dofs).to(device).requires_grad_(True)
-        qdd = torch.rand(batch_size, diff_panda._n_dofs).to(device).requires_grad_(True)
-        f = diff_panda.compute_inverse_dynamics(q, torch.zeros_like(q), torch.zeros_like(q))
-        print(f)
-        # qdd2 = diff_panda.compute_forward_dynamics(q, qd, f)
-        # print('Error:', torch.norm(qdd - qdd2))
+        q = torch.rand(batch_size, diff_panda._n_dofs).to(device) * 2 - 1
+        qd = torch.rand(batch_size, diff_panda._n_dofs).to(device)
+        qdd = torch.rand(batch_size, diff_panda._n_dofs).to(device)
+        f = diff_panda.compute_inverse_dynamics(q, qd, qdd)
+        qdd2 = diff_panda.compute_forward_dynamics(q, qd, f)
+        print('Error:', torch.norm(qdd - qdd2))
 
     print(f"Computational Time {t.elapsed:.4f}")
