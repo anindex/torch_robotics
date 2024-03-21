@@ -91,18 +91,24 @@ class URDFRobotModel(object):
         #body_params['collision_mesh'] = link.collision.geometry.mesh.filename
         if link.inertial is not None:
             mass = torch.tensor(link.inertial.mass, device=self.device)
-            com = torch.tensor(link.inertial.origin.position, device=self.device).reshape((1, 3))
+            if link.inertial.origin is None:
+                com = torch.zeros((1, 3), device=self.device)
+            else:
+                com = torch.tensor(link.inertial.origin.position, device=self.device).reshape((1, 3))
 
             inert_mat = torch.zeros((3, 3), device=self.device)
-            inert_mat[0, 0] = link.inertial.inertia.ixx
-            inert_mat[0, 1] = link.inertial.inertia.ixy
-            inert_mat[0, 2] = link.inertial.inertia.ixz
-            inert_mat[1, 0] = link.inertial.inertia.ixy
-            inert_mat[1, 1] = link.inertial.inertia.iyy
-            inert_mat[1, 2] = link.inertial.inertia.iyz
-            inert_mat[2, 0] = link.inertial.inertia.ixz
-            inert_mat[2, 1] = link.inertial.inertia.iyz
-            inert_mat[2, 2] = link.inertial.inertia.izz
+            if link.inertial.inertia is None:
+                print("no inertia information for link: {}".format(link.name))
+            else:
+                inert_mat[0, 0] = link.inertial.inertia.ixx
+                inert_mat[0, 1] = link.inertial.inertia.ixy
+                inert_mat[0, 2] = link.inertial.inertia.ixz
+                inert_mat[1, 0] = link.inertial.inertia.ixy
+                inert_mat[1, 1] = link.inertial.inertia.iyy
+                inert_mat[1, 2] = link.inertial.inertia.iyz
+                inert_mat[2, 0] = link.inertial.inertia.ixz
+                inert_mat[2, 1] = link.inertial.inertia.iyz
+                inert_mat[2, 2] = link.inertial.inertia.izz
 
             inert_mat = inert_mat.unsqueeze(0)
             body_params['mass'] = mass
