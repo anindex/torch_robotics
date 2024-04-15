@@ -9,12 +9,12 @@ from torch_robotics.torch_utils.torch_utils import to_numpy
 import matplotlib.collections as mcoll
 
 
-def create_fig_and_axes(dim=2):
-    fig = plt.figure(layout='tight')
+def create_fig_and_axes(dim=2, figsize=(8, 6)):
     if dim == 3:
+        fig = plt.figure(layout='tight')
         ax = fig.add_subplot(projection='3d')
     else:
-        ax = fig.add_subplot()
+        fig, ax = plt.subplots(figsize=figsize)
 
     return fig, ax
 
@@ -358,3 +358,7 @@ def plot_multiline(ax, X, Y, color='blue', linestyle='solid', **kwargs):
     ax.add_collection(line_segments)
     points = np.reshape(segments, (-1, 2))
     ax.scatter(points[:, 0], points[:, 1], color=color, s=2 ** 2)
+
+
+
+

@@ -40,15 +40,15 @@ class RobotPlanar2Link(RobotBase):
             self.robot_torchkin.link_map[self.link_name_ee].id
         ]
 
-    def render(self, ax, q=None, alpha=1.0, color='blue', linewidth=2.0, zorder=1, **kwargs):
+    def render(self, ax, q=None, alpha=1.0, color='blue', linewidth=2.0, zorder=1, ee_size=10, **kwargs):
         H_all = self.fk_all(q.unsqueeze(0))
         p_all = [link_pos_from_link_tensor(H_all[idx]).squeeze() for idx in self.link_idxs]
         p_all = to_numpy([to_numpy(p) for p in p_all])
-        ax.plot([0, p_all[0][0]], [0, p_all[0][1]], color=color, linewidth=linewidth, alpha=alpha, zorder=zorder)
+        ax.plot([0, p_all[0][0]], [0, p_all[0][1]], color=color, linewidth=linewidth, alpha=alpha, zorder=zorder, solid_capstyle='round')
         for p1, p2 in zip(p_all[:-1], p_all[1:]):
-            ax.plot([p1[0], p2[0]], [p1[1], p2[1]], color=color, linewidth=linewidth, alpha=alpha, zorder=zorder)
+            ax.plot([p1[0], p2[0]], [p1[1], p2[1]], color=color, linewidth=linewidth, alpha=alpha, zorder=zorder, solid_capstyle='round')
         # render end-effector
-        ax.scatter(p_all[-1][0], p_all[-1][1], color=color, marker='o', zorder=zorder)
+        ax.scatter(p_all[-1][0], p_all[-1][1], color=color, marker='o', zorder=zorder, s=ee_size**2.2)
 
     def render_trajectories(self, ax, trajs=None, start_state=None, goal_state=None, colors=['gray'],
                             n_skip_points=None,

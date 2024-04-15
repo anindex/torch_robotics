@@ -85,8 +85,8 @@ class PlanningTask(Task):
             tensor_args=self.tensor_args
         )
 
-        # TODO - self collision is not well implemented
-        assert not use_field_collision_self, "Self collision currently not well implemented"
+        # TODO - self collision is not implemented
+        assert not use_field_collision_self, "Self collision currently not implemented"
         self.df_collision_self = self.df_collision_self if use_field_collision_self else None
 
         self.df_collision_objects = self.df_collision_objects if use_field_collision_objects else None

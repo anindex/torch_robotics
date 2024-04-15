@@ -4,6 +4,7 @@ from matplotlib import pyplot as plt
 
 from torch_robotics.environments.env_base import EnvBase
 from torch_robotics.environments.primitives import MultiSphereField, ObjectField
+from torch_robotics.robots import RobotPlanar2Link
 from torch_robotics.torch_utils.torch_utils import DEFAULT_TENSOR_ARGS
 from torch_robotics.visualizers.planning_visualizer import create_fig_and_axes
 
@@ -28,6 +29,38 @@ class EnvPlanar2Link(EnvBase):
             tensor_args=tensor_args,
             **kwargs
         )
+
+    def get_rrt_connect_params(self, robot=None):
+        params = dict(
+            n_iters=10000,
+            step_size=0.01,
+            n_radius=0.3,
+            n_pre_samples=50000,
+            max_time=15
+        )
+        if isinstance(robot, RobotPlanar2Link):
+            return params
+        else:
+            raise NotImplementedError
+
+    def get_chomp_params(self, robot=None):
+        params = dict(
+            n_support_points=64,
+            dt=0.04,
+            opt_iters=1,  # Keep this 1 for visualization
+            weight_prior_cost=1e-4,
+            step_size=0.05,
+            grad_clip=0.05,
+            sigma_start_init=0.001,
+            sigma_goal_init=0.001,
+            sigma_gp_init=0.2,
+            pos_only=False,
+        )
+
+        if isinstance(robot, RobotPlanar2Link):
+            return params
+        else:
+            raise NotImplementedError
 
 
 if __name__ == '__main__':

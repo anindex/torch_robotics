@@ -155,7 +155,7 @@ class CameraRecorder:
 
         # set up the video writer
         fps = len(self.step_img) / video_duration
-        height, width, layers = self.step_img[0][1].shape
+        width, height, layers = self.step_img[0][1].shape
         fourcc = cv2.VideoWriter_fourcc(*'mp4v')
         video = cv2.VideoWriter(video_path, fourcc, fps, (width, height))
 
@@ -166,6 +166,8 @@ class CameraRecorder:
         for step, frame in self.step_img:
             frame = np.ascontiguousarray(frame, dtype=np.uint8)
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            # rotate the frame
+            frame = cv2.rotate(frame, cv2.ROTATE_90_COUNTERCLOCKWISE)
             # Add step text to frame
             cv2.putText(frame,
                         f'Step: {step_text}/{max_steps}',
