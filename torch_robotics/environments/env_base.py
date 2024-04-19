@@ -68,6 +68,9 @@ class EnvBase(ABC):
     def get_obj_list(self):
         return self.obj_all_list
 
+    def get_obj_fixed_list(self):
+        return self.obj_fixed_list
+
     def get_obj_extra_list(self):
         return self.obj_extra_list
 
