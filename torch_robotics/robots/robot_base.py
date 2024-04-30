@@ -12,6 +12,7 @@ from filelock import FileLock
 from urdf_parser_py.urdf import URDF, Joint, Link, Visual, Collision, Pose, Sphere
 
 import torchkin
+from torch_robotics.robots.torchkin_robot_wrapper import wrapper_torchkin_robot_from_urdf_model
 from torch_robotics.torch_kinematics_tree.geometrics.quaternion import q_convert_to_xyzw, q_to_euler, \
     rotation_matrix_to_q
 from torch_robotics.torch_kinematics_tree.geometrics.utils import (
@@ -20,64 +21,8 @@ from torch_robotics.torch_utils.torch_utils import to_numpy, to_torch
 from torch_robotics.trajectory.utils import finite_difference_vector
 
 
-def write_robot_urdf_file(robot_urdf_file, xmlstr):
-    robot_urdf_file_posix = robot_urdf_file.as_posix()
-    robot_file_posix_lockfile = robot_urdf_file_posix + ".lock"
-    lock = FileLock(robot_file_posix_lockfile, timeout=120)
-    lock.acquire()
-    try:
-        with open(str(robot_urdf_file), "w") as f:
-            f.write(xmlstr)
-    finally:
-        lock.release()
-
-
-def modidy_robot_urdf_collision_model(
-        urdf_robot_file,
-        collision_spheres_file_path):
-    # load collision spheres file
-    coll_yml = collision_spheres_file_path
-    with open(coll_yml) as file:
-        coll_params = yaml.load(file, Loader=yaml.FullLoader)
-
-    robot_urdf = URDF.from_xml_file(urdf_robot_file)
-
-    link_collision_names = []
-    link_collision_margins = []
-    for link_name, spheres_l in coll_params.items():
-        for i, sphere in enumerate(spheres_l):
-            link_collision = f'{link_name}_{i}'
-            joint = Joint(
-                name=f'joint_{link_name}_sphere_{i}',
-                parent=f'{link_name}',
-                child=link_collision,
-                joint_type='fixed',
-                origin=Pose(xyz=to_numpy(sphere[:3]))
-            )
-            robot_urdf.add_joint(joint)
-
-            link = Link(
-                name=link_collision,
-                # visual=Visual(Sphere(sphere[-1])),  # add collision sphere to model
-                origin=Pose(xyz=[0., 0., 0.], rpy=[0., 0., 0.])
-            )
-            robot_urdf.add_link(link)
-
-            link_collision_names.append(link_collision)
-            link_collision_margins.append(sphere[-1])
-
-    # replace the robots file
-    robot_urdf_file = Path(str(urdf_robot_file).replace('.urdf', '_collision_model.urdf'))
-    xmlstr = minidom.parseString(ET.tostring(robot_urdf.to_xml())).toprettyxml(indent="   ")
-
-    # Write the file with a lock
-    write_robot_urdf_file(robot_urdf_file, xmlstr)
-
-    return robot_urdf_file, link_collision_names, link_collision_margins
-
-
-def modidy_robot_urdf_grasped_object(urdf_robot_file, grasped_object, parent_link):
-    robot_urdf = URDF.from_xml_file(urdf_robot_file)
+def modify_robot_urdf_grasped_object(robot_urdf, grasped_object):
+    parent_link = grasped_object.reference_frame
 
     # Add the grasped object visual and collision
     link_grasped_object = f'link_{grasped_object.name}'
@@ -123,14 +68,40 @@ def modidy_robot_urdf_grasped_object(urdf_robot_file, grasped_object, parent_lin
 
         link_collision_names.append(link_collision)
 
-    # replace the robots file
-    robot_file = Path(str(urdf_robot_file).replace('.urdf', '_grasped_object.urdf'))
-    xmlstr = minidom.parseString(ET.tostring(robot_urdf.to_xml())).toprettyxml(indent="   ")
+    return robot_urdf, link_collision_names
 
-    # Write the file with a lock
-    write_robot_urdf_file(robot_file, xmlstr)
 
-    return robot_file, link_collision_names
+def modify_robot_urdf_collision_model(robot_urdf, collision_spheres_file_path):
+    # load collision spheres file
+    coll_yml = collision_spheres_file_path
+    with open(coll_yml) as file:
+        coll_params = yaml.load(file, Loader=yaml.FullLoader)
+
+    link_collision_names = []
+    link_collision_margins = []
+    for link_name, spheres_l in coll_params.items():
+        for i, sphere in enumerate(spheres_l):
+            link_collision = f'{link_name}_{i}'
+            joint = Joint(
+                name=f'joint_{link_name}_sphere_{i}',
+                parent=f'{link_name}',
+                child=link_collision,
+                joint_type='fixed',
+                origin=Pose(xyz=to_numpy(sphere[:3]))
+            )
+            robot_urdf.add_joint(joint)
+
+            link = Link(
+                name=link_collision,
+                # visual=Visual(Sphere(sphere[-1])),  # add collision sphere to model
+                origin=Pose(xyz=[0., 0., 0.], rpy=[0., 0., 0.])
+            )
+            robot_urdf.add_link(link)
+
+            link_collision_names.append(link_collision)
+            link_collision_margins.append(sphere[-1])
+
+    return robot_urdf, link_collision_names, link_collision_margins
 
 
 def load_joint_limits(joint_limits_file_path):
@@ -169,51 +140,38 @@ class RobotBase(ABC):
         self.task_space_dim = task_space_dim
 
         ################################################################################################
+        # Get the robot urdf object
+        self.robot_urdf_file = urdf_robot_file
+        self.robot_urdf = URDF.from_xml_file(urdf_robot_file)
+
+        ################################################################################################
         # Robot collision model (links and margins) for object collision avoidance
         self.link_object_collision_names = []
         self.link_object_collision_margins = []
 
         # Modify the urdf to append the link and collision points of the grasped object
+        self.grasped_object = grasped_object
         if grasped_object is not None:
-            urdf_robot_file, link_collision_names = modidy_robot_urdf_grasped_object(
-                urdf_robot_file, grasped_object, 'panda_hand')
+            self.robot_urdf, link_collision_names = modify_robot_urdf_grasped_object(self.robot_urdf, grasped_object)
             self.link_object_collision_names.extend(link_collision_names)
             self.link_object_collision_margins.extend([grasped_object.object_collision_margin] * len(link_collision_names))
 
-        # The raw version of the original urdf file with the grasped object is used
-        # for collision checking and visualization
-        try:
-            self.urdf_robot_file_raw = copy(urdf_robot_file).as_posix()
-        except AttributeError:
-            self.urdf_robot_file_raw = copy(urdf_robot_file)
+        # Raw version of the original urdf with the grasped object
+        self.robot_urdf_raw = copy(self.robot_urdf)
 
         # Modify the urdf to append links of the collision model
-        urdf_robot_file, link_collision_names, link_collision_margins = modidy_robot_urdf_collision_model(
-            urdf_robot_file, collision_spheres_file_path)
+        self.robot_urdf, link_collision_names, link_collision_margins = modify_robot_urdf_collision_model(
+            self.robot_urdf, collision_spheres_file_path)
         self.link_object_collision_names.extend(link_collision_names)
         self.link_object_collision_margins.extend(link_collision_margins)
-
         assert len(self.link_object_collision_names) == len(self.link_object_collision_margins)
-
         self.link_object_collision_margins = to_torch(self.link_object_collision_margins, **tensor_args)
-
-        self.urdf_robot_file = urdf_robot_file.as_posix()
 
         ################################################################################################
         # Configuration space limits
-        # Lock the urdf robot file because of multiprocessing
-        urdf_robot_file_posix = self.urdf_robot_file
-        urdf_robot_file_posix_lockfile = urdf_robot_file_posix + ".lock"
-        lock = FileLock(urdf_robot_file_posix_lockfile, timeout=120)
-        lock.acquire()
-        try:
-            robot_urdf = URDF.from_xml_file(self.urdf_robot_file)
-        finally:
-            lock.release()
-
         q_limits_lower = []
         q_limits_upper = []
-        for joint in robot_urdf.joints:
+        for joint in self.robot_urdf.joints:
             if joint.joint_type != 'fixed':
                 q_limits_lower.append(joint.limit.lower)
                 q_limits_upper.append(joint.limit.upper)
@@ -230,14 +188,7 @@ class RobotBase(ABC):
         ################################################################################################
         # Torchkin robot forward kinematics functions
         # Lock the urdf robot file because of multiprocessing
-        urdf_robot_file_posix = self.urdf_robot_file
-        urdf_robot_file_posix_lockfile = urdf_robot_file_posix + ".lock"
-        lock = FileLock(urdf_robot_file_posix_lockfile, timeout=120)
-        lock.acquire()
-        try:
-            self.robot_torchkin = torchkin.Robot.from_urdf_file(self.urdf_robot_file, **tensor_args)
-        finally:
-            lock.release()
+        self.robot_torchkin = wrapper_torchkin_robot_from_urdf_model(self.robot_urdf, **tensor_args)
 
         print('-----------------------------------')
         print(f'Torchkin robot: {self.robot_torchkin.name}')
@@ -268,10 +219,6 @@ class RobotBase(ABC):
         ################################################################################################
         # Self collision field
         self.df_collision_self = None
-
-        ################################################################################################
-        # Grasped object
-        self.grasped_object = grasped_object
 
         ################################################################################################
         # Joint limits file
@@ -380,3 +327,5 @@ class RobotBase(ABC):
         link_positions_th = link_pos_from_link_tensor(links_poses_th)  # (batch horizon), taskspaces, x_dim
 
         return link_positions_th
+
+

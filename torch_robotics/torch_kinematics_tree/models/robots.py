@@ -7,7 +7,7 @@ import numpy as np
 import yaml
 from urdf_parser_py.urdf import URDF, Joint, Link, Visual, Collision, Box, Pose
 
-from torch_robotics.robots import modidy_robot_urdf_collision_model, modidy_robot_urdf_grasped_object
+from torch_robotics.robots import modify_robot_urdf_collision_model, modify_robot_urdf_grasped_object
 from torch_robotics.torch_kinematics_tree.geometrics.quaternion import q_to_euler
 from torch_robotics.torch_kinematics_tree.models.robot_tree import DifferentiableTree
 from torch_robotics.torch_kinematics_tree.utils.files import get_robot_path, get_configs_path
@@ -39,14 +39,14 @@ class DifferentiableFrankaPanda(DifferentiableTree):
         self.link_object_collision_names = []
         self.link_object_collision_margins = []
         # Modify the urdf to append links of the collision model
-        urdf_robot_file, link_collision_names, link_collision_margins = modidy_robot_urdf_collision_model(
+        urdf_robot_file, link_collision_names, link_collision_margins = modify_robot_urdf_collision_model(
             robot_file, collision_spheres_file_path)
         self.link_object_collision_names.extend(link_collision_names)
         self.link_object_collision_margins.extend(link_collision_margins)
 
         # Modify the urdf to append the link and collision points of the grasped object
         if grasped_object is not None:
-            urdf_robot_file, link_collision_names = modidy_robot_urdf_grasped_object(
+            urdf_robot_file, link_collision_names = modify_robot_urdf_grasped_object(
                 urdf_robot_file, grasped_object, 'panda_hand')
             self.link_object_collision_names.extend(link_collision_names)
             self.link_object_collision_margins.extend([grasped_object.object_collision_margin] * len(link_collision_names))
