@@ -34,20 +34,22 @@ class DifferentiableFrankaPanda(DifferentiableTree):
 
         collision_spheres_file_path = os.path.join(get_configs_path(), 'panda/panda_sphere_config.yaml')
 
+        robot_urdf = URDF.from_xml_file(robot_file)
+
         ################################################################################################
         # Robot collision model (links and margins) for object collision avoidance
         self.link_object_collision_names = []
         self.link_object_collision_margins = []
         # Modify the urdf to append links of the collision model
         urdf_robot_file, link_collision_names, link_collision_margins = modify_robot_urdf_collision_model(
-            robot_file, collision_spheres_file_path)
+            robot_urdf, collision_spheres_file_path)
         self.link_object_collision_names.extend(link_collision_names)
         self.link_object_collision_margins.extend(link_collision_margins)
 
         # Modify the urdf to append the link and collision points of the grasped object
         if grasped_object is not None:
             urdf_robot_file, link_collision_names = modify_robot_urdf_grasped_object(
-                urdf_robot_file, grasped_object, 'panda_hand')
+                robot_urdf, grasped_object)
             self.link_object_collision_names.extend(link_collision_names)
             self.link_object_collision_margins.extend([grasped_object.object_collision_margin] * len(link_collision_names))
 
