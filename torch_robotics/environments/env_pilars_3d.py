@@ -13,10 +13,10 @@ class EnvPilars3D(EnvBase):
 
     def __init__(self, tensor_args=None, **kwargs):
         pilars = MultiBoxField(torch.tensor([
-                    [-0.3, 0.3, 0.0],
-                    [0.3, 0.4, 0.0],
-                    [0.4, -0.3, 0.0],
-                    [-0.3, -0.4, 0.0],
+                    [-0.4, 0.4, 0.0],
+                    [0.4, 0.4, 0.0],
+                    [0.4, -0.4, 0.0],
+                    [-0.4, -0.4, 0.0],
                     ]),
                 torch.tensor([
                     [0.25, 0.25, 2.0],
