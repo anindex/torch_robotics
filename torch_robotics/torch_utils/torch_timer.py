@@ -24,7 +24,8 @@ class TimerCUDA(object):
 
     def __init__(self, timer=perf_counter,
                  output=None, fmt="took {:.3f} seconds", prefix="",
-                 use_cuda_events=False
+                 use_cuda_events=False,
+                 sync_cuda=True
                  ):
         self.timer = timer
         self.output = output
@@ -33,7 +34,7 @@ class TimerCUDA(object):
         self.start_time = None
         self.end = None
 
-        self.sync_cuda = True if torch.cuda.is_available() else False
+        self.sync_cuda = True if torch.cuda.is_available() and sync_cuda else False
         if use_cuda_events:
             assert self.sync_cuda, "CUDA must be available when using CUDA events"
         self.use_cuda_events = use_cuda_events

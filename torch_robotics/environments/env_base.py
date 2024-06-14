@@ -220,6 +220,18 @@ class EnvBase(ABC):
 
         return sdf
 
+    def export_sdf_tensor(self, filepath, **kwargs):
+        if self.grid_map_sdf_obj_fixed is None:
+            print(f'SDF grid map for fixed objects does not exist.')
+            return
+
+        sdf = self.grid_map_sdf_obj_fixed.sdf_tensor
+        if self.grid_map_sdf_obj_extra is not None:
+            sdf_extra = self.grid_map_sdf_obj_extra.sdf_tensor
+            sdf = torch.minimum(sdf, sdf_extra)
+
+        torch.save(sdf, f'{filepath}.pt')
+
     def render_sdf(self, ax=None, fig=None):
         # draw sdf
         xs = torch.linspace(self.limits_np[0][0], self.limits_np[1][0], steps=200, **self.tensor_args)
