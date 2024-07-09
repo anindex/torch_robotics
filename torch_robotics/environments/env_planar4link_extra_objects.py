@@ -4,7 +4,7 @@ from matplotlib import pyplot as plt
 from torch_robotics.environments import EnvPlanar4Link
 from torch_robotics.environments.primitives import ObjectField, MultiSphereField, MultiBoxField
 from torch_robotics.torch_utils.torch_utils import DEFAULT_TENSOR_ARGS
-from torch_robotics.visualizers.planning_visualizer import create_fig_and_axes
+from torch_robotics.visualizers.plot_utils import create_fig_and_axes
 
 
 class EnvPlanar4LinkExtraObjects(EnvPlanar4Link):

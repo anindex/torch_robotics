@@ -4,9 +4,9 @@ from matplotlib import pyplot as plt
 
 from torch_robotics.environments.env_base import EnvBase
 from torch_robotics.environments.primitives import MultiSphereField, ObjectField
-from torch_robotics.robots import RobotPlanar2Link
+import torch_robotics.robots as tr_robots
 from torch_robotics.torch_utils.torch_utils import DEFAULT_TENSOR_ARGS
-from torch_robotics.visualizers.planning_visualizer import create_fig_and_axes
+from torch_robotics.visualizers.plot_utils import create_fig_and_axes
 
 
 class EnvPlanar2Link(EnvBase):
@@ -38,7 +38,7 @@ class EnvPlanar2Link(EnvBase):
             n_pre_samples=50000,
             max_time=15
         )
-        if isinstance(robot, RobotPlanar2Link):
+        if isinstance(robot, tr_robots.RobotPlanar2Link):
             return params
         else:
             raise NotImplementedError
@@ -57,7 +57,7 @@ class EnvPlanar2Link(EnvBase):
             pos_only=False,
         )
 
-        if isinstance(robot, RobotPlanar2Link):
+        if isinstance(robot, tr_robots.RobotPlanar2Link):
             return params
         else:
             raise NotImplementedError

@@ -14,8 +14,7 @@ from torch_robotics.torch_kinematics_tree.geometrics.quaternion import q_to_rota
 from torch_robotics.torch_kinematics_tree.geometrics.utils import transform_point, rotate_point
 from torch_robotics.torch_utils.torch_timer import TimerCUDA
 from torch_robotics.torch_utils.torch_utils import DEFAULT_TENSOR_ARGS, to_torch, to_numpy, tensor_linspace_v1
-from torch_robotics.visualizers.planning_visualizer import create_fig_and_axes
-
+from torch_robotics.visualizers.plot_utils import create_fig_and_axes
 
 
 class PrimitiveShapeField(ABC):

@@ -4,9 +4,9 @@ from matplotlib import pyplot as plt
 
 from torch_robotics.environments.env_base import EnvBase
 from torch_robotics.environments.primitives import ObjectField, MultiBoxField
-from torch_robotics.robots import RobotPointMass2D
+import torch_robotics.robots as tr_robots
 from torch_robotics.torch_utils.torch_utils import DEFAULT_TENSOR_ARGS, get_torch_device
-from torch_robotics.visualizers.planning_visualizer import create_fig_and_axes
+from torch_robotics.visualizers.plot_utils import create_fig_and_axes
 
 
 def create_3d_rectangles_objects(tensor_args=None):
@@ -72,7 +72,7 @@ class EnvMazeBoxes3D(EnvBase):
             n_pre_samples=50000,
             max_time=30
         )
-        if isinstance(robot, RobotPointMass2D):
+        if isinstance(robot, tr_robots.RobotPointMass2D):
             return params
         else:
             raise NotImplementedError
@@ -97,7 +97,7 @@ class EnvMazeBoxes3D(EnvBase):
                 'method': 'cholesky',
             },
         )
-        if isinstance(robot, RobotPointMass2D):
+        if isinstance(robot, tr_robots.RobotPointMass2D):
             return params
         else:
             raise NotImplementedError

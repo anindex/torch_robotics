@@ -9,8 +9,7 @@ from torch_robotics.tasks.tasks import PlanningTask
 from torch_robotics.torch_utils.seed import fix_random_seed
 from torch_robotics.torch_utils.torch_utils import DEFAULT_TENSOR_ARGS, get_torch_device, to_numpy
 
-
-from torch_robotics.visualizers.planning_visualizer import create_fig_and_axes
+from torch_robotics.visualizers.plot_utils import create_fig_and_axes
 
 
 def plot_configuration_free_space(

@@ -4,12 +4,12 @@ import numpy as np
 import torch
 from matplotlib import pyplot as plt
 
-from torch_robotics.environments import create_table_object_field, create_shelf_field
 from torch_robotics.environments.env_base import EnvBase
+from torch_robotics.environments.env_table_shelf import create_table_object_field, create_shelf_field
 from torch_robotics.environments.primitives import ObjectField, MultiBoxField
-from torch_robotics.robots import RobotPanda
+import torch_robotics.robots as tr_robots
 from torch_robotics.torch_utils.torch_utils import DEFAULT_TENSOR_ARGS
-from torch_robotics.visualizers.planning_visualizer import create_fig_and_axes
+from torch_robotics.visualizers.plot_utils import create_fig_and_axes
 
 
 class EnvWarehouse(EnvBase):
@@ -79,7 +79,7 @@ class EnvWarehouse(EnvBase):
                 'method': 'cholesky',
             },
         )
-        if isinstance(robot, RobotPanda):
+        if isinstance(robot, tr_robots.RobotPanda):
             return params
         else:
             raise NotImplementedError
@@ -92,7 +92,7 @@ class EnvWarehouse(EnvBase):
             n_pre_samples=50000,
             max_time=15
         )
-        if isinstance(robot, RobotPanda):
+        if isinstance(robot, tr_robots.RobotPanda):
             return params
         else:
             raise NotImplementedError

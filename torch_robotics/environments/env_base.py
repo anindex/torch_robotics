@@ -11,7 +11,7 @@ from torch_robotics.environments.occupancy_map import OccupancyMap
 from torch_robotics.environments.primitives import ObjectField, MultiSphereField, MultiBoxField
 from torch_robotics.torch_utils.torch_timer import TimerCUDA
 from torch_robotics.torch_utils.torch_utils import to_numpy, DEFAULT_TENSOR_ARGS
-from torch_robotics.visualizers.planning_visualizer import create_fig_and_axes
+from torch_robotics.visualizers.plot_utils import create_fig_and_axes
 
 
 class EnvBase(ABC):

@@ -7,7 +7,7 @@ from matplotlib import pyplot as plt
 from storm_kit.geom.nn_model.robot_self_collision import RobotSelfCollisionNet
 from torch_robotics.torch_kinematics_tree.geometrics.utils import SE3_distance
 from torch_robotics.torch_utils.torch_timer import TimerCUDA
-from torch_robotics.visualizers.planning_visualizer import create_fig_and_axes
+from torch_robotics.visualizers.plot_utils import create_fig_and_axes
 import torch.nn.functional as Functional
 
 
