@@ -54,7 +54,7 @@ class EnvBase(ABC):
         ################################################################################################
         # Precompute the SDF map of fixed and extra objects
         if sdf_cell_size is None:
-            self.sdf_cell_size = 0.01 if self.dim == 3 else 0.005
+            self.sdf_cell_size = 0.02 if self.dim == 3 else 0.005
         else:
             self.sdf_cell_size = sdf_cell_size
         self.grid_map_sdf_obj_fixed = None

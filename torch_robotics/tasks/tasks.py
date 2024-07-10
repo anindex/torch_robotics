@@ -564,7 +564,10 @@ class PlanningTask(Task):
         axs[-1, 0].set_xlabel('Timesteps')
         axs[-1, 1].set_xlabel('Timesteps')
         axs[-1, 2].set_xlabel('Timesteps')
-        timesteps = self.planner.get_timesteps(num=H).reshape(1, -1)
+        if self.planner is not None:
+            timesteps = self.planner.get_timesteps(num=H).reshape(1, -1)
+        else:
+            timesteps = np.linspace(0, 1, num=H).reshape(1, -1)
         t_s, t_g = timesteps[0, 0], timesteps[0, -1]
         for i, ax in enumerate(axs):
             for trajs_filtered, color in zip([(trajs_coll_pos_np, trajs_coll_vel_np, trajs_coll_acc_np),
