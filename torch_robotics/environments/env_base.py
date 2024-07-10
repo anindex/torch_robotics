@@ -22,6 +22,7 @@ class EnvBase(ABC):
                  obj_extra_list=None,
                  precompute_sdf_obj_fixed=True,
                  precompute_sdf_obj_extra=True,
+                 sdf_cell_size=None,
                  tensor_args=None,
                  **kwargs
                  ):
@@ -52,7 +53,10 @@ class EnvBase(ABC):
 
         ################################################################################################
         # Precompute the SDF map of fixed and extra objects
-        self.sdf_cell_size = 0.02 if self.dim == 3 else 0.005
+        if sdf_cell_size is None:
+            self.sdf_cell_size = 0.01 if self.dim == 3 else 0.005
+        else:
+            self.sdf_cell_size = sdf_cell_size
         self.grid_map_sdf_obj_fixed = None
         self.grid_map_sdf_obj_extra = None
         self.build_sdf_grid(precompute_sdf_obj_fixed, precompute_sdf_obj_extra)

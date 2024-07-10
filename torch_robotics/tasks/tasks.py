@@ -484,28 +484,28 @@ class PlanningTask(Task):
     def plot_joint_space_state_trajectories(
             self,
             fig=None, axs=None,
-            trajs=None,
+            trajs_pos=None,
             trajs_vel=None,
             trajs_acc=None,
             traj_best=None,
             pos_start_state=None, pos_goal_state=None,
             vel_start_state=None, vel_goal_state=None,
             acc_start_state=None, acc_goal_state=None,
-            set_joint_limits=True,
+            set_joint_pos_limits=True,
             set_joint_vel_limits=True,
             set_joint_acc_limits=True,
             control_points=None,
             **kwargs
     ):
-        if trajs is None:
+        if trajs_pos is None:
             return
-        trajs_np = to_numpy(trajs)
+        trajs_np = to_numpy(trajs_pos)
 
         assert trajs_np.ndim == 3
         B, H, D = trajs_np.shape
 
         # Separate trajectories in collision and free (not in collision)
-        trajs_coll, trajs_coll_idxs, trajs_free, trajs_free_idxs, _ = self.get_trajs_collision_and_free(trajs, return_indices=True, **kwargs)
+        trajs_coll, trajs_coll_idxs, trajs_free, trajs_free_idxs, _ = self.get_trajs_collision_and_free(trajs_pos, return_indices=True, **kwargs)
 
         trajs_coll_pos_np = to_numpy([])
         trajs_coll_vel_np = to_numpy([])
@@ -564,7 +564,8 @@ class PlanningTask(Task):
         axs[-1, 0].set_xlabel('Timesteps')
         axs[-1, 1].set_xlabel('Timesteps')
         axs[-1, 2].set_xlabel('Timesteps')
-        timesteps = np.linspace(0, 1, H).reshape(1, -1)
+        timesteps = self.planner.get_timesteps(num=H).reshape(1, -1)
+        t_s, t_g = timesteps[0, 0], timesteps[0, -1]
         for i, ax in enumerate(axs):
             for trajs_filtered, color in zip([(trajs_coll_pos_np, trajs_coll_vel_np, trajs_coll_acc_np),
                                               (trajs_free_pos_np, trajs_free_vel_np, trajs_free_acc_np)],
@@ -591,31 +592,31 @@ class PlanningTask(Task):
 
             # Start and goal
             if pos_start_state is not None:
-                ax[0].scatter(0, pos_start_state[i], color='green')
+                ax[0].scatter(t_s, pos_start_state[i], color='green')
             if vel_start_state is not None:
-                ax[1].scatter(0, vel_start_state[i], color='green')
+                ax[1].scatter(t_s, vel_start_state[i], color='green')
             if acc_start_state is not None:
-                ax[2].scatter(0, acc_start_state[i], color='green')
+                ax[2].scatter(t_s, acc_start_state[i], color='green')
             if pos_goal_state is not None:
-                ax[0].scatter(1, pos_goal_state[i], color='purple')
+                ax[0].scatter(t_g, pos_goal_state[i], color='purple')
             if vel_goal_state is not None:
-                ax[1].scatter(1, vel_goal_state[i], color='purple')
+                ax[1].scatter(t_g, vel_goal_state[i], color='purple')
             if acc_goal_state is not None:
-                ax[2].scatter(1, acc_goal_state[i], color='purple')
+                ax[2].scatter(t_g, acc_goal_state[i], color='purple')
             # Y label
             ax[0].set_ylabel(f'q_{i}')
             # Set limits
-            if set_joint_limits:
-                ax[0].plot([0, 1], [self.robot.q_min_np[i], self.robot.q_min_np[i]], color='k', linestyle='--')
-                ax[0].plot([0, 1], [self.robot.q_max_np[i], self.robot.q_max_np[i]], color='k', linestyle='--')
+            if set_joint_pos_limits:
+                ax[0].plot([t_s, t_g], [self.robot.q_min_np[i], self.robot.q_min_np[i]], color='k', linestyle='--')
+                ax[0].plot([t_s, t_g], [self.robot.q_max_np[i], self.robot.q_max_np[i]], color='k', linestyle='--')
                 # ax[0].set_ylim(self.robot.q_min_np[i], self.robot.q_max_np[i])
             if set_joint_vel_limits and self.robot.dq_max_np is not None:
-                ax[1].plot([0, 1], [self.robot.dq_max_np[i], self.robot.dq_max_np[i]], color='k', linestyle='--')
-                ax[1].plot([0, 1], [-self.robot.dq_max_np[i], -self.robot.dq_max_np[i]], color='k', linestyle='--')
+                ax[1].plot([t_s, t_g], [self.robot.dq_max_np[i], self.robot.dq_max_np[i]], color='k', linestyle='--')
+                ax[1].plot([t_s, t_g], [-self.robot.dq_max_np[i], -self.robot.dq_max_np[i]], color='k', linestyle='--')
                 # ax[1].set_ylim(-self.robot.dq_max_np[i], self.robot.dq_max_np[i])
             if set_joint_acc_limits and self.robot.ddq_max_np is not None:
-                ax[2].plot([0, 1], [self.robot.ddq_max_np[i], self.robot.ddq_max_np[i]], color='k', linestyle='--')
-                ax[2].plot([0, 1], [-self.robot.ddq_max_np[i], -self.robot.ddq_max_np[i]], color='k', linestyle='--')
+                ax[2].plot([t_s, t_g], [self.robot.ddq_max_np[i], self.robot.ddq_max_np[i]], color='k', linestyle='--')
+                ax[2].plot([t_s, t_g], [-self.robot.ddq_max_np[i], -self.robot.ddq_max_np[i]], color='k', linestyle='--')
                 # ax[2].set_ylim(-self.robot.ddq_max_np[i], self.robot.ddq_max_np[i])
 
         # plot control points
@@ -650,7 +651,7 @@ class PlanningTask(Task):
             trajs_acc_selection = trajs_acc[idxs]
 
         fig, axs = self.plot_joint_space_state_trajectories(
-            trajs=trajs_selection[0],
+            trajs_pos=trajs_selection[0],
             trajs_vel=trajs_vel_selection[0] if trajs_vel is not None else None,
             trajs_acc=trajs_acc_selection[0] if trajs_acc is not None else None,
             **kwargs)
@@ -660,7 +661,7 @@ class PlanningTask(Task):
             fig.suptitle(f"iter: {idxs[i]}/{S-1}")
             self.plot_joint_space_state_trajectories(
                 fig=fig, axs=axs,
-                trajs=trajs_selection[i],
+                trajs_pos=trajs_selection[i],
                 trajs_vel=trajs_vel_selection[i] if trajs_vel is not None else None,
                 trajs_acc=trajs_acc_selection[i] if trajs_acc is not None else None,
                 **kwargs
@@ -668,7 +669,7 @@ class PlanningTask(Task):
             if i == n_frames - 1 and traj_best is not None:
                 self.plot_joint_space_state_trajectories(
                     fig=fig, axs=axs,
-                    trajs=trajs_selection[i],
+                    trajs_pos=trajs_selection[i],
                     traj_best=traj_best,
                     trajs_vel=trajs_vel_selection[i] if trajs_vel is not None else None,
                     trajs_acc=trajs_acc_selection[i] if trajs_acc is not None else None,
