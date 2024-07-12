@@ -11,7 +11,7 @@ from torch_robotics.torch_planning_objectives.fields.distance_fields import Coll
     CollisionSelfField, CollisionObjectDistanceField
 from torch_robotics.torch_utils.torch_timer import TimerCUDA
 from torch_robotics.torch_utils.torch_utils import to_numpy
-from torch_robotics.trajectory.utils import interpolate_traj_via_points
+from torch_robotics.trajectory.utils import interpolate_traj_via_points, finite_difference_vector
 from torch_robotics.visualizers.plot_utils import create_fig_and_axes, create_animation_video, plot_multiline
 
 
@@ -27,7 +27,7 @@ class PlanningTask(Task):
 
     def __init__(
             self,
-            task_planner=None,
+            parametric_trajectory=None,
             ws_limits=None,
             use_occupancy_map=False,
             cell_size=0.01,
@@ -40,7 +40,8 @@ class PlanningTask(Task):
     ):
         super().__init__(**kwargs)
 
-        self.planner = task_planner
+        assert parametric_trajectory is not None, "parametric_trajectory needs to be provided"
+        self.parametric_trajectory = parametric_trajectory
 
         self.ws_limits = self.env.limits if ws_limits is None else ws_limits
         self.ws_min = self.ws_limits[0]
@@ -167,11 +168,11 @@ class PlanningTask(Task):
         return samples.squeeze()
 
     def compute_collision(self, x, **kwargs):
-        q_pos = self.robot.get_position(x)
+        q_pos = self.get_position(x)
         return self._compute_collision_or_cost(q_pos, field_type='occupancy', **kwargs)
 
     def compute_collision_cost(self, x, **kwargs):
-        q_pos = self.robot.get_position(x)
+        q_pos = self.get_position(x)
         return self._compute_collision_or_cost(q_pos, field_type='sdf', **kwargs)
 
     def _compute_collision_or_cost(self, q_pos, field_type='occupancy', **kwargs):
@@ -310,7 +311,7 @@ class PlanningTask(Task):
             else:
                 trajs_free_tmp = trajs[trajs_free_idxs.squeeze(), ...]
 
-            trajs_free_tmp_position = self.robot.get_position(trajs_free_tmp)
+            trajs_free_tmp_position = self.get_position(trajs_free_tmp)
             trajs_free_inside_joint_limits_idxs = torch.logical_and(
                 trajs_free_tmp_position >= self.robot.q_min,
                 trajs_free_tmp_position <= self.robot.q_max).all(dim=-1).all(dim=-1)
@@ -371,7 +372,31 @@ class PlanningTask(Task):
                 return 1
         return 0
 
+    ###############################################################################################################
+    ###############################################################################################################
+    ###############################################################################################################
+    # Parse state
+    def get_position(self, x):
+        return self.robot.get_position(x)
 
+    def get_velocity(self, x, dt=None):
+        vel = self.robot.get_velocity(x)
+        # If there is no velocity in the state, then compute it via finite difference
+        if x.nelement() != 0 and vel.nelement() == 0:
+            dt = dt if dt is not None else self.parametric_trajectory.dt
+            vel = finite_difference_vector(x, dt=dt, method='central')
+            return vel
+        return vel
+
+    def get_acceleration(self, x, dt=None):
+        acc = self.robot.get_acceleration(x)
+        # If there is no acceleration in the state, then compute it via finite difference
+        if x.nelement() != 0 and acc.nelement() == 0:
+            dt = dt if dt is not None else self.parametric_trajectory.dt
+            vel = self.get_velocity(x, dt=dt)
+            acc = finite_difference_vector(vel, dt=dt, method='central')
+            return acc
+        return acc
 
     ###############################################################################################################
     ###############################################################################################################
@@ -382,7 +407,7 @@ class PlanningTask(Task):
             fig, ax = create_fig_and_axes(dim=self.env.dim)
 
         if render_planner:
-            self.planner.render(ax)
+            self.parametric_trajectory.render(ax)
         self.env.render(ax)
         if trajs is not None:
             _, trajs_coll_idxs, _, trajs_free_idxs, _ = self.get_trajs_collision_and_free(trajs, return_indices=True)
@@ -511,37 +536,37 @@ class PlanningTask(Task):
         trajs_coll_vel_np = to_numpy([])
         trajs_coll_acc_np = to_numpy([])
         if trajs_coll is not None:
-            trajs_coll_pos_np = to_numpy(self.robot.get_position(trajs_coll))
+            trajs_coll_pos_np = to_numpy(self.get_position(trajs_coll))
             if trajs_vel is not None:
                 trajs_coll_vel_np = to_numpy(trajs_vel[trajs_coll_idxs.squeeze()])
                 if trajs_coll_vel_np.ndim == 2:
                     trajs_coll_vel_np = trajs_coll_vel_np[None, ...]
             else:
-                trajs_coll_vel_np = to_numpy(self.robot.get_velocity(trajs_coll))
+                trajs_coll_vel_np = to_numpy(self.get_velocity(trajs_coll))
             if trajs_acc is not None:
                 trajs_coll_acc_np = to_numpy(trajs_acc[trajs_coll_idxs.squeeze()])
                 if trajs_coll_acc_np.ndim == 2:
                     trajs_coll_acc_np = trajs_coll_acc_np[None, ...]
             else:
-                trajs_coll_acc_np = to_numpy(self.robot.get_acceleration(trajs_coll))
+                trajs_coll_acc_np = to_numpy(self.get_acceleration(trajs_coll))
 
         trajs_free_pos_np = to_numpy([])
         trajs_free_vel_np = to_numpy([])
         trajs_free_acc_np = to_numpy([])
         if trajs_free is not None:
-            trajs_free_pos_np = to_numpy(self.robot.get_position(trajs_free))
+            trajs_free_pos_np = to_numpy(self.get_position(trajs_free))
             if trajs_vel is not None:
                 trajs_free_vel_np = to_numpy(trajs_vel[trajs_free_idxs.squeeze()])
                 if trajs_free_vel_np.ndim == 2:
                     trajs_free_vel_np = trajs_free_vel_np[None, ...]
             else:
-                trajs_free_vel_np = to_numpy(self.robot.get_velocity(trajs_free))
+                trajs_free_vel_np = to_numpy(self.get_velocity(trajs_free))
             if trajs_acc is not None:
                 trajs_free_acc_np = to_numpy(trajs_acc[trajs_free_idxs.squeeze()])
                 if trajs_free_acc_np.ndim == 2:
                     trajs_free_acc_np = trajs_free_acc_np[None, ...]
             else:
-                trajs_free_acc_np = to_numpy(self.robot.get_acceleration(trajs_free))
+                trajs_free_acc_np = to_numpy(self.get_acceleration(trajs_free))
 
         if pos_start_state is not None:
             pos_start_state = to_numpy(pos_start_state)
@@ -564,8 +589,8 @@ class PlanningTask(Task):
         axs[-1, 0].set_xlabel('Timesteps')
         axs[-1, 1].set_xlabel('Timesteps')
         axs[-1, 2].set_xlabel('Timesteps')
-        if self.planner is not None:
-            timesteps = self.planner.get_timesteps(num=H).reshape(1, -1)
+        if self.parametric_trajectory is not None:
+            timesteps = self.parametric_trajectory.get_timesteps(num=H).reshape(1, -1)
         else:
             timesteps = np.linspace(0, 1, num=H).reshape(1, -1)
         t_s, t_g = timesteps[0, 0], timesteps[0, -1]
@@ -583,9 +608,9 @@ class PlanningTask(Task):
                             pass
 
             if traj_best is not None:
-                traj_best_pos = self.robot.get_position(traj_best)
-                traj_best_vel = self.robot.get_velocity(traj_best)
-                traj_best_acc = self.robot.get_acceleration(traj_best)
+                traj_best_pos = self.get_position(traj_best)
+                traj_best_vel = self.get_velocity(traj_best)
+                traj_best_acc = self.get_acceleration(traj_best)
                 traj_best_pos_np = to_numpy(traj_best_pos)
                 traj_best_vel_np = to_numpy(traj_best_vel)
                 traj_best_acc_np = to_numpy(traj_best_acc)

@@ -134,8 +134,6 @@ class RobotBase(ABC):
         self.gripper_q_dim = gripper_q_dim
         self.grasped_object = grasped_object
 
-        self.dt = dt  # time interval to compute velocities and accelerations from positions via finite difference
-
         # If the task space is 2D (point mass or plannar robot), then the z coordinate is set to 0
         self.task_space_dim = task_space_dim
 
@@ -239,26 +237,6 @@ class RobotBase(ABC):
         q_pos = self.q_distribution.sample((n_samples,))
         return q_pos
 
-    def get_position(self, x):
-        return x[..., :self.q_dim]
-
-    def get_velocity(self, x):
-        vel = x[..., self.q_dim:2 * self.q_dim]
-        # If there is no velocity in the state, then compute it via finite difference
-        if x.nelement() != 0 and vel.nelement() == 0:
-            vel = finite_difference_vector(x, dt=self.dt, method='central')
-            return vel
-        return vel
-
-    def get_acceleration(self, x):
-        acc = x[..., 2 * self.q_dim:3 * self.q_dim]
-        # If there is no acceleration in the state, then compute it via finite difference
-        if x.nelement() != 0 and acc.nelement() == 0:
-            vel = self.get_velocity(x)
-            acc = finite_difference_vector(vel, dt=self.dt, method='central')
-            return acc
-        return acc
-
     def distance_q(self, q1, q2):
         return torch.linalg.norm(q1 - q2, dim=-1)
 
@@ -269,6 +247,17 @@ class RobotBase(ABC):
     @abc.abstractmethod
     def render_trajectories(self, ax, trajs=None, **kwargs):
         raise NotImplementedError
+
+    ################################################################################################
+    # Parse state
+    def get_position(self, x):
+        return x[..., :self.q_dim]
+
+    def get_velocity(self, x):
+        return x[..., self.q_dim:2 * self.q_dim]
+
+    def get_acceleration(self, x):
+        return x[..., 2 * self.q_dim:3 * self.q_dim]
 
     def get_EE_pose(self, q, flatten_pos_quat=False, quat_xyzw=False):
         _q = q

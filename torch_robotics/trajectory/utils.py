@@ -48,7 +48,7 @@ def interpolate_traj_via_points(trajs, num_interpolation=10):
 
 
 def finite_difference_vector(x, dt=1., method='forward'):
-    # finite differences with zero padding at the borders
+    # finite differences with zero paddings at the borders
     diff_vector = torch.zeros_like(x)
     if method == 'forward':
         diff_vector[..., :-1, :] = torch.diff(x, dim=-2) / dt

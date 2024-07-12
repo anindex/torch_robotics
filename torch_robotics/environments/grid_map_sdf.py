@@ -7,7 +7,6 @@ from torch.autograd.functional import jacobian
 from torch_robotics.torch_utils.torch_timer import TimerCUDA
 
 
-
 class GridMapSDF:
     """
     Generates an SDF grid.
@@ -34,7 +33,6 @@ class GridMapSDF:
 
         self.batch_size = batch_size
         self.precompute_sdf()
-        # self.precompute_sdf_v0()
 
     def precompute_sdf(self):
         # computes the signed distance field and its gradient
@@ -58,37 +56,6 @@ class GridMapSDF:
         # compute sdf gradient
         f_grad_sdf = lambda x: self.compute_signed_distance_raw(x).sum()
         self.grad_sdf_tensor = torch.func.jacrev(f_grad_sdf)(self.points_for_sdf)
-
-    def precompute_sdf_v0(self):
-        # computes the signed distance field and its gradient
-        # create voxel grid of points
-        basis_ranges = [
-            torch.linspace(self.limits[0][0], self.limits[1][0], self.cmap_dim[0], **self.tensor_args),
-            torch.linspace(self.limits[0][1], self.limits[1][1], self.cmap_dim[1], **self.tensor_args),
-        ]
-        if self.dim == 3:
-            basis_ranges.append(
-                torch.linspace(self.limits[0][2], self.limits[1][2], self.cmap_dim[2], **self.tensor_args)
-            )
-        points_for_sdf_meshgrid = torch.meshgrid(*basis_ranges, indexing='ij')
-        self.points_for_sdf = torch.stack(points_for_sdf_meshgrid, dim=-1)
-
-        f_grad_sdf = lambda x: self.compute_signed_distance_raw(x).sum()
-        sdf_tensor_l = []
-        grad_sdf_tensor_l = []
-        for i in range(0, self.points_for_sdf.shape[0], self.batch_size):
-            torch.cuda.empty_cache()
-            # sdf
-            points_sdf = self.points_for_sdf[i:i+self.batch_size]
-            sdf_tensor = self.compute_signed_distance_raw(points_sdf)
-            sdf_tensor_l.append(sdf_tensor)
-            # gradient of sdf
-            grad_sdf_tensor = jacobian(f_grad_sdf, points_sdf, vectorize=True)
-            grad_sdf_tensor_l.append(grad_sdf_tensor)
-        torch.cuda.empty_cache()
-
-        self.sdf_tensor = torch.cat(sdf_tensor_l, dim=0)
-        self.grad_sdf_tensor = torch.cat(grad_sdf_tensor_l, dim=0)
 
     def compute_signed_distance_raw(self, x):
         sdf = None
