@@ -1,58 +1,67 @@
 # TorchRobotics
 
-This library implements differentiable robot tree from URDF or MCJF robot format, and the differentiable planning objects such as obstacle avoidance, self-collision avoidance and via point.
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Python 3.9+](https://img.shields.io/badge/Python-3.9%2B-blue.svg)](https://www.python.org/)
+[![PyTorch 2.0+](https://img.shields.io/badge/PyTorch-2.0%2B-ee4c2c.svg)](https://pytorch.org/)
 
-**NOTE**: `torch_robotics` is under heavy development and highly experimental.
+Differentiable robot kinematics tree from URDF/MJCF formats, with differentiable planning objectives (obstacle avoidance, self-collision, end-effector tracking).
+
+## Requirements
+
+- Python >= 3.9
+- PyTorch >= 2.0
 
 ## Installation
 
-Simply activate your conda/Python environment and run
+Activate your conda/Python environment and run:
 
-```azure
+```bash
 pip install -e .
 ```
 
 ## Examples
 
-To see FK, IK of all available robot kinematics
+Forward kinematics for all available robot models:
 
-```azure
+```bash
 python examples/forward_kinematics.py
 ```
 
-and
+Inverse kinematics via Adam optimization:
 
-```azure
+```bash
 python examples/inverse_kinematics.py
 ```
 
 ## Acknowledgements
 
-A part of this implementation is inspired from the library [differentiable robot model](https://github.com/facebookresearch/differentiable-robot-model).
+Parts of the kinematics tree implementation are based on [differentiable-robot-model](https://github.com/facebookresearch/differentiable-robot-model) (Meta AI).
 
 ## Contact
 
-If you have any questions or find any bugs, please let us know:
-
-- [An Le](https://www.ias.informatik.tu-darmstadt.de/Team/AnThaiLe), [an@robot-learning.de](an@robot-learning.de)
-- [Joao Carvalho](https://www.ias.informatik.tu-darmstadt.de/Team/JoaoCarvalho), [joao@robot-learning.de](joao@robot-learning.de)
+- [An Le](https://www.ias.informatik.tu-darmstadt.de/Team/AnThaiLe) — [an@robot-learning.de](mailto:an@robot-learning.de)
+- [Joao Carvalho](https://www.ias.informatik.tu-darmstadt.de/Team/JoaoCarvalho) — [joao@robot-learning.de](mailto:joao@robot-learning.de)
 
 ## Citation
 
-If you found this repository useful, please consider citing these references:
+If you found this repository useful, please consider citing:
 
-```azure
-@inproceedings{le2023accelerating,
-  title={Accelerating Motion Planning via Optimal Transport},
-  author={Le, An T. and Chalvatzaki, Georgia and Biess, Armin and Peters, Jan},
-  booktitle={Advances in Neural Information Processing Systems (NeurIPS)},
+```bibtex
+@article{le2023accelerating,
+  title={Accelerating motion planning via optimal transport},
+  author={Le, An T and Chalvatzaki, Georgia and Biess, Armin and Peters, Jan R},
+  journal={Advances in Neural Information Processing Systems},
+  volume={36},
+  pages={78453--78482},
   year={2023}
 }
 
-@article{carvalho2023motion,
+@inproceedings{carvalho2023motion,
   title={Motion planning diffusion: Learning and planning of robot motions with diffusion models},
   author={Carvalho, Joao and Le, An T and Baierl, Mark and Koert, Dorothea and Peters, Jan},
-  journal={arXiv preprint arXiv:2308.01557},
-  year={2023}
+  booktitle={IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS)},
+  pages={1916--1923},
+  year={2023},
+  organization={IEEE}
 }
 ```

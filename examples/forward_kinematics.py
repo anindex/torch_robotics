@@ -1,5 +1,4 @@
 import torch
-import time
 
 from torch_robotics.torch_kinematics_tree.geometrics.utils import link_pos_from_link_tensor, link_quat_from_link_tensor
 from torch_robotics.torch_kinematics_tree.models.robots import DifferentiableFrankaPanda, DifferentiableUR10, \

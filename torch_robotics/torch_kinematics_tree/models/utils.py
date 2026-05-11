@@ -248,7 +248,7 @@ class URDFRobotModel(RobotModel):
                         dtype=torch.float32,
                         device=self._device,
                     )
-                except:
+                except (AttributeError, TypeError):
                     joint_damping = torch.zeros(1, device=self._device)
 
         body_params["rot_angles"] = rot_angles

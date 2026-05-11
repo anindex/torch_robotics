@@ -87,14 +87,14 @@ class OccupancyMap:
 
         # Map center (in cells)
         self.origin = np.array([d//2 for d in self.cmap_dim])
-        self.c_offset = torch.Tensor(self.origin).to(**tensor_args)
+        self.c_offset = torch.tensor(self.origin, **tensor_args)
 
         # limits
         self.dims = self.map.shape
         self.lims = [(-self.cell_size * d/2, self.cell_size * d/2) for d in self.dims]
 
     def convert_map_to_torch(self):
-        self.map_torch = torch.Tensor(self.map).to(**self.tensor_args)
+        self.map_torch = torch.tensor(self.map, **self.tensor_args)
         return self.map_torch
 
     def get_collisions(self, X, **kwargs):
@@ -108,15 +108,11 @@ class OccupancyMap:
         """
 
         X_occ = X * (1/self.cell_size) + self.c_offset
-        X_occ = X_occ.floor()
+        X_occ = X_occ.floor().to(torch.int64)
 
-        # X_occ = X_occ.cpu().numpy().astype(np.int)
-        X_occ = X_occ.type(torch.LongTensor)
-        X_occ = X_occ.to(device=self.tensor_args['device'])
-
-        # Project out-of-bounds locations to axis
+        # Clamp out-of-bounds locations in-place
         for i in range(X_occ.shape[-1]):
-            X_occ[..., i] = X_occ[..., i].clamp(0, self.map.shape[i]-1)
+            X_occ[..., i].clamp_(0, self.map.shape[i]-1)
 
         # Collisions
         try:

@@ -90,12 +90,11 @@ class EnvBase(ABC):
     def add_obj(self, obj):
         # Adds an object to the environments
         raise NotImplementedError
-        self.simplify_primitives()
 
     def simplify_primitives(self):
-        return
         # Groups primitives of the same type for faster batched computation
-        raise NotImplementedError
+        # TODO: implement batched grouping of same-type primitives
+        pass
 
     def build_occupancy_map(self, cell_size=None):
         self.cell_size = cell_size
@@ -109,14 +108,12 @@ class EnvBase(ABC):
 
     def add_obstacle_primitive(self, obst_primitive):
         raise NotImplementedError
-        self.obst_primitives_l.append(obst_primitive)
-        self.simplify_primitives()
 
     def zero_grad(self):
         for obj in self.obj_all_list:
             try:
                 obj.zero_grad()
-            except:
+            except Exception:
                 raise NotImplementedError
 
     def render(self, ax=None):
@@ -138,15 +135,7 @@ class EnvBase(ABC):
         ax.set_xlabel('x')
         ax.set_ylabel('y')
 
-        # if self.use_occupancy_map:
-        #     res = self.occupancy_map.map.shape[0]
-        #     x = np.linspace(self.limits[0][0], self.limits[1][0], res)
-        #     y = np.linspace(self.limits[0][1], self.limits[1][1], res)
-        #     map = self.occupancy_map.map
-        #     map[map > 1] = 1
-        #     ax.contourf(x, y, map, 2, cmap='Greys')
-        #     ax.set_aspect('equal')
-        #     ax.set_facecolor('white')
+
 
     def compute_sdf(self, x, reshape_shape=None):
         # compute sdf of fixed objects

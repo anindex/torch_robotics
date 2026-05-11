@@ -1,4 +1,4 @@
-import collections
+import collections.abc
 import random
 from typing import List
 
@@ -19,7 +19,7 @@ def get_torch_device(device='cuda'):
 DEFAULT_TENSOR_ARGS = {'device': get_torch_device('cuda'), 'dtype': torch.float32}
 
 def dict_to_device(ob, device):
-    if isinstance(ob, collections.Mapping):
+    if isinstance(ob, collections.abc.Mapping):
         return {k: dict_to_device(v, device) for k, v in ob.items()}
     else:
         return ob.to(device)
@@ -77,7 +77,7 @@ def batch_trace(covs):
     return covs.diagonal(offset=0, dim1=-1, dim2=-2).sum(-1)
 
 
-@torch.jit.script
+
 def tensor_linspace_v1(start: torch.Tensor, end: torch.Tensor, steps: int = 10):
     # https://github.com/zhaobozb/layout2im/blob/master/models/bilinear.py#L246
     """
@@ -109,7 +109,7 @@ def tensor_linspace_v1(start: torch.Tensor, end: torch.Tensor, steps: int = 10):
     return out
 
 
-@torch.jit.script
+
 def torch_linspace_v2(start: torch.Tensor, stop: torch.Tensor, num: int):
     """
     Creates a tensor of shape [num, *start.shape] whose values are evenly spaced from start to end, inclusive.

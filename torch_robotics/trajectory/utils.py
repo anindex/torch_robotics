@@ -5,18 +5,21 @@ from scipy import interpolate
 from torch_robotics.torch_utils.torch_utils import to_torch, to_numpy
 
 
-def smoothen_trajectory(traj_pos, n_support_points=30, dt=0.02, set_average_velocity=True, zero_velocity=False, tensor_args=None):
+def smoothen_trajectory(traj_pos, n_support_points=30, dt=0.02, set_average_velocity=True, zero_velocity=False, tensor_args=None, _depth=0):
     assert not (set_average_velocity and zero_velocity), "Either sets the average velocity or zero velocity"
     traj_pos = to_numpy(traj_pos)
     try:
         # bc_type='clamped' for zero velocities at start and finish
         spline_pos = interpolate.make_interp_spline(np.linspace(0, 1, traj_pos.shape[0]), traj_pos, k=3, bc_type='clamped')
         spline_vel = spline_pos.derivative(1)
-    except:
+    except (ValueError, TypeError) as e:
         # Trajectory is too short to interpolate, so add last position again and interpolate
+        if _depth >= 5:
+            raise RuntimeError(f"smoothen_trajectory failed after {_depth} retries: {e}")
         traj_pos = np.vstack((traj_pos, traj_pos[-1] + np.random.normal(0, 0.01)))
         return smoothen_trajectory(traj_pos, n_support_points=n_support_points, dt=dt,
-                                   set_average_velocity=set_average_velocity, zero_velocity=zero_velocity, tensor_args=tensor_args)
+                                   set_average_velocity=set_average_velocity, zero_velocity=zero_velocity,
+                                   tensor_args=tensor_args, _depth=_depth + 1)
 
     pos = spline_pos(np.linspace(0, 1, n_support_points))
     vel = np.zeros_like(pos)

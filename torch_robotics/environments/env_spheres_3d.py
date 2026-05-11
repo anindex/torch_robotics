@@ -4,7 +4,6 @@ from matplotlib import pyplot as plt
 
 from torch_robotics.environments.env_base import EnvBase
 from torch_robotics.environments.primitives import ObjectField, MultiSphereField
-from torch_robotics.robots import RobotPointMass, RobotPanda
 from torch_robotics.torch_utils.torch_utils import DEFAULT_TENSOR_ARGS
 from torch_robotics.visualizers.planning_visualizer import create_fig_and_axes
 
@@ -50,6 +49,7 @@ class EnvSpheres3D(EnvBase):
         )
 
     def get_gpmp2_params(self, robot=None):
+        from torch_robotics.robots.robot_panda import RobotPanda
         params = dict(
             opt_iters=250,
             num_samples=64,
@@ -80,6 +80,7 @@ class EnvSpheres3D(EnvBase):
             raise NotImplementedError
 
     def get_rrt_connect_params(self, robot=None):
+        from torch_robotics.robots.robot_panda import RobotPanda
         params = dict(
             n_iters=10000,
             step_size=torch.pi/30,

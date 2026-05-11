@@ -7,7 +7,7 @@ from torch_robotics.torch_utils.torch_utils import to_torch, to_torch_2d_min
 DEFAULT_ACOS_BOUND: float = 1.0 - 1e-4
 
 
-@torch.jit.script
+
 def multiply_transform(w_rot_l, w_trans_l, l_rot_c, l_trans_c):
 
     l_trans_c = l_trans_c.float()
@@ -17,7 +17,7 @@ def multiply_transform(w_rot_l, w_trans_l, l_rot_c, l_trans_c):
     return w_rot_c, w_trans_c
 
 
-@torch.jit.script
+
 def multiply_inv_transform(l_rot_w, l_trans_w, l_rot_c, l_trans_c):
     w_rot_l = l_rot_w.transpose(-1, -2)
     w_rot_c = w_rot_l @ l_rot_c
@@ -28,13 +28,13 @@ def multiply_inv_transform(l_rot_w, l_trans_w, l_rot_c, l_trans_c):
     return w_rot_c, w_trans_c
 
 
-@torch.jit.script
+
 def transform_point(point, rot, trans):
     new_point = (point @ rot.transpose(-1, -2)) + trans
     return new_point
 
 
-@torch.jit.script
+
 def rotate_point(point, rot):
     new_point = (point @ rot.transpose(-1, -2))
     return new_point
@@ -84,10 +84,10 @@ class MinMaxScaler():
                 else:
                     self.min = X.detach().min(self.dim)[0]  # link dim
             if self.max is None:
-                if self.max is None:
+                if self.dim is None:
                     self.max = X.detach().max()
                 else:
-                    self.max = X.detach().min(self.dim)[0]  # link dim
+                    self.max = X.detach().max(self.dim)[0]  # link dim
 
         X_scaled = (X - self.min) / (self.max - self.min)
         return X_scaled
