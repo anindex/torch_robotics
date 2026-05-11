@@ -531,7 +531,7 @@ class PandaMotionPlanningIsaacGymEnv:
             action_dof[..., :7] = actions[..., :7]
 
         # gripper is open
-        action_dof[..., 7:9] = torch.Tensor([[0.04, 0.04]] * self.num_envs)
+        action_dof[..., 7:9] = torch.tensor([[0.04, 0.04]] * self.num_envs)
 
         ###############################################################################################################
         # Deploy actions

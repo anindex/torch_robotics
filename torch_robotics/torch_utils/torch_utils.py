@@ -130,7 +130,6 @@ def torch_linspace_v2(start: torch.Tensor, stop: torch.Tensor, num: int):
     return out
 
 
-# @torch.jit.script
 def batched_weighted_dot_prod(x: torch.Tensor, M: torch.Tensor, y: torch.Tensor, with_einsum: bool = False):
     """
     Computes batched version of weighted dot product (distance) x.T @ M @ x
